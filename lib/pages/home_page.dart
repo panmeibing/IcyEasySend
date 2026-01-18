@@ -8,6 +8,7 @@ import '../services/file_transfer_service.dart';
 import '../services/notification_service.dart';
 import '../services/http_server_manager.dart';
 import '../services/permission_service.dart';
+import '../services/preferences_service.dart';
 import '../utils/error_messages.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
@@ -32,7 +33,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   // State variables as defined in the design document
   String targetIP = '';
-  File? selectedFile;
+  List<File> selectedFiles = []; // Changed from single file to list of files
   bool isServerRunning = false;
   String? serverAddress;
   bool isSending = false;
@@ -45,16 +46,24 @@ class _HomePageState extends State<HomePage> {
   double _transferSpeed = 0.0; // bytes per second
   Duration? _estimatedTimeRemaining;
   String _transferStatus = ''; // Transfer status message
+  
+  // Multi-file transfer tracking
+  int _currentFileIndex = 0;
+  int _totalFilesCount = 0;
 
   // Services
   final ValidationService _validationService = ValidationService();
   final FileTransferService _fileTransferService = FileTransferService();
   final NotificationService _notificationService = NotificationService();
   final PermissionService _permissionService = PermissionService();
+  final PreferencesService _preferencesService = PreferencesService();
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
   String? _ipErrorMessage;
+  
+  // IP history
+  List<String> _ipHistory = [];
 
   @override
   void initState() {
@@ -71,6 +80,12 @@ class _HomePageState extends State<HomePage> {
     
     // Add listener for IP address validation
     _ipController.addListener(_validateIPAddress);
+    
+    // Load last used IP address
+    _loadLastUsedIP();
+    
+    // Load IP history
+    _loadIPHistory();
   }
   
   /// Validate the IP address in real-time
@@ -85,6 +100,55 @@ class _HomePageState extends State<HomePage> {
         _ipErrorMessage = result.isValid ? null : result.errorMessage;
       }
     });
+  }
+  
+  /// Load the last used IP address from preferences
+  Future<void> _loadLastUsedIP() async {
+    final lastIP = await _preferencesService.getLastUsedIP();
+    if (lastIP != null && lastIP.isNotEmpty && mounted) {
+      _ipController.text = lastIP;
+      // Trigger validation
+      _validateIPAddress();
+    }
+  }
+  
+  /// Load IP address history from preferences
+  Future<void> _loadIPHistory() async {
+    final history = await _preferencesService.getIPHistory();
+    if (mounted) {
+      setState(() {
+        _ipHistory = history;
+      });
+    }
+  }
+  
+  /// Save the current IP address to preferences
+  Future<void> _saveCurrentIP() async {
+    final ip = _ipController.text.trim();
+    if (ip.isNotEmpty) {
+      await _preferencesService.saveLastUsedIP(ip);
+      // Reload history to update the list
+      await _loadIPHistory();
+    }
+  }
+  
+  /// Delete an IP address from history
+  Future<void> _deleteIPFromHistory(String ip) async {
+    final success = await _preferencesService.removeIPFromHistory(ip);
+    if (success) {
+      // Reload history to update the list
+      await _loadIPHistory();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('已删除 IP: $ip'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -138,17 +202,22 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Icy Easy Send'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+    return GestureDetector(
+      // 点击空白区域时移除焦点
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Icy Easy Send'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        ),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               // Server status indicator will be added in sub-task 11.6
               _buildServerStatusIndicator(),
               const SizedBox(height: 24),
@@ -159,15 +228,55 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _ipController,
-                decoration: InputDecoration(
-                  hintText: '例如: 192.168.1.100',
-                  border: const OutlineInputBorder(),
-                  errorText: _ipErrorMessage,
-                ),
-                keyboardType: TextInputType.number,
-                enabled: isServerRunning,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _ipController,
+                      decoration: InputDecoration(
+                        hintText: '例如: 192.168.1.100',
+                        border: const OutlineInputBorder(),
+                        errorText: _ipErrorMessage,
+                        suffixIcon: _ipHistory.isNotEmpty
+                            ? PopupMenuButton<String>(
+                                icon: const Icon(Icons.history),
+                                tooltip: '历史记录',
+                                onSelected: (String ip) {
+                                  _ipController.text = ip;
+                                  _validateIPAddress();
+                                },
+                                itemBuilder: (BuildContext context) {
+                                  return _ipHistory.map((String ip) {
+                                    return PopupMenuItem<String>(
+                                      value: ip,
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.access_time, size: 16),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Text(ip)),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () {
+                                              Navigator.of(context).pop(); // Close the menu
+                                              _deleteIPFromHistory(ip);
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              )
+                            : null,
+                      ),
+                      keyboardType: TextInputType.number,
+                      enabled: isServerRunning,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               // Quick IP address suggestions
@@ -189,22 +298,55 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: isServerRunning ? _selectFile : null,
+                onPressed: isServerRunning ? _selectFiles : null,
                 icon: const Icon(Icons.folder_open),
                 label: const Text('选择文件'),
               ),
-              if (selectedFile != null) ...[
+              if (selectedFiles.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '已选择: ${selectedFile!.path.split('/').last}',
-                  style: const TextStyle(color: Colors.green),
+                  '已选择 ${selectedFiles.length} 个文件',
+                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 150),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: selectedFiles.length,
+                    itemBuilder: (context, index) {
+                      final file = selectedFiles[index];
+                      final fileName = file.path.split('/').last;
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.insert_drive_file, size: 20),
+                        title: Text(
+                          fileName,
+                          style: const TextStyle(fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: isSending ? null : () {
+                            setState(() {
+                              selectedFiles.removeAt(index);
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ],
               const SizedBox(height: 24),
               
               // Send button will be added in sub-task 11.5
               ElevatedButton.icon(
-                onPressed: _canSend() ? _sendFile : null,
+                onPressed: _canSend() ? _sendFiles : null,
                 icon: isSending
                     ? const SizedBox(
                         width: 16,
@@ -215,7 +357,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       )
                     : const Icon(Icons.send),
-                label: Text(isSending ? '发送中...' : '发送文件'),
+                label: Text(isSending ? '发送中...' : selectedFiles.length > 1 ? '发送 ${selectedFiles.length} 个文件' : '发送文件'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.blue,
@@ -231,6 +373,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -373,12 +516,27 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '传输进度',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '传输进度',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_totalFilesCount > 1) ...[
+                  Text(
+                    '文件 ${_currentFileIndex + 1}/$_totalFilesCount',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(height: 12),
             LinearProgressIndicator(
@@ -458,13 +616,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Select a file using the file picker
+  /// Select multiple files using the file picker
   /// 
   /// Requests storage permission before opening the file picker.
   /// If permission is denied, shows an error message.
   /// 
   /// Requirements: 9.4, 10.4
-  Future<void> _selectFile() async {
+  Future<void> _selectFiles() async {
     try {
       // Step 1: Check and request storage permission
       final hasPermission = await _permissionService.hasStoragePermission();
@@ -491,27 +649,42 @@ class _HomePageState extends State<HomePage> {
         }
       }
       
-      // Step 2: Permission granted, open file picker
-      FilePickerResult? result = await FilePicker.platform.pickFiles();
+      // Step 2: Permission granted, open file picker with multiple selection enabled
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: true, // Enable multiple file selection
+      );
 
-      if (result != null && result.files.single.path != null) {
-        final file = File(result.files.single.path!);
+      if (result != null && result.files.isNotEmpty) {
+        final List<File> validFiles = [];
+        final List<String> invalidFileNames = [];
         
-        // Validate the file
-        final validationResult = _validationService.validateFile(file);
-        
-        if (validationResult.isValid) {
-          setState(() {
-            selectedFile = file;
-          });
-        } else {
-          // Show error if file is not valid
-          if (mounted) {
-            await _notificationService.showError(
-              context,
-              validationResult.errorMessage ?? ErrorMessages.fileAccessError,
-            );
+        // Validate each selected file
+        for (final platformFile in result.files) {
+          if (platformFile.path != null) {
+            final file = File(platformFile.path!);
+            final validationResult = _validationService.validateFile(file);
+            
+            if (validationResult.isValid) {
+              validFiles.add(file);
+            } else {
+              invalidFileNames.add(platformFile.name);
+            }
           }
+        }
+        
+        // Update state with valid files
+        if (validFiles.isNotEmpty) {
+          setState(() {
+            selectedFiles = validFiles;
+          });
+        }
+        
+        // Show error for invalid files
+        if (invalidFileNames.isNotEmpty && mounted) {
+          await _notificationService.showError(
+            context,
+            '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
+          );
         }
       }
       // If result is null, user cancelled the picker
@@ -569,19 +742,21 @@ class _HomePageState extends State<HomePage> {
   bool _canSend() {
     return isServerRunning &&
         !isSending &&
-        selectedFile != null &&
+        selectedFiles.isNotEmpty &&
         targetIP.isNotEmpty &&
         _ipErrorMessage == null;
   }
 
-  /// Send the selected file to the target device
-  Future<void> _sendFile() async {
-    if (selectedFile == null || targetIP.isEmpty) {
+  /// Send multiple selected files to the target device sequentially
+  Future<void> _sendFiles() async {
+    if (selectedFiles.isEmpty || targetIP.isEmpty) {
       return;
     }
 
     setState(() {
       isSending = true;
+      _currentFileIndex = 0;
+      _totalFilesCount = selectedFiles.length;
       _transferProgress = 0.0;
       _bytesTransferred = 0;
       _totalBytes = 0;
@@ -591,58 +766,132 @@ class _HomePageState extends State<HomePage> {
       _transferStatus = '准备发送...';
     });
 
-    try {
-      // Call FileTransferService to send the file with progress callback
-      final result = await _fileTransferService.sendFile(
-        targetIP: targetIP,
-        file: selectedFile!,
-        onProgress: (progress, bytesTransferred, totalBytes) {
-          setState(() {
-            _transferProgress = progress;
-            _bytesTransferred = bytesTransferred;
-            _totalBytes = totalBytes;
-            
-            // Calculate transfer speed
-            if (_transferStartTime != null) {
-              final elapsed = DateTime.now().difference(_transferStartTime!);
-              if (elapsed.inMilliseconds > 0) {
-                _transferSpeed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-                
-                // Calculate estimated time remaining
-                if (_transferSpeed > 0) {
-                  final remainingBytes = totalBytes - bytesTransferred;
-                  final remainingSeconds = remainingBytes / _transferSpeed;
-                  _estimatedTimeRemaining = Duration(seconds: remainingSeconds.toInt());
-                }
-              }
-            }
-          });
-        },
-        onStatusChange: (status) {
-          setState(() {
-            _transferStatus = status;
-          });
-        },
-      );
+    int successCount = 0;
+    int failureCount = 0;
+    final List<String> failedFiles = [];
 
+    try {
+      // Send files one by one
+      for (int i = 0; i < selectedFiles.length; i++) {
+        final file = selectedFiles[i];
+        final fileName = file.path.split('/').last;
+        final remainingFiles = selectedFiles.length - i - 1; // 计算剩余文件数量
+        
+        setState(() {
+          _currentFileIndex = i;
+          _transferProgress = 0.0;
+          _bytesTransferred = 0;
+          _totalBytes = 0;
+          _transferStartTime = DateTime.now();
+          _transferSpeed = 0.0;
+          _estimatedTimeRemaining = null;
+          _transferStatus = '正在发送: $fileName';
+        });
+
+        try {
+          // Call FileTransferService to send the file with progress callback
+          final result = await _fileTransferService.sendFile(
+            targetIP: targetIP,
+            file: file,
+            remainingFiles: remainingFiles, // 传递剩余文件数量
+            onProgress: (progress, bytesTransferred, totalBytes) {
+              setState(() {
+                _transferProgress = progress;
+                _bytesTransferred = bytesTransferred;
+                _totalBytes = totalBytes;
+                
+                // Calculate transfer speed
+                if (_transferStartTime != null) {
+                  final elapsed = DateTime.now().difference(_transferStartTime!);
+                  if (elapsed.inMilliseconds > 0) {
+                    _transferSpeed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
+                    
+                    // Calculate estimated time remaining
+                    if (_transferSpeed > 0) {
+                      final remainingBytes = totalBytes - bytesTransferred;
+                      final remainingSeconds = remainingBytes / _transferSpeed;
+                      _estimatedTimeRemaining = Duration(seconds: remainingSeconds.toInt());
+                    }
+                  }
+                }
+              });
+            },
+            onStatusChange: (status) {
+              setState(() {
+                _transferStatus = status;
+              });
+            },
+          );
+
+          if (result.success) {
+            successCount++;
+          } else {
+            failureCount++;
+            failedFiles.add(fileName);
+          }
+        } catch (e) {
+          failureCount++;
+          failedFiles.add(fileName);
+        }
+        
+        // Small delay between files to avoid overwhelming the receiver
+        if (i < selectedFiles.length - 1) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+
+      // Show summary message
       if (mounted) {
-        if (result.success) {
-          // Show success message
+        if (failureCount == 0) {
+          // All files sent successfully
           await _notificationService.showSuccess(
             context,
-            '文件发送成功！',
+            selectedFiles.length == 1 
+                ? '文件发送成功！' 
+                : '所有 ${selectedFiles.length} 个文件发送成功！',
           );
           
-          // Clear the selected file after successful send
+          // Save the IP address for next time
+          await _saveCurrentIP();
+          
+          // Clear the selected files after successful send
           setState(() {
-            selectedFile = null;
+            selectedFiles.clear();
           });
-        } else {
-          // Show error message with user-friendly error from ErrorMessages
+        } else if (successCount == 0) {
+          // All files failed
           await _notificationService.showError(
             context,
-            result.errorMessage ?? ErrorMessages.genericError('文件发送'),
+            '所有文件发送失败\n失败的文件:\n${failedFiles.join('\n')}',
           );
+        } else {
+          // Some files succeeded, some failed
+          await showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('传输完成'),
+              content: Text(
+                '成功: $successCount 个文件\n失败: $failureCount 个文件\n\n失败的文件:\n${failedFiles.join('\n')}',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+          
+          // Save the IP address even if some files failed
+          await _saveCurrentIP();
+          
+          // Remove successfully sent files from the list
+          setState(() {
+            selectedFiles.removeWhere((file) {
+              final fileName = file.path.split('/').last;
+              return !failedFiles.contains(fileName);
+            });
+          });
         }
       }
     } on SocketException {
@@ -673,6 +922,8 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           isSending = false;
+          _currentFileIndex = 0;
+          _totalFilesCount = 0;
           _transferProgress = 0.0;
           _bytesTransferred = 0;
           _totalBytes = 0;

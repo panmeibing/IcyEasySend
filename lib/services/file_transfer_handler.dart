@@ -35,6 +35,9 @@ class FileTransferHandler {
   // Store pending transfer confirmations with transfer ID as key
   final Map<String, bool> _pendingConfirmations = {};
   
+  // Store auto-accept state for batch transfers: senderIP -> remaining count
+  final Map<String, int> _autoAcceptRemaining = {};
+  
   FileTransferHandler({
     this.contextGetter,
     FileTransferService? fileTransferService,
@@ -47,6 +50,7 @@ class FileTransferHandler {
   /// - fileName: name of the file
   /// - fileSize: size of the file in bytes
   /// - senderIP: IP address of the sender
+  /// - remainingFiles: (optional) number of remaining files in batch
   /// 
   /// Returns a JSON response with:
   /// - accepted: true if user accepted, false if rejected
@@ -59,6 +63,7 @@ class FileTransferHandler {
       final fileName = queryParams['fileName'];
       final fileSizeStr = queryParams['fileSize'];
       final senderIP = queryParams['senderIP'];
+      final remainingFilesStr = queryParams['remainingFiles'];
       
       // Validate required parameters
       if (fileName == null || fileName.isEmpty) {
@@ -106,40 +111,69 @@ class FileTransferHandler {
         );
       }
       
-      // Check if context is available for showing dialogs
-      final ctx = contextGetter?.call();
+      // Parse remaining files count
+      final remainingFiles = remainingFilesStr != null ? int.tryParse(remainingFilesStr) : null;
       
-      if (ctx == null) {
-        return Response(
-          500,
-          body: jsonEncode({
-            'accepted': false,
-            'message': '无法显示确认对话框：缺少上下文',
-          }),
-          headers: {'Content-Type': 'application/json'},
+      // Check if we have auto-accept enabled for this sender
+      final autoAcceptCount = _autoAcceptRemaining[senderIP] ?? 0;
+      
+      bool autoAccept = false;
+      
+      if (autoAcceptCount > 0) {
+        // Auto-accept this file
+        _autoAcceptRemaining[senderIP] = autoAcceptCount - 1;
+        
+        // Clean up if no more auto-accepts
+        if (_autoAcceptRemaining[senderIP]! <= 0) {
+          _autoAcceptRemaining.remove(senderIP);
+        }
+      } else {
+        // Check if context is available for showing dialogs
+        final ctx = contextGetter?.call();
+        
+        if (ctx == null) {
+          return Response(
+            500,
+            body: jsonEncode({
+              'accepted': false,
+              'message': '无法显示确认对话框：缺少上下文',
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
+        
+        // Ask user for confirmation
+        final confirmResult = await _fileTransferService.askReceiveConfirmation(
+          context: ctx,
+          fileName: fileName,
+          fileSize: fileSize,
+          senderIP: senderIP,
+          remainingFiles: remainingFiles,
         );
+        
+        if (!confirmResult.accepted) {
+          // User rejected, clear any auto-accept state
+          _autoAcceptRemaining.remove(senderIP);
+          
+          return Response(
+            403,
+            body: jsonEncode({
+              'accepted': false,
+              'message': confirmResult.errorMessage ?? ErrorMessages.userRejected,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
+        
+        autoAccept = confirmResult.autoAcceptRemaining;
+        
+        // If user chose to auto-accept remaining files, store the count
+        if (autoAccept && remainingFiles != null && remainingFiles > 0) {
+          _autoAcceptRemaining[senderIP] = remainingFiles;
+        }
       }
       
-      // Ask user for confirmation
-      final confirmResult = await _fileTransferService.askReceiveConfirmation(
-        context: ctx,
-        fileName: fileName,
-        fileSize: fileSize,
-        senderIP: senderIP,
-      );
-      
-      if (!confirmResult.accepted) {
-        return Response(
-          403,
-          body: jsonEncode({
-            'accepted': false,
-            'message': confirmResult.errorMessage ?? ErrorMessages.userRejected,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-      
-      // User accepted, generate a transfer ID and store confirmation
+      // User accepted (or auto-accepted), generate a transfer ID and store confirmation
       final transferId = '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
       _pendingConfirmations[transferId] = true;
       
@@ -148,7 +182,7 @@ class FileTransferHandler {
         jsonEncode({
           'accepted': true,
           'transferId': transferId,
-          'message': '用户已确认接收文件',
+          'message': autoAcceptCount > 0 ? '自动接收文件' : '用户已确认接收文件',
         }),
         headers: {'Content-Type': 'application/json'},
       );

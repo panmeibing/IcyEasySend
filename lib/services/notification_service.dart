@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 class ReceiveConfirmationResult {
   final bool accepted;
   final bool timedOut;
+  final bool autoAcceptRemaining; // 是否自动接收后续文件
 
   ReceiveConfirmationResult({
     required this.accepted,
     this.timedOut = false,
+    this.autoAcceptRemaining = false,
   });
 }
 
@@ -69,6 +71,7 @@ class NotificationService {
   /// `senderIP` - IP address of the sender device
   /// `fileName` - Name of the file being received
   /// `fileSize` - Size of the file in bytes
+  /// `remainingFiles` - Number of remaining files in the batch (optional)
   /// 
   /// Returns a Future of ReceiveConfirmationResult indicating whether the user
   /// accepted or rejected the file, or if the dialog timed out
@@ -77,12 +80,13 @@ class NotificationService {
     required String senderIP,
     required String fileName,
     required int fileSize,
+    int? remainingFiles,
   }) async {
-    bool? result;
+    Map<String, dynamic>? result;
     bool timedOut = false;
 
     // Create a completer to handle the timeout
-    final dialogFuture = showDialog<bool>(
+    final dialogFuture = showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
@@ -90,6 +94,7 @@ class NotificationService {
           senderIP: senderIP,
           fileName: fileName,
           fileSize: fileSize,
+          remainingFiles: remainingFiles,
         );
       },
     );
@@ -103,19 +108,20 @@ class NotificationService {
           timedOut = true;
           // Use a post-frame callback to safely close the dialog
           if (context.mounted) {
-            Navigator.of(context, rootNavigator: true).pop(false);
+            Navigator.of(context, rootNavigator: true).pop({'accepted': false, 'autoAccept': false});
           }
-          return false;
+          return {'accepted': false, 'autoAccept': false};
         },
       );
     } catch (e) {
       // Handle any errors during dialog display
-      result = false;
+      result = {'accepted': false, 'autoAccept': false};
     }
 
     return ReceiveConfirmationResult(
-      accepted: result ?? false,
+      accepted: result?['accepted'] ?? false,
       timedOut: timedOut,
+      autoAcceptRemaining: result?['autoAccept'] ?? false,
     );
   }
 
@@ -138,11 +144,13 @@ class _ReceiveConfirmationDialog extends StatefulWidget {
   final String senderIP;
   final String fileName;
   final int fileSize;
+  final int? remainingFiles;
 
   const _ReceiveConfirmationDialog({
     required this.senderIP,
     required this.fileName,
     required this.fileSize,
+    this.remainingFiles,
   });
 
   @override
@@ -154,6 +162,7 @@ class _ReceiveConfirmationDialogState
     extends State<_ReceiveConfirmationDialog> {
   int _remainingSeconds = 30;
   bool _disposed = false;
+  bool _autoAcceptRemaining = false;
 
   @override
   void initState() {
@@ -183,6 +192,7 @@ class _ReceiveConfirmationDialogState
   @override
   Widget build(BuildContext context) {
     final formattedSize = NotificationService._formatFileSize(widget.fileSize);
+    final hasRemainingFiles = widget.remainingFiles != null && widget.remainingFiles! > 0;
 
     return AlertDialog(
       title: const Text('接收文件确认'),
@@ -195,6 +205,16 @@ class _ReceiveConfirmationDialogState
           Text('文件名: ${widget.fileName}'),
           const SizedBox(height: 8),
           Text('文件大小: $formattedSize'),
+          if (hasRemainingFiles) ...[
+            const SizedBox(height: 8),
+            Text(
+              '后续还有 ${widget.remainingFiles} 个文件',
+              style: TextStyle(
+                color: Colors.blue[700],
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             '是否接收此文件？($_remainingSeconds 秒后自动拒绝)',
@@ -203,19 +223,43 @@ class _ReceiveConfirmationDialogState
               fontSize: 12,
             ),
           ),
+          if (hasRemainingFiles) ...[
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              title: Text(
+                '自动接收后续 ${widget.remainingFiles} 个文件',
+                style: const TextStyle(fontSize: 14),
+              ),
+              subtitle: const Text(
+                '勾选后将不再询问',
+                style: TextStyle(fontSize: 12),
+              ),
+              value: _autoAcceptRemaining,
+              onChanged: (bool? value) {
+                setState(() {
+                  _autoAcceptRemaining = value ?? false;
+                });
+              },
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+            ),
+          ],
         ],
       ),
       actions: <Widget>[
         TextButton(
           child: const Text('拒绝'),
           onPressed: () {
-            Navigator.of(context).pop(false);
+            Navigator.of(context).pop({'accepted': false, 'autoAccept': false});
           },
         ),
         ElevatedButton(
           child: const Text('接受'),
           onPressed: () {
-            Navigator.of(context).pop(true);
+            Navigator.of(context).pop({
+              'accepted': true,
+              'autoAccept': _autoAcceptRemaining,
+            });
           },
         ),
       ],

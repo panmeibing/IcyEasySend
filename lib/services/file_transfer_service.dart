@@ -66,10 +66,12 @@ class DirectReceiveResult {
 class ConfirmationResult {
   final bool accepted;
   final String? errorMessage;
+  final bool autoAcceptRemaining;
 
   ConfirmationResult({
     required this.accepted,
     this.errorMessage,
+    this.autoAcceptRemaining = false,
   });
 }
 
@@ -175,10 +177,17 @@ class FileTransferService {
   /// If user accepts, then sends the file using /transfer endpoint.
   /// 
   /// Parameters:
+  /// Send a file to the target device
+  /// 
+  /// First calls /confirm-receive endpoint to ask for user confirmation.
+  /// If user accepts, then sends the file using /transfer endpoint.
+  /// 
+  /// Parameters:
   /// - [targetIP]: IP address of the target device (format: "192.168.1.100:8080")
   /// - [file]: The file to send
   /// - [onProgress]: Optional callback for progress updates (0.0 to 1.0)
   /// - [onStatusChange]: Optional callback for status updates
+  /// - [remainingFiles]: Number of remaining files in batch (optional)
   /// 
   /// Requirements: 6.1, 6.3, 6.4, 6.5
   Future<TransferResult> sendFile({
@@ -186,6 +195,7 @@ class FileTransferService {
     required File file,
     void Function(double progress, int bytesTransferred, int totalBytes)? onProgress,
     void Function(String status)? onStatusChange,
+    int? remainingFiles,
   }) async {
     try {
       // Step 1: Check if file exists and is readable
@@ -236,6 +246,7 @@ class FileTransferService {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
         'senderIP': senderIP,
+        if (remainingFiles != null) 'remainingFiles': remainingFiles.toString(),
       });
       
       // Use longer timeout for confirmation request to allow user time to respond
@@ -466,6 +477,11 @@ class FileTransferService {
   }
   
   /// Get the local IP address of the device
+  /// 
+  /// Priority order:
+  /// 1. Private network addresses (192.168.x.x, 172.16-31.x.x, 10.x.x.x)
+  /// 2. Other non-loopback IPv4 addresses
+  /// 3. Fallback to 127.0.0.1
   Future<String> _getLocalIPAddress() async {
     try {
       // Get all network interfaces
@@ -474,13 +490,41 @@ class FileTransferService {
         includeLinkLocal: false,
       );
 
-      // Find the first non-loopback address
+      List<String> privateAddresses = [];
+      List<String> otherAddresses = [];
+
+      // Categorize addresses
       for (var interface in interfaces) {
         for (var addr in interface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            return addr.address;
+            final ip = addr.address;
+            
+            // Check if it's a private network address
+            if (_isPrivateNetwork(ip)) {
+              privateAddresses.add(ip);
+            } else {
+              otherAddresses.add(ip);
+            }
           }
         }
+      }
+
+      // Prefer private network addresses (typical LAN)
+      if (privateAddresses.isNotEmpty) {
+        // Sort to prefer 192.168.x.x over 10.x.x.x
+        privateAddresses.sort((a, b) {
+          if (a.startsWith('192.168.')) return -1;
+          if (b.startsWith('192.168.')) return 1;
+          if (a.startsWith('172.')) return -1;
+          if (b.startsWith('172.')) return 1;
+          return 0;
+        });
+        return privateAddresses.first;
+      }
+
+      // Use other addresses if no private network found
+      if (otherAddresses.isNotEmpty) {
+        return otherAddresses.first;
       }
 
       // Fallback to localhost if no network interface found
@@ -490,7 +534,48 @@ class FileTransferService {
       return '127.0.0.1';
     }
   }
+
+  /// Check if an IP address is in a private network range
+  /// 
+  /// Private network ranges:
+  /// - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
+  /// - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+  /// - 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
+  bool _isPrivateNetwork(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+
+    try {
+      final first = int.parse(parts[0]);
+      final second = int.parse(parts[1]);
+
+      // 192.168.x.x
+      if (first == 192 && second == 168) {
+        return true;
+      }
+
+      // 172.16.x.x - 172.31.x.x
+      if (first == 172 && second >= 16 && second <= 31) {
+        return true;
+      }
+
+      // 10.x.x.x
+      if (first == 10) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
   
+  /// Ask user for confirmation to receive a file (without actually receiving it)
+  /// 
+  /// This method is called by the /confirm-receive endpoint to show a confirmation
+  /// dialog to the user BEFORE the file transfer begins.
+  /// 
+  /// Parameters:
   /// Ask user for confirmation to receive a file (without actually receiving it)
   /// 
   /// This method is called by the /confirm-receive endpoint to show a confirmation
@@ -501,6 +586,7 @@ class FileTransferService {
   /// - [fileName]: Name of the file
   /// - [fileSize]: Size of the file in bytes
   /// - [senderIP]: IP address of the sender device
+  /// - [remainingFiles]: Number of remaining files in batch (optional)
   /// 
   /// Returns [ConfirmationResult] indicating whether the user accepted
   Future<ConfirmationResult> askReceiveConfirmation({
@@ -508,6 +594,7 @@ class FileTransferService {
     required String fileName,
     required int fileSize,
     required String senderIP,
+    int? remainingFiles,
   }) async {
     try {
       // Show confirmation dialog to user
@@ -517,6 +604,7 @@ class FileTransferService {
         senderIP: senderIP,
         fileName: fileName,
         fileSize: fileSize,
+        remainingFiles: remainingFiles,
       );
       
       // Check if user rejected or timed out
@@ -526,18 +614,21 @@ class FileTransferService {
           errorMessage: confirmationResult.timedOut 
               ? ErrorMessages.receiveTimeout
               : ErrorMessages.userRejected,
+          autoAcceptRemaining: false,
         );
       }
       
       // User accepted
       return ConfirmationResult(
         accepted: true,
+        autoAcceptRemaining: confirmationResult.autoAcceptRemaining,
       );
       
     } catch (e) {
       return ConfirmationResult(
         accepted: false,
         errorMessage: ErrorMessages.unexpectedError(e.toString()),
+        autoAcceptRemaining: false,
       );
     }
   }

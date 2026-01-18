@@ -139,6 +139,11 @@ class HTTPServerManager {
   }
 
   /// Get the local IP address of the device
+  /// 
+  /// Priority order:
+  /// 1. Private network addresses (192.168.x.x, 172.16-31.x.x, 10.x.x.x)
+  /// 2. Other non-loopback IPv4 addresses
+  /// 3. Fallback to 127.0.0.1
   Future<String> _getLocalIPAddress() async {
     try {
       // Get all network interfaces
@@ -147,13 +152,41 @@ class HTTPServerManager {
         includeLinkLocal: false,
       );
 
-      // Find the first non-loopback address
+      List<String> privateAddresses = [];
+      List<String> otherAddresses = [];
+
+      // Categorize addresses
       for (var interface in interfaces) {
         for (var addr in interface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            return addr.address;
+            final ip = addr.address;
+            
+            // Check if it's a private network address
+            if (_isPrivateNetwork(ip)) {
+              privateAddresses.add(ip);
+            } else {
+              otherAddresses.add(ip);
+            }
           }
         }
+      }
+
+      // Prefer private network addresses (typical LAN)
+      if (privateAddresses.isNotEmpty) {
+        // Sort to prefer 192.168.x.x over 10.x.x.x
+        privateAddresses.sort((a, b) {
+          if (a.startsWith('192.168.')) return -1;
+          if (b.startsWith('192.168.')) return 1;
+          if (a.startsWith('172.')) return -1;
+          if (b.startsWith('172.')) return 1;
+          return 0;
+        });
+        return privateAddresses.first;
+      }
+
+      // Use other addresses if no private network found
+      if (otherAddresses.isNotEmpty) {
+        return otherAddresses.first;
       }
 
       // Fallback to localhost if no network interface found
@@ -161,6 +194,41 @@ class HTTPServerManager {
     } catch (e) {
       // If error, return localhost
       return '127.0.0.1';
+    }
+  }
+
+  /// Check if an IP address is in a private network range
+  /// 
+  /// Private network ranges:
+  /// - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
+  /// - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+  /// - 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
+  bool _isPrivateNetwork(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+
+    try {
+      final first = int.parse(parts[0]);
+      final second = int.parse(parts[1]);
+
+      // 192.168.x.x
+      if (first == 192 && second == 168) {
+        return true;
+      }
+
+      // 172.16.x.x - 172.31.x.x
+      if (first == 172 && second >= 16 && second <= 31) {
+        return true;
+      }
+
+      // 10.x.x.x
+      if (first == 10) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      return false;
     }
   }
 
