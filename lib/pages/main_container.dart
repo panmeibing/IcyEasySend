@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'history_page.dart';
+import 'settings_page.dart';
 import '../services/http_server_manager.dart';
 
 /// MainContainer provides bottom navigation to switch between pages
@@ -28,6 +29,7 @@ class _MainContainerState extends State<MainContainer> {
         children: [
           HomePage(serverManager: widget.serverManager),
           HistoryPage(key: _historyPageKey),
+          SettingsPage(serverManager: widget.serverManager),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -49,6 +51,10 @@ class _MainContainerState extends State<MainContainer> {
           BottomNavigationBarItem(
             icon: Icon(Icons.history),
             label: '历史记录',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: '设置',
           ),
         ],
       ),

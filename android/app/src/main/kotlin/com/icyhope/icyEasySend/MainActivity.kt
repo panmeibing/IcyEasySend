@@ -1,4 +1,4 @@
-package com.example.icy_easy_send
+package com.icyhope.icyEasySend
 
 import io.flutter.embedding.android.FlutterActivity
 

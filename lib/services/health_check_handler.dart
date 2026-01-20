@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:shelf/shelf.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 /// Handler for health check endpoint
 /// 
@@ -13,8 +14,8 @@ class HealthCheckHandler {
   /// - status: "ok" indicating the device is healthy
   /// - timestamp: current timestamp in milliseconds
   /// - deviceName: name of the device
-  Response handleHealthCheck(Request request) {
-    final deviceName = _getDeviceName();
+  Future<Response> handleHealthCheck(Request request) async {
+    final deviceName = await _getDeviceName();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     
     final response = {
@@ -33,12 +34,42 @@ class HealthCheckHandler {
   
   /// Get the device name
   /// 
-  /// Returns the hostname of the device or a default name
-  String _getDeviceName() {
+  /// Returns the device model name using device_info_plus package.
+  /// Falls back to Platform.localHostname if device info is unavailable.
+  Future<String> _getDeviceName() async {
     try {
-      return Platform.localHostname;
+      final deviceInfo = DeviceInfoPlugin();
+      
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return '${androidInfo.manufacturer} ${androidInfo.model}';
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.name;
+      } else if (Platform.isMacOS) {
+        final macInfo = await deviceInfo.macOsInfo;
+        return macInfo.computerName;
+      } else if (Platform.isWindows) {
+        final windowsInfo = await deviceInfo.windowsInfo;
+        return windowsInfo.computerName;
+      } else if (Platform.isLinux) {
+        final linuxInfo = await deviceInfo.linuxInfo;
+        return linuxInfo.name;
+      }
+      
+      // Fallback to hostname
+      try {
+        return Platform.localHostname;
+      } catch (e) {
+        return 'Unknown Device';
+      }
     } catch (e) {
-      return 'Unknown Device';
+      // If device_info_plus fails, try hostname
+      try {
+        return Platform.localHostname;
+      } catch (e) {
+        return 'Unknown Device';
+      }
     }
   }
 }

@@ -78,6 +78,7 @@ class NotificationService {
   Future<ReceiveConfirmationResult> showReceiveConfirmation({
     required BuildContext context,
     required String senderIP,
+    String? senderDeviceName,
     required String fileName,
     required int fileSize,
     int? remainingFiles,
@@ -92,6 +93,7 @@ class NotificationService {
       builder: (BuildContext dialogContext) {
         return _ReceiveConfirmationDialog(
           senderIP: senderIP,
+          senderDeviceName: senderDeviceName,
           fileName: fileName,
           fileSize: fileSize,
           remainingFiles: remainingFiles,
@@ -142,12 +144,14 @@ class NotificationService {
 /// Internal widget for the receive confirmation dialog
 class _ReceiveConfirmationDialog extends StatefulWidget {
   final String senderIP;
+  final String? senderDeviceName;
   final String fileName;
   final int fileSize;
   final int? remainingFiles;
 
   const _ReceiveConfirmationDialog({
     required this.senderIP,
+    this.senderDeviceName,
     required this.fileName,
     required this.fileSize,
     this.remainingFiles,
@@ -200,7 +204,25 @@ class _ReceiveConfirmationDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('发送者 IP: ${widget.senderIP}'),
+          if (widget.senderDeviceName != null) ...[
+            Text(
+              '发送者: ${widget.senderDeviceName}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'IP: ${widget.senderIP}',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
+              ),
+            ),
+          ] else ...[
+            Text('发送者 IP: ${widget.senderIP}'),
+          ],
           const SizedBox(height: 8),
           Text('文件名: ${widget.fileName}'),
           const SizedBox(height: 8),

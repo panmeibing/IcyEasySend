@@ -11,6 +11,9 @@ class TransferHistory {
   /// 对方设备 IP 地址
   final String peerIP;
   
+  /// 对方设备名称
+  final String? peerDeviceName;
+  
   /// 传输时间戳
   final DateTime timestamp;
   
@@ -27,6 +30,7 @@ class TransferHistory {
     required this.fileName,
     required this.fileSize,
     required this.peerIP,
+    this.peerDeviceName,
     required this.timestamp,
     required this.isReceived,
     required this.success,
@@ -39,6 +43,7 @@ class TransferHistory {
       'fileName': fileName,
       'fileSize': fileSize,
       'peerIP': peerIP,
+      if (peerDeviceName != null) 'peerDeviceName': peerDeviceName,
       'timestamp': timestamp.toIso8601String(),
       'isReceived': isReceived,
       'success': success,
@@ -52,6 +57,7 @@ class TransferHistory {
       fileName: json['fileName'] as String,
       fileSize: json['fileSize'] as int,
       peerIP: json['peerIP'] as String,
+      peerDeviceName: json['peerDeviceName'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
       isReceived: json['isReceived'] as bool,
       success: json['success'] as bool,
@@ -61,7 +67,7 @@ class TransferHistory {
 
   @override
   String toString() {
-    return 'TransferHistory(fileName: $fileName, fileSize: $fileSize, peerIP: $peerIP, timestamp: $timestamp, isReceived: $isReceived, success: $success, savedPath: $savedPath)';
+    return 'TransferHistory(fileName: $fileName, fileSize: $fileSize, peerIP: $peerIP, peerDeviceName: $peerDeviceName, timestamp: $timestamp, isReceived: $isReceived, success: $success, savedPath: $savedPath)';
   }
 
   @override
@@ -72,6 +78,7 @@ class TransferHistory {
         other.fileName == fileName &&
         other.fileSize == fileSize &&
         other.peerIP == peerIP &&
+        other.peerDeviceName == peerDeviceName &&
         other.timestamp == timestamp &&
         other.isReceived == isReceived &&
         other.success == success &&
@@ -83,6 +90,7 @@ class TransferHistory {
     return fileName.hashCode ^
         fileSize.hashCode ^
         peerIP.hashCode ^
+        peerDeviceName.hashCode ^
         timestamp.hashCode ^
         isReceived.hashCode ^
         success.hashCode ^

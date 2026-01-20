@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/transfer_history.dart';
 import '../services/transfer_history_service.dart';
 
@@ -196,21 +198,26 @@ class HistoryPageState extends State<HistoryPage> {
       ),
       child: SafeArea(
         bottom: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            const Text(
-              '传输历史',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            const Center(
+              child: Text(
+                '传输历史',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             if (_history.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: _clearHistory,
-                tooltip: '清除历史',
+              Positioned(
+                right: 0,
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _clearHistory,
+                  tooltip: '清除历史',
+                ),
               ),
           ],
         ),
@@ -392,12 +399,15 @@ class HistoryPageState extends State<HistoryPage> {
     final iconColor = item.isReceived ? Colors.green : Colors.blue;
     final statusIcon = item.success ? Icons.check_circle : Icons.error;
     final statusColor = item.success ? Colors.green : Colors.red;
+    
+    // Display device name if available, otherwise show IP
+    final peerDisplay = item.peerDeviceName ?? item.peerIP;
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.1),
+          backgroundColor: iconColor.withValues(alpha: 0.1),
           child: Icon(icon, color: iconColor),
         ),
         title: Text(
@@ -405,50 +415,321 @@ class HistoryPageState extends State<HistoryPage> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        subtitle: Text(
+          '${item.isReceived ? '来自' : '发送至'}: $peerDisplay',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[700],
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 4),
-            Text('${item.isReceived ? '来自' : '发送至'}: ${item.peerIP}'),
-            Text('大小: ${_formatBytes(item.fileSize)}'),
-            Text(_formatDateTime(item.timestamp)),
-            // Show saved path for received files with copy button
-            if (item.isReceived && item.savedPath != null) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '保存位置: ${item.savedPath}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            Icon(
+              statusIcon,
+              color: statusColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: '更多操作',
+              onSelected: (value) => _handleMenuAction(value, item),
+              itemBuilder: (context) => [
+                // Only show "Open File" and "Open Folder" for received files with saved path
+                if (item.isReceived && item.savedPath != null && item.success) ...[
+                  const PopupMenuItem(
+                    value: 'open_file',
+                    child: Row(
+                      children: [
+                        Icon(Icons.open_in_new, size: 18),
+                        SizedBox(width: 12),
+                        Text('打开文件'),
+                      ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 16),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _copyPathToClipboard(item.savedPath!),
-                    tooltip: '复制路径',
-                    color: Colors.blue,
+                  const PopupMenuItem(
+                    value: 'open_folder',
+                    child: Row(
+                      children: [
+                        Icon(Icons.folder_open, size: 18),
+                        SizedBox(width: 12),
+                        Text('打开所在文件夹'),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            ],
+                const PopupMenuItem(
+                  value: 'view_details',
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 18),
+                      SizedBox(width: 12),
+                      Text('查看详情'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                      SizedBox(width: 12),
+                      Text('删除记录', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        trailing: Icon(
-          statusIcon,
-          color: statusColor,
-        ),
-        isThreeLine: true,
+        onTap: () => _showDetailDialog(item),
       ),
     );
+  }
+  
+  /// Handle menu action
+  Future<void> _handleMenuAction(String action, TransferHistory item) async {
+    switch (action) {
+      case 'open_file':
+        await _openFile(item);
+        break;
+      case 'open_folder':
+        await _openFolder(item);
+        break;
+      case 'view_details':
+        _showDetailDialog(item);
+        break;
+      case 'delete':
+        await _deleteRecord(item);
+        break;
+    }
+  }
+  
+  /// Open the file
+  Future<void> _openFile(TransferHistory item) async {
+    if (item.savedPath == null) {
+      _showErrorSnackBar('文件路径不存在');
+      return;
+    }
+    
+    final file = File(item.savedPath!);
+    if (!await file.exists()) {
+      _showErrorSnackBar('文件不存在，可能已被删除');
+      return;
+    }
+    
+    try {
+      final uri = Uri.file(item.savedPath!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        _showErrorSnackBar('无法打开文件');
+      }
+    } catch (e) {
+      _showErrorSnackBar('打开文件失败: $e');
+    }
+  }
+  
+  /// Open the folder containing the file
+  Future<void> _openFolder(TransferHistory item) async {
+    if (item.savedPath == null) {
+      _showErrorSnackBar('文件路径不存在');
+      return;
+    }
+    
+    final file = File(item.savedPath!);
+    final directory = file.parent;
+    
+    if (!await directory.exists()) {
+      _showErrorSnackBar('文件夹不存在');
+      return;
+    }
+    
+    try {
+      final uri = Uri.directory(directory.path);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        _showErrorSnackBar('无法打开文件夹');
+      }
+    } catch (e) {
+      _showErrorSnackBar('打开文件夹失败: $e');
+    }
+  }
+  
+  /// Delete a single record
+  Future<void> _deleteRecord(TransferHistory item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除记录'),
+        content: Text('确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      await _historyService.deleteTransfer(item);
+      await _loadHistory();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('记录已删除'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+  
+  /// Show error snackbar
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+  
+  /// Show detail dialog for a transfer history item
+  void _showDetailDialog(TransferHistory item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              item.isReceived ? Icons.download : Icons.upload,
+              color: item.isReceived ? Colors.green : Colors.blue,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.isReceived ? '接收记录' : '发送记录',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+            Icon(
+              item.success ? Icons.check_circle : Icons.error,
+              color: item.success ? Colors.green : Colors.red,
+              size: 24,
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('文件名', item.fileName),
+              const Divider(height: 20),
+              _buildDetailRow('文件大小', _formatBytes(item.fileSize)),
+              const Divider(height: 20),
+              if (item.peerDeviceName != null) ...[
+                _buildDetailRow(
+                  item.isReceived ? '来自设备' : '发送至设备',
+                  item.peerDeviceName!,
+                ),
+                const Divider(height: 20),
+                _buildDetailRow('设备 IP', item.peerIP),
+              ] else ...[
+                _buildDetailRow(
+                  item.isReceived ? '来自设备' : '发送至设备',
+                  item.peerIP,
+                ),
+              ],
+              const Divider(height: 20),
+              _buildDetailRow('传输时间', _formatFullDateTime(item.timestamp)),
+              const Divider(height: 20),
+              _buildDetailRow(
+                '传输状态',
+                item.success ? '成功' : '失败',
+                valueColor: item.success ? Colors.green : Colors.red,
+              ),
+              if (item.isReceived && item.savedPath != null) ...[
+                const Divider(height: 20),
+                _buildDetailRow('保存位置', item.savedPath!, copyable: true),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Build a detail row in the dialog
+  Widget _buildDetailRow(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool copyable = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: valueColor ?? Colors.black87,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            if (copyable)
+              IconButton(
+                icon: const Icon(Icons.copy, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => _copyPathToClipboard(value),
+                tooltip: '复制',
+                color: Colors.blue,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+  
+  /// Format full date time for detail view
+  String _formatFullDateTime(DateTime dateTime) {
+    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
+        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
   }
   
   /// Copy file path to clipboard
@@ -474,23 +755,6 @@ class HistoryPageState extends State<HistoryPage> {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
     } else {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 1) {
-      return '刚刚';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes} 分钟前';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours} 小时前';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} 天前';
-    } else {
-      return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
     }
   }
 }

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "icy_easy_send" "\0"
+            VALUE "CompanyName", "com.icyhope" "\0"
+            VALUE "FileDescription", "IcyEasySend" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "icy_easy_send" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "icy_easy_send.exe" "\0"
-            VALUE "ProductName", "icy_easy_send" "\0"
+            VALUE "InternalName", "IcyEasySend" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.icyhope. All rights reserved." "\0"
+            VALUE "OriginalFilename", "IcyEasySend.exe" "\0"
+            VALUE "ProductName", "IcyEasySend" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

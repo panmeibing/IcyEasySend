@@ -11,6 +11,9 @@ class FileTransferRequest {
   /// 发送者 IP 地址
   final String senderIP;
   
+  /// 发送者设备名
+  final String? senderDeviceName;
+  
   /// 请求时间戳
   final DateTime timestamp;
 
@@ -18,6 +21,7 @@ class FileTransferRequest {
     required this.fileName,
     required this.fileSize,
     required this.senderIP,
+    this.senderDeviceName,
     required this.timestamp,
   });
 
@@ -27,6 +31,7 @@ class FileTransferRequest {
       'fileName': fileName,
       'fileSize': fileSize,
       'senderIP': senderIP,
+      if (senderDeviceName != null) 'senderDeviceName': senderDeviceName,
       'timestamp': timestamp.toIso8601String(),
     };
   }
@@ -37,13 +42,14 @@ class FileTransferRequest {
       fileName: json['fileName'] as String,
       fileSize: json['fileSize'] as int,
       senderIP: json['senderIP'] as String,
+      senderDeviceName: json['senderDeviceName'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );
   }
 
   @override
   String toString() {
-    return 'FileTransferRequest(fileName: $fileName, fileSize: $fileSize, senderIP: $senderIP, timestamp: $timestamp)';
+    return 'FileTransferRequest(fileName: $fileName, fileSize: $fileSize, senderIP: $senderIP, senderDeviceName: $senderDeviceName, timestamp: $timestamp)';
   }
 
   @override
@@ -54,6 +60,7 @@ class FileTransferRequest {
         other.fileName == fileName &&
         other.fileSize == fileSize &&
         other.senderIP == senderIP &&
+        other.senderDeviceName == senderDeviceName &&
         other.timestamp == timestamp;
   }
 
@@ -62,6 +69,7 @@ class FileTransferRequest {
     return fileName.hashCode ^
         fileSize.hashCode ^
         senderIP.hashCode ^
+        senderDeviceName.hashCode ^
         timestamp.hashCode;
   }
 }

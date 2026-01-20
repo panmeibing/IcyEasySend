@@ -10,6 +10,7 @@ import '../services/http_server_manager.dart';
 import '../services/permission_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/error_messages.dart';
+import '../utils/network_diagnostics.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 /// 
@@ -209,6 +210,7 @@ class _HomePageState extends State<HomePage> {
       },
       child: Scaffold(
         appBar: AppBar(
+          centerTitle: true,
           title: const Text('Icy Easy Send'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
@@ -274,6 +276,17 @@ class _HomePageState extends State<HomePage> {
                       ),
                       keyboardType: TextInputType.number,
                       enabled: isServerRunning,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // 诊断按钮
+                  IconButton(
+                    onPressed: isServerRunning ? _runNetworkDiagnostics : null,
+                    icon: const Icon(Icons.network_check),
+                    tooltip: '网络诊断',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.blue.shade50,
+                      foregroundColor: Colors.blue,
                     ),
                   ),
                 ],
@@ -932,6 +945,111 @@ class _HomePageState extends State<HomePage> {
           _estimatedTimeRemaining = null;
           _transferStatus = '';
         });
+      }
+    }
+  }
+  
+  /// Run network diagnostics
+  Future<void> _runNetworkDiagnostics() async {
+    // Show loading dialog
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('正在运行网络诊断...'),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      // Parse target IP and port
+      String? diagTargetIP;
+      int? diagTargetPort;
+      
+      if (targetIP.isNotEmpty && _ipErrorMessage == null) {
+        if (targetIP.contains(':')) {
+          final parts = targetIP.split(':');
+          diagTargetIP = parts[0];
+          diagTargetPort = int.tryParse(parts[1]);
+        } else {
+          diagTargetIP = targetIP;
+          diagTargetPort = 8080;
+        }
+      }
+      
+      // Run diagnostics
+      final report = await NetworkDiagnostics.runDiagnostics(
+        targetIP: diagTargetIP,
+        targetPort: diagTargetPort,
+      );
+      
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show diagnostics report
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.network_check, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('网络诊断报告'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: SelectableText(
+                report.toString(),
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: report.toString()));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('诊断报告已复制到剪贴板'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                child: const Text('复制'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('关闭'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      // Show error
+      if (mounted) {
+        await _notificationService.showError(
+          context,
+          '运行诊断时出错: $e',
+        );
       }
     }
   }

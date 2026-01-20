@@ -102,6 +102,27 @@ class TransferHistoryService {
     }
   }
   
+  /// Delete a single transfer record
+  /// 
+  /// Removes the specified transfer from history and saves the updated list
+  Future<void> deleteTransfer(TransferHistory transfer) async {
+    try {
+      final history = await loadHistory();
+      
+      // Remove the transfer by matching timestamp and fileName
+      history.removeWhere((h) => 
+        h.timestamp == transfer.timestamp && 
+        h.fileName == transfer.fileName &&
+        h.peerIP == transfer.peerIP
+      );
+      
+      // Save updated history
+      await _saveHistory(history);
+    } catch (e) {
+      // Silently fail
+    }
+  }
+  
   /// Get transfer statistics
   Future<TransferStatistics> getStatistics() async {
     final history = await loadHistory();

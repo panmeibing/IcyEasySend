@@ -58,15 +58,23 @@ class HTTPServerManager {
   Future<ServerStartResult> startServer({int port = 8080}) async {
     // If server is already running, return success
     if (isRunning()) {
+      print('[Server] 服务器已在运行: $_serverAddress');
       return ServerStartResult(
         success: true,
         serverAddress: _serverAddress,
       );
     }
 
+    print('[Server] ========================================');
+    print('[Server] 开始启动HTTP服务器');
+    print('[Server] 尝试端口范围: $port-8090');
+    print('[Server] ========================================');
+
     // Try to start server on the specified port or find an available port
     for (int tryPort = port; tryPort <= 8090; tryPort++) {
       try {
+        print('[Server] 尝试绑定端口: $tryPort');
+        
         // Create router and configure routes
         final router = shelf_router.Router();
         
@@ -97,14 +105,25 @@ class HTTPServerManager {
         final localIP = await _getLocalIPAddress();
         _serverAddress = '$localIP:$tryPort';
 
+        print('[Server] ✅ 服务器启动成功！');
+        print('[Server] 监听地址: 0.0.0.0:$tryPort');
+        print('[Server] 本机IP: $localIP');
+        print('[Server] 完整地址: $_serverAddress');
+        print('[Server] ========================================');
+        
+        // 测试健康检查端点
+        _testHealthEndpoint(localIP, tryPort);
+
         return ServerStartResult(
           success: true,
           serverAddress: _serverAddress,
         );
       } on SocketException {
         // Port is in use or other socket error, try next port
+        print('[Server] ❌ 端口 $tryPort 不可用（可能被占用）');
         if (tryPort == 8090) {
           // Last port in range, return error
+          print('[Server] ❌ 所有端口(8080-8090)都不可用');
           return ServerStartResult(
             success: false,
             errorMessage: ErrorMessages.serverPortsOccupied,
@@ -114,6 +133,7 @@ class HTTPServerManager {
         continue;
       } catch (e) {
         // Other errors
+        print('[Server] ❌ 启动失败: $e');
         return ServerStartResult(
           success: false,
           errorMessage: ErrorMessages.serverStartFailed(e.toString()),
@@ -126,6 +146,33 @@ class HTTPServerManager {
       success: false,
       errorMessage: ErrorMessages.serverUnknownError,
     );
+  }
+  
+  /// Test health endpoint after server starts
+  void _testHealthEndpoint(String ip, int port) async {
+    try {
+      print('[Server] 测试健康检查端点...');
+      final testUrl = 'http://$ip:$port/health';
+      print('[Server] 测试URL: $testUrl');
+      
+      // Wait a bit for server to be fully ready
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final response = await HttpClient()
+          .getUrl(Uri.parse(testUrl))
+          .timeout(const Duration(seconds: 3))
+          .then((request) => request.close())
+          .then((response) => response);
+      
+      if (response.statusCode == 200) {
+        print('[Server] ✅ 健康检查端点测试成功！');
+      } else {
+        print('[Server] ⚠️ 健康检查端点返回状态码: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('[Server] ⚠️ 健康检查端点测试失败: $e');
+      print('[Server] 这可能表示存在网络配置问题');
+    }
   }
 
   /// Stop the HTTP server
@@ -146,25 +193,33 @@ class HTTPServerManager {
   /// 3. Fallback to 127.0.0.1
   Future<String> _getLocalIPAddress() async {
     try {
+      print('[Server] 获取本地IP地址...');
+      
       // Get all network interfaces
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLinkLocal: false,
       );
 
+      print('[Server] 找到 ${interfaces.length} 个网络接口');
+      
       List<String> privateAddresses = [];
       List<String> otherAddresses = [];
 
       // Categorize addresses
       for (var interface in interfaces) {
+        print('[Server] 接口: ${interface.name}');
         for (var addr in interface.addresses) {
+          print('[Server]   - 地址: ${addr.address} (loopback: ${addr.isLoopback})');
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
             final ip = addr.address;
             
             // Check if it's a private network address
             if (_isPrivateNetwork(ip)) {
+              print('[Server]   ✅ 私有网络地址: $ip');
               privateAddresses.add(ip);
             } else {
+              print('[Server]   ℹ️ 其他地址: $ip');
               otherAddresses.add(ip);
             }
           }
@@ -181,18 +236,22 @@ class HTTPServerManager {
           if (b.startsWith('172.')) return 1;
           return 0;
         });
+        print('[Server] 选择的IP地址: ${privateAddresses.first}');
         return privateAddresses.first;
       }
 
       // Use other addresses if no private network found
       if (otherAddresses.isNotEmpty) {
+        print('[Server] 选择的IP地址: ${otherAddresses.first}');
         return otherAddresses.first;
       }
 
       // Fallback to localhost if no network interface found
+      print('[Server] ⚠️ 未找到有效网络接口，使用回环地址');
       return '127.0.0.1';
     } catch (e) {
       // If error, return localhost
+      print('[Server] ❌ 获取IP地址失败: $e');
       return '127.0.0.1';
     }
   }

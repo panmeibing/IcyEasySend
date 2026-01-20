@@ -50,6 +50,7 @@ class FileTransferHandler {
   /// - fileName: name of the file
   /// - fileSize: size of the file in bytes
   /// - senderIP: IP address of the sender
+  /// - senderDeviceName: (optional) name of the sender device
   /// - remainingFiles: (optional) number of remaining files in batch
   /// 
   /// Returns a JSON response with:
@@ -63,6 +64,7 @@ class FileTransferHandler {
       final fileName = queryParams['fileName'];
       final fileSizeStr = queryParams['fileSize'];
       final senderIP = queryParams['senderIP'];
+      final senderDeviceName = queryParams['senderDeviceName'];
       final remainingFilesStr = queryParams['remainingFiles'];
       
       // Validate required parameters
@@ -148,6 +150,7 @@ class FileTransferHandler {
           fileName: fileName,
           fileSize: fileSize,
           senderIP: senderIP,
+          senderDeviceName: senderDeviceName,
           remainingFiles: remainingFiles,
         );
         
@@ -218,6 +221,7 @@ class FileTransferHandler {
       final fileName = queryParams['fileName'];
       final fileSizeStr = queryParams['fileSize'];
       final senderIP = queryParams['senderIP'];
+      final senderDeviceName = queryParams['senderDeviceName'];
       final transferId = queryParams['transferId'];
       
       // Validate required parameters
@@ -301,6 +305,7 @@ class FileTransferHandler {
         fileName: fileName,
         fileSize: fileSize,
         senderIP: senderIP,
+        senderDeviceName: senderDeviceName,
       );
       
       // Check if file was saved successfully

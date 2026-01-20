@@ -5,8 +5,10 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:mime/mime.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'notification_service.dart';
 import 'transfer_history_service.dart';
+import 'preferences_service.dart';
 import '../utils/error_messages.dart';
 import '../models/transfer_history.dart';
 
@@ -94,6 +96,9 @@ class FileTransferService {
   // Transfer history service
   final TransferHistoryService _historyService = TransferHistoryService();
   
+  // Preferences service
+  final PreferencesService _preferencesService = PreferencesService();
+  
   /// Check if target device is healthy and ready to receive files
   /// 
   /// Sends a GET request to the target device's /health endpoint.
@@ -113,10 +118,19 @@ class FileTransferService {
         url = 'http://$targetIP:8080/health';
       }
       
+      print('[Health Check] ========================================');
+      print('[Health Check] 开始健康检查');
+      print('[Health Check] 目标URL: $url');
+      print('[Health Check] 当前时间: ${DateTime.now()}');
+      print('[Health Check] ========================================');
+      
       // Send GET request to health endpoint
       final response = await http.get(
         Uri.parse(url),
       ).timeout(_requestTimeout);
+      
+      print('[Health Check] 收到响应，状态码: ${response.statusCode}');
+      print('[Health Check] 响应内容: ${response.body}');
       
       // Check if response is successful
       if (response.statusCode == 200) {
@@ -126,47 +140,58 @@ class FileTransferService {
           
           // Verify response contains expected fields
           if (data.containsKey('status') && data['status'] == 'ok') {
+            print('[Health Check] 健康检查成功');
             return HealthCheckResult(
               isHealthy: true,
               responseData: data,
             );
           } else {
+            print('[Health Check] 响应格式不正确: $data');
             return HealthCheckResult(
               isHealthy: false,
               errorMessage: ErrorMessages.responseInvalidFormat,
             );
           }
         } catch (e) {
+          print('[Health Check] 解析响应失败: $e');
           return HealthCheckResult(
             isHealthy: false,
             errorMessage: ErrorMessages.responseParseError,
           );
         }
       } else {
+        print('[Health Check] 服务器返回错误状态码: ${response.statusCode}');
         return HealthCheckResult(
           isHealthy: false,
           errorMessage: ErrorMessages.responseStatusCodeError(response.statusCode),
         );
       }
-    } on SocketException {
+    } on SocketException catch (e) {
+      print('[Health Check] Socket异常: ${e.message}');
+      print('[Health Check] 目标地址: $targetIP');
       return HealthCheckResult(
         isHealthy: false,
-        errorMessage: ErrorMessages.networkConnectionFailed,
+        errorMessage: '无法连接到目标设备\n错误: ${e.message}\nIP: $targetIP',
       );
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
+      print('[Health Check] HTTP客户端异常: $e');
       return HealthCheckResult(
         isHealthy: false,
-        errorMessage: ErrorMessages.networkRequestFailed,
+        errorMessage: '网络请求失败: $e',
       );
     } on TimeoutException {
+      print('[Health Check] 连接超时（10秒）');
+      print('[Health Check] 目标地址: $targetIP');
       return HealthCheckResult(
         isHealthy: false,
-        errorMessage: ErrorMessages.networkTimeout,
+        errorMessage: '连接超时（10秒）\n目标设备可能未运行或网络不通\nIP: $targetIP',
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[Health Check] 未预期的错误: $e');
+      print('[Health Check] 堆栈跟踪: $stackTrace');
       return HealthCheckResult(
         isHealthy: false,
-        errorMessage: ErrorMessages.unexpectedError(e.toString()),
+        errorMessage: '检查设备健康状态时出错: $e',
       );
     }
   }
@@ -197,12 +222,16 @@ class FileTransferService {
     void Function(String status)? onStatusChange,
     int? remainingFiles,
   }) async {
+    final fileName = file.path.split('/').last;
+    
     try {
       // Step 1: Check if file exists and is readable
+      onStatusChange?.call('[步骤1/5] 检查文件...');
+      
       if (!await file.exists()) {
         return TransferResult(
           success: false,
-          errorMessage: ErrorMessages.fileNotFound,
+          errorMessage: '[步骤1失败] ${ErrorMessages.fileNotFound}',
         );
       }
       
@@ -211,29 +240,41 @@ class FileTransferService {
       if (fileSize > _maxFileSize) {
         return TransferResult(
           success: false,
-          errorMessage: ErrorMessages.fileTooLarge,
+          errorMessage: '[步骤1失败] ${ErrorMessages.fileTooLarge}',
         );
       }
       
       // Step 2: Perform health check first
-      onStatusChange?.call('正在检查目标设备...');
-      
+      onStatusChange?.call('[步骤2/5] 正在检查目标设备...');
       final healthResult = await checkHealth(targetIP);
-      
       if (!healthResult.isHealthy) {
         // Health check failed, return error
         return TransferResult(
           success: false,
-          errorMessage: '${ErrorMessages.targetDeviceUnavailable}\n${healthResult.errorMessage}',
+          errorMessage: '[步骤2失败] 目标设备不可用\n错误: ${healthResult.errorMessage}',
         );
       }
       
+      // Extract target device name from health check response
+      String? targetDeviceName;
+      if (healthResult.responseData != null && 
+          healthResult.responseData!.containsKey('deviceName')) {
+        targetDeviceName = healthResult.responseData!['deviceName'] as String?;
+      }
+      
       // Step 3: Get local IP address for senderIP field
+      onStatusChange?.call('[步骤3/5] 准备传输信息...');
+      
       final senderIP = await _getLocalIPAddress();
-      final fileName = file.path.split('/').last;
+      
+      // Get device name (use saved name or fallback to device model)
+      String? deviceName = await _preferencesService.getDeviceName();
+      if (deviceName == null || deviceName.isEmpty) {
+        deviceName = await _getDeviceModel();
+      }
       
       // Step 4: Call /confirm-receive endpoint to ask for user confirmation
-      onStatusChange?.call('等待接收方确认...');
+      onStatusChange?.call('[步骤4/5] 等待接收方确认...');
       
       String confirmUrl;
       if (targetIP.contains(':')) {
@@ -246,12 +287,26 @@ class FileTransferService {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
         'senderIP': senderIP,
+        if (deviceName != null) 'senderDeviceName': deviceName,
         if (remainingFiles != null) 'remainingFiles': remainingFiles.toString(),
       });
       
       // Use longer timeout for confirmation request to allow user time to respond
       // User has 30 seconds to confirm, so we use 35 seconds timeout
-      final confirmResponse = await http.get(confirmUri).timeout(_confirmTimeout);
+      http.Response confirmResponse;
+      try {
+        confirmResponse = await http.get(confirmUri).timeout(_confirmTimeout);
+      } on TimeoutException {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤4失败] 等待接收方确认超时（35秒）\n接收方可能未响应或网络连接问题',
+        );
+      } on SocketException catch (e) {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤4失败] 无法连接到接收方\n错误: ${e.message}',
+        );
+      }
       
       // Check confirmation response
       if (confirmResponse.statusCode != 200) {
@@ -259,12 +314,12 @@ class FileTransferService {
           final data = jsonDecode(confirmResponse.body) as Map<String, dynamic>;
           return TransferResult(
             success: false,
-            errorMessage: data['message'] as String? ?? ErrorMessages.transferRejected,
+            errorMessage: '[步骤4失败] ${data['message'] as String? ?? '接收方拒绝接收'}\n状态码: ${confirmResponse.statusCode}',
           );
         } catch (e) {
           return TransferResult(
             success: false,
-            errorMessage: ErrorMessages.transferRejected,
+            errorMessage: '[步骤4失败] 接收方拒绝接收\n状态码: ${confirmResponse.statusCode}',
           );
         }
       }
@@ -277,7 +332,7 @@ class FileTransferService {
         if (confirmData['accepted'] != true) {
           return TransferResult(
             success: false,
-            errorMessage: confirmData['message'] as String? ?? ErrorMessages.transferRejected,
+            errorMessage: '[步骤4失败] ${confirmData['message'] as String? ?? '接收方拒绝接收'}',
           );
         }
         
@@ -285,12 +340,12 @@ class FileTransferService {
       } catch (e) {
         return TransferResult(
           success: false,
-          errorMessage: ErrorMessages.responseParseError,
+          errorMessage: '[步骤4失败] 无法解析接收方响应\n错误: $e',
         );
       }
       
       // Step 5: User accepted, proceed with file transfer
-      onStatusChange?.call('正在传输文件...');
+      onStatusChange?.call('[步骤5/5] 正在传输文件...');
       
       // Prepare URL with metadata as query parameters
       String baseUrl;
@@ -305,6 +360,7 @@ class FileTransferService {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
         'senderIP': senderIP,
+        if (deviceName != null) 'senderDeviceName': deviceName,
         'transferId': transferId,
       });
       
@@ -341,7 +397,10 @@ class FileTransferService {
       } catch (e) {
         request.sink.addError(e);
         await request.sink.close();
-        rethrow;
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 文件传输过程中出错\n错误: $e',
+        );
       }
       
       // Phase 2: Waiting for server response (90-100% progress)
@@ -383,7 +442,20 @@ class FileTransferService {
       });
       
       // Await the response
-      final response = await responseCompleter.future;
+      http.Response response;
+      try {
+        response = await responseCompleter.future;
+      } on TimeoutException {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 等待服务器响应超时\n文件可能已传输但服务器未及时响应',
+        );
+      } catch (e) {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 等待服务器响应时出错\n错误: $e',
+        );
+      }
       
       // Check response
       if (response.statusCode == 200) {
@@ -396,6 +468,7 @@ class FileTransferService {
                 fileName: fileName,
                 fileSize: fileSize,
                 peerIP: targetIP,
+                peerDeviceName: targetDeviceName,
                 timestamp: DateTime.now(),
                 isReceived: false,
                 success: true,
@@ -411,6 +484,7 @@ class FileTransferService {
                 fileName: fileName,
                 fileSize: fileSize,
                 peerIP: targetIP,
+                peerDeviceName: targetDeviceName,
                 timestamp: DateTime.now(),
                 isReceived: false,
                 success: false,
@@ -418,13 +492,13 @@ class FileTransferService {
               
               return TransferResult(
                 success: false,
-                errorMessage: data['message'] as String? ?? ErrorMessages.genericError('文件传输'),
+                errorMessage: '[步骤5失败] 服务器返回错误\n${data['message'] as String? ?? '未知错误'}',
               );
             }
           } catch (e) {
             return TransferResult(
               success: false,
-              errorMessage: ErrorMessages.responseParseError,
+              errorMessage: '[步骤5失败] 无法解析服务器响应\n错误: $e',
             );
           }
         } else if (response.statusCode == 403) {
@@ -433,6 +507,7 @@ class FileTransferService {
             fileName: fileName,
             fileSize: fileSize,
             peerIP: targetIP,
+            peerDeviceName: targetDeviceName,
             timestamp: DateTime.now(),
             isReceived: false,
             success: false,
@@ -440,38 +515,40 @@ class FileTransferService {
           
           return TransferResult(
             success: false,
-            errorMessage: ErrorMessages.transferRejected,
+            errorMessage: '[步骤5失败] 接收方拒绝接收\n状态码: 403',
           );
         } else if (response.statusCode == 413) {
           return TransferResult(
             success: false,
-            errorMessage: ErrorMessages.fileOrStorageFull,
+            errorMessage: '[步骤5失败] 文件过大或存储空间不足\n状态码: 413',
           );
         } else {
           return TransferResult(
             success: false,
-            errorMessage: ErrorMessages.responseStatusCodeError(response.statusCode),
+            errorMessage: '[步骤5失败] 服务器返回错误\n状态码: ${response.statusCode}',
           );
         }
-    } on SocketException {
+    } on SocketException catch (e) {
       return TransferResult(
         success: false,
-        errorMessage: ErrorMessages.networkConnectionFailed,
+        errorMessage: '网络连接失败\n错误: ${e.message}\n请检查网络连接和目标设备IP地址',
       );
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
       return TransferResult(
         success: false,
-        errorMessage: ErrorMessages.networkRequestFailed,
+        errorMessage: '网络请求失败\n错误: $e\n请检查网络连接',
       );
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
       return TransferResult(
         success: false,
-        errorMessage: ErrorMessages.transferTimeout,
+        errorMessage: '传输超时\n错误: $e\n请检查网络连接或稍后重试',
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Unexpected error in sendFile: $e');
+      print('Stack trace: $stackTrace');
       return TransferResult(
         success: false,
-        errorMessage: ErrorMessages.unexpectedError(e.toString()),
+        errorMessage: '发生未预期的错误\n错误: $e\n请查看日志获取更多信息',
       );
     }
   }
@@ -594,6 +671,7 @@ class FileTransferService {
     required String fileName,
     required int fileSize,
     required String senderIP,
+    String? senderDeviceName,
     int? remainingFiles,
   }) async {
     try {
@@ -602,6 +680,7 @@ class FileTransferService {
       final confirmationResult = await notificationService.showReceiveConfirmation(
         context: context,
         senderIP: senderIP,
+        senderDeviceName: senderDeviceName,
         fileName: fileName,
         fileSize: fileSize,
         remainingFiles: remainingFiles,
@@ -643,6 +722,7 @@ class FileTransferService {
   /// - [fileName]: Name of the file
   /// - [fileSize]: Size of the file in bytes
   /// - [senderIP]: IP address of the sender device
+  /// - [senderDeviceName]: (optional) Name of the sender device
   /// 
   /// Returns [DirectReceiveResult] indicating whether the file was saved successfully
   Future<DirectReceiveResult> receiveFileDirectly({
@@ -650,6 +730,7 @@ class FileTransferService {
     required String fileName,
     required int fileSize,
     required String senderIP,
+    String? senderDeviceName,
   }) async {
     try {
       // Check storage space
@@ -703,6 +784,7 @@ class FileTransferService {
           fileName: fileName,
           fileSize: fileSize,
           peerIP: senderIP,
+          peerDeviceName: senderDeviceName,
           timestamp: DateTime.now(),
           isReceived: true,
           success: false,
@@ -732,6 +814,7 @@ class FileTransferService {
           fileName: fileName,
           fileSize: fileSize,
           peerIP: senderIP,
+          peerDeviceName: senderDeviceName,
           timestamp: DateTime.now(),
           isReceived: true,
           success: false,
@@ -748,6 +831,7 @@ class FileTransferService {
         fileName: fileName,
         fileSize: fileSize,
         peerIP: senderIP,
+        peerDeviceName: senderDeviceName,
         timestamp: DateTime.now(),
         isReceived: true,
         success: true,
@@ -765,6 +849,7 @@ class FileTransferService {
         fileName: fileName,
         fileSize: fileSize,
         peerIP: senderIP,
+        peerDeviceName: senderDeviceName,
         timestamp: DateTime.now(),
         isReceived: true,
         success: false,
@@ -1234,5 +1319,46 @@ class FileTransferService {
     }
     
     return candidateName;
+  }
+  
+  /// Get device model name
+  /// 
+  /// Returns the device model name using device_info_plus package.
+  /// Falls back to Platform.localHostname if device info is unavailable.
+  Future<String?> _getDeviceModel() async {
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return '${androidInfo.manufacturer} ${androidInfo.model}';
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.name;
+      } else if (Platform.isMacOS) {
+        final macInfo = await deviceInfo.macOsInfo;
+        return macInfo.computerName;
+      } else if (Platform.isWindows) {
+        final windowsInfo = await deviceInfo.windowsInfo;
+        return windowsInfo.computerName;
+      } else if (Platform.isLinux) {
+        final linuxInfo = await deviceInfo.linuxInfo;
+        return linuxInfo.name;
+      }
+      
+      // Fallback to hostname
+      try {
+        return Platform.localHostname;
+      } catch (e) {
+        return null;
+      }
+    } catch (e) {
+      // If device_info_plus fails, try hostname
+      try {
+        return Platform.localHostname;
+      } catch (e) {
+        return null;
+      }
+    }
   }
 }
