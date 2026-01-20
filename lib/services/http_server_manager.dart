@@ -26,18 +26,16 @@ class HTTPServerManager {
   String? _serverAddress;
   int? _currentPort;
   BuildContext? _context;
-  
+
   // API handlers
   final HealthCheckHandler _healthCheckHandler = HealthCheckHandler();
   late final FileTransferHandler _fileTransferHandler;
-  
+
   HTTPServerManager() {
     // Create file transfer handler with a context getter
-    _fileTransferHandler = FileTransferHandler(
-      contextGetter: () => _context,
-    );
+    _fileTransferHandler = FileTransferHandler(contextGetter: () => _context);
   }
-  
+
   /// Set the BuildContext for showing dialogs
   void setContext(BuildContext context) {
     _context = context;
@@ -59,10 +57,7 @@ class HTTPServerManager {
     // If server is already running, return success
     if (isRunning()) {
       print('[Server] 服务器已在运行: $_serverAddress');
-      return ServerStartResult(
-        success: true,
-        serverAddress: _serverAddress,
-      );
+      return ServerStartResult(success: true, serverAddress: _serverAddress);
     }
 
     print('[Server] ========================================');
@@ -74,16 +69,19 @@ class HTTPServerManager {
     for (int tryPort = port; tryPort <= 8090; tryPort++) {
       try {
         print('[Server] 尝试绑定端口: $tryPort');
-        
+
         // Create router and configure routes
         final router = shelf_router.Router();
-        
+
         // Configure health check endpoint
         router.get('/health', _healthCheckHandler.handleHealthCheck);
-        
+
         // Configure confirm receive endpoint (called before file transfer)
-        router.get('/confirm-receive', _fileTransferHandler.handleConfirmReceive);
-        
+        router.get(
+          '/confirm-receive',
+          _fileTransferHandler.handleConfirmReceive,
+        );
+
         // Configure file transfer endpoint
         router.post('/transfer', _fileTransferHandler.handleFileTransfer);
 
@@ -100,7 +98,7 @@ class HTTPServerManager {
         );
 
         _currentPort = tryPort;
-        
+
         // Get the local IP address
         final localIP = await _getLocalIPAddress();
         _serverAddress = '$localIP:$tryPort';
@@ -110,14 +108,11 @@ class HTTPServerManager {
         print('[Server] 本机IP: $localIP');
         print('[Server] 完整地址: $_serverAddress');
         print('[Server] ========================================');
-        
+
         // 测试健康检查端点
         _testHealthEndpoint(localIP, tryPort);
 
-        return ServerStartResult(
-          success: true,
-          serverAddress: _serverAddress,
-        );
+        return ServerStartResult(success: true, serverAddress: _serverAddress);
       } on SocketException {
         // Port is in use or other socket error, try next port
         print('[Server] ❌ 端口 $tryPort 不可用（可能被占用）');
@@ -147,23 +142,23 @@ class HTTPServerManager {
       errorMessage: ErrorMessages.serverUnknownError,
     );
   }
-  
+
   /// Test health endpoint after server starts
   void _testHealthEndpoint(String ip, int port) async {
     try {
       print('[Server] 测试健康检查端点...');
       final testUrl = 'http://$ip:$port/health';
       print('[Server] 测试URL: $testUrl');
-      
+
       // Wait a bit for server to be fully ready
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       final response = await HttpClient()
           .getUrl(Uri.parse(testUrl))
           .timeout(const Duration(seconds: 3))
           .then((request) => request.close())
           .then((response) => response);
-      
+
       if (response.statusCode == 200) {
         print('[Server] ✅ 健康检查端点测试成功！');
       } else {
@@ -186,7 +181,7 @@ class HTTPServerManager {
   }
 
   /// Get the local IP address of the device
-  /// 
+  ///
   /// Priority order:
   /// 1. Private network addresses (192.168.x.x, 172.16-31.x.x, 10.x.x.x)
   /// 2. Other non-loopback IPv4 addresses
@@ -194,7 +189,7 @@ class HTTPServerManager {
   Future<String> _getLocalIPAddress() async {
     try {
       print('[Server] 获取本地IP地址...');
-      
+
       // Get all network interfaces
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
@@ -202,7 +197,7 @@ class HTTPServerManager {
       );
 
       print('[Server] 找到 ${interfaces.length} 个网络接口');
-      
+
       List<String> privateAddresses = [];
       List<String> otherAddresses = [];
 
@@ -210,10 +205,12 @@ class HTTPServerManager {
       for (var interface in interfaces) {
         print('[Server] 接口: ${interface.name}');
         for (var addr in interface.addresses) {
-          print('[Server]   - 地址: ${addr.address} (loopback: ${addr.isLoopback})');
+          print(
+            '[Server]   - 地址: ${addr.address} (loopback: ${addr.isLoopback})',
+          );
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
             final ip = addr.address;
-            
+
             // Check if it's a private network address
             if (_isPrivateNetwork(ip)) {
               print('[Server]   ✅ 私有网络地址: $ip');
@@ -257,7 +254,7 @@ class HTTPServerManager {
   }
 
   /// Check if an IP address is in a private network range
-  /// 
+  ///
   /// Private network ranges:
   /// - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
   /// - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)

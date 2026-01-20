@@ -9,10 +9,7 @@ import '../services/preferences_service.dart';
 class SettingsPage extends StatefulWidget {
   final HTTPServerManager serverManager;
 
-  const SettingsPage({
-    super.key,
-    required this.serverManager,
-  });
+  const SettingsPage({super.key, required this.serverManager});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -21,7 +18,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final PreferencesService _preferencesService = PreferencesService();
   final TextEditingController _deviceNameController = TextEditingController();
-  
+
   String _deviceName = '';
   String _deviceModel = '';
   String? _serverIP;
@@ -223,15 +220,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(width: 8),
                 const Text(
                   '设备信息',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const Divider(height: 24),
-            
+
             // Device Name
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,7 +303,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Device Model
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,10 +319,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 4),
                 Text(
                   _deviceModel,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.black87),
                 ),
               ],
             ),
@@ -362,14 +353,18 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isServerRunning ? Colors.green[900] : Colors.red[900],
+                    color: isServerRunning
+                        ? Colors.green[900]
+                        : Colors.red[900],
                   ),
                 ),
               ],
             ),
             const Divider(height: 24),
-            
-            if (isServerRunning && _serverIP != null && _serverPort != null) ...[
+
+            if (isServerRunning &&
+                _serverIP != null &&
+                _serverPort != null) ...[
               // Server IP
               _buildInfoRow(
                 label: '服务器 IP',
@@ -378,7 +373,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
               ),
               const SizedBox(height: 16),
-              
+
               // Server Port
               _buildInfoRow(
                 label: '端口',
@@ -390,18 +385,11 @@ class _SettingsPageState extends State<SettingsPage> {
               Center(
                 child: Column(
                   children: [
-                    Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red[300],
-                    ),
+                    Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
                     const SizedBox(height: 8),
                     Text(
                       '服务器未运行',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.red[700],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.red[700]),
                     ),
                   ],
                 ),

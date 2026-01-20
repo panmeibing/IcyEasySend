@@ -16,7 +16,7 @@ class ReceiveConfirmationResult {
 /// NotificationService provides user notification and dialog functionality
 class NotificationService {
   /// Show an error dialog with the given message
-  /// 
+  ///
   /// `context` - BuildContext for showing the dialog
   /// `message` - Error message to display
   Future<void> showError(BuildContext context, String message) async {
@@ -41,7 +41,7 @@ class NotificationService {
   }
 
   /// Show a success message dialog
-  /// 
+  ///
   /// `context` - BuildContext for showing the dialog
   /// `message` - Success message to display
   Future<void> showSuccess(BuildContext context, String message) async {
@@ -66,13 +66,13 @@ class NotificationService {
   }
 
   /// Show a file receive confirmation dialog with 30-second timeout
-  /// 
+  ///
   /// `context` - BuildContext for showing the dialog
   /// `senderIP` - IP address of the sender device
   /// `fileName` - Name of the file being received
   /// `fileSize` - Size of the file in bytes
   /// `remainingFiles` - Number of remaining files in the batch (optional)
-  /// 
+  ///
   /// Returns a Future of ReceiveConfirmationResult indicating whether the user
   /// accepted or rejected the file, or if the dialog timed out
   Future<ReceiveConfirmationResult> showReceiveConfirmation({
@@ -110,7 +110,10 @@ class NotificationService {
           timedOut = true;
           // Use a post-frame callback to safely close the dialog
           if (context.mounted) {
-            Navigator.of(context, rootNavigator: true).pop({'accepted': false, 'autoAccept': false});
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pop({'accepted': false, 'autoAccept': false});
           }
           return {'accepted': false, 'autoAccept': false};
         },
@@ -196,7 +199,8 @@ class _ReceiveConfirmationDialogState
   @override
   Widget build(BuildContext context) {
     final formattedSize = NotificationService._formatFileSize(widget.fileSize);
-    final hasRemainingFiles = widget.remainingFiles != null && widget.remainingFiles! > 0;
+    final hasRemainingFiles =
+        widget.remainingFiles != null && widget.remainingFiles! > 0;
 
     return AlertDialog(
       title: const Text('接收文件确认'),
@@ -207,18 +211,12 @@ class _ReceiveConfirmationDialogState
           if (widget.senderDeviceName != null) ...[
             Text(
               '发送者: ${widget.senderDeviceName}',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
             const SizedBox(height: 4),
             Text(
               'IP: ${widget.senderIP}',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
           ] else ...[
             Text('发送者 IP: ${widget.senderIP}'),
@@ -252,10 +250,7 @@ class _ReceiveConfirmationDialogState
                 '自动接收后续 ${widget.remainingFiles} 个文件',
                 style: const TextStyle(fontSize: 14),
               ),
-              subtitle: const Text(
-                '勾选后将不再询问',
-                style: TextStyle(fontSize: 12),
-              ),
+              subtitle: const Text('勾选后将不再询问', style: TextStyle(fontSize: 12)),
               value: _autoAcceptRemaining,
               onChanged: (bool? value) {
                 setState(() {
@@ -278,10 +273,9 @@ class _ReceiveConfirmationDialogState
         ElevatedButton(
           child: const Text('接受'),
           onPressed: () {
-            Navigator.of(context).pop({
-              'accepted': true,
-              'autoAccept': _autoAcceptRemaining,
-            });
+            Navigator.of(
+              context,
+            ).pop({'accepted': true, 'autoAccept': _autoAcceptRemaining});
           },
         ),
       ],

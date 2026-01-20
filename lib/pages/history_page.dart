@@ -15,8 +15,8 @@ class HistoryPage extends StatefulWidget {
 
 /// Filter type for history records
 enum HistoryFilter {
-  all,      // 全部
-  sent,     // 已发送
+  all, // 全部
+  sent, // 已发送
   received, // 已接收
 }
 
@@ -33,7 +33,7 @@ class HistoryPageState extends State<HistoryPage> {
     super.initState();
     _loadHistory();
   }
-  
+
   /// Public method to refresh history from external calls
   void refreshHistory() {
     _loadHistory();
@@ -90,17 +90,17 @@ class HistoryPageState extends State<HistoryPage> {
     return _isLoading
         ? const Center(child: CircularProgressIndicator())
         : _history.isEmpty
-            ? _buildEmptyState()
-            : Column(
-                children: [
-                  _buildAppBar(),
-                  _buildFilterChips(),
-                  if (_statistics != null) _buildStatistics(),
-                  Expanded(child: _buildHistoryList()),
-                ],
-              );
+        ? _buildEmptyState()
+        : Column(
+            children: [
+              _buildAppBar(),
+              _buildFilterChips(),
+              if (_statistics != null) _buildStatistics(),
+              Expanded(child: _buildHistoryList()),
+            ],
+          );
   }
-  
+
   /// Get filtered history based on current filter
   List<TransferHistory> get _filteredHistory {
     switch (_currentFilter) {
@@ -112,7 +112,7 @@ class HistoryPageState extends State<HistoryPage> {
         return _history.where((item) => item.isReceived).toList();
     }
   }
-  
+
   /// Build filter chips
   Widget _buildFilterChips() {
     return Container(
@@ -142,7 +142,7 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-  
+
   /// Build a single filter chip
   Widget _buildFilterChip({
     required String label,
@@ -204,10 +204,7 @@ class HistoryPageState extends State<HistoryPage> {
             const Center(
               child: Text(
                 '传输历史',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
             if (_history.isNotEmpty)
@@ -230,18 +227,11 @@ class HistoryPageState extends State<HistoryPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.history,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.history, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             '暂无传输历史',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
         ],
       ),
@@ -267,11 +257,7 @@ class HistoryPageState extends State<HistoryPage> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.bar_chart,
-                        size: 20,
-                        color: Colors.blue[700],
-                      ),
+                      Icon(Icons.bar_chart, size: 20, color: Colors.blue[700]),
                       const SizedBox(width: 8),
                       const Text(
                         '统计信息',
@@ -286,10 +272,7 @@ class HistoryPageState extends State<HistoryPage> {
                     children: [
                       Text(
                         '${stats.totalTransfers} 次传输',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 4),
                       Icon(
@@ -312,17 +295,53 @@ class HistoryPageState extends State<HistoryPage> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: _buildStatItem('总传输', stats.totalTransfers.toString(), Colors.blue)),
-                      Expanded(child: _buildStatItem('成功', stats.successfulTransfers.toString(), Colors.green)),
-                      Expanded(child: _buildStatItem('失败', stats.failedTransfers.toString(), Colors.red)),
+                      Expanded(
+                        child: _buildStatItem(
+                          '总传输',
+                          stats.totalTransfers.toString(),
+                          Colors.blue,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          '成功',
+                          stats.successfulTransfers.toString(),
+                          Colors.green,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          '失败',
+                          stats.failedTransfers.toString(),
+                          Colors.red,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _buildStatItem('已发送', stats.sentFiles.toString(), Colors.orange)),
-                      Expanded(child: _buildStatItem('已接收', stats.receivedFiles.toString(), Colors.purple)),
-                      Expanded(child: _buildStatItem('总大小', _formatBytes(stats.totalBytes), Colors.teal)),
+                      Expanded(
+                        child: _buildStatItem(
+                          '已发送',
+                          stats.sentFiles.toString(),
+                          Colors.orange,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          '已接收',
+                          stats.receivedFiles.toString(),
+                          Colors.purple,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildStatItem(
+                          '总大小',
+                          _formatBytes(stats.totalBytes),
+                          Colors.teal,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -349,10 +368,7 @@ class HistoryPageState extends State<HistoryPage> {
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
           textAlign: TextAlign.center,
         ),
       ],
@@ -361,30 +377,23 @@ class HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHistoryList() {
     final filteredHistory = _filteredHistory;
-    
+
     if (filteredHistory.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.filter_list_off,
-              size: 48,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.filter_list_off, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 12),
             Text(
               '没有符合条件的记录',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
         ),
       );
     }
-    
+
     return ListView.builder(
       itemCount: filteredHistory.length,
       itemBuilder: (context, index) {
@@ -399,7 +408,7 @@ class HistoryPageState extends State<HistoryPage> {
     final iconColor = item.isReceived ? Colors.green : Colors.blue;
     final statusIcon = item.success ? Icons.check_circle : Icons.error;
     final statusColor = item.success ? Colors.green : Colors.red;
-    
+
     // Display device name if available, otherwise show IP
     final peerDisplay = item.peerDeviceName ?? item.peerIP;
 
@@ -417,19 +426,12 @@ class HistoryPageState extends State<HistoryPage> {
         ),
         subtitle: Text(
           '${item.isReceived ? '来自' : '发送至'}: $peerDisplay',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey[700],
-          ),
+          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              statusIcon,
-              color: statusColor,
-              size: 20,
-            ),
+            Icon(statusIcon, color: statusColor, size: 20),
             const SizedBox(width: 8),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
@@ -437,7 +439,9 @@ class HistoryPageState extends State<HistoryPage> {
               onSelected: (value) => _handleMenuAction(value, item),
               itemBuilder: (context) => [
                 // Only show "Open File" and "Open Folder" for received files with saved path
-                if (item.isReceived && item.savedPath != null && item.success) ...[
+                if (item.isReceived &&
+                    item.savedPath != null &&
+                    item.success) ...[
                   const PopupMenuItem(
                     value: 'open_file',
                     child: Row(
@@ -487,7 +491,7 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-  
+
   /// Handle menu action
   Future<void> _handleMenuAction(String action, TransferHistory item) async {
     switch (action) {
@@ -505,20 +509,20 @@ class HistoryPageState extends State<HistoryPage> {
         break;
     }
   }
-  
+
   /// Open the file
   Future<void> _openFile(TransferHistory item) async {
     if (item.savedPath == null) {
       _showErrorSnackBar('文件路径不存在');
       return;
     }
-    
+
     final file = File(item.savedPath!);
     if (!await file.exists()) {
       _showErrorSnackBar('文件不存在，可能已被删除');
       return;
     }
-    
+
     try {
       final uri = Uri.file(item.savedPath!);
       if (await canLaunchUrl(uri)) {
@@ -530,22 +534,22 @@ class HistoryPageState extends State<HistoryPage> {
       _showErrorSnackBar('打开文件失败: $e');
     }
   }
-  
+
   /// Open the folder containing the file
   Future<void> _openFolder(TransferHistory item) async {
     if (item.savedPath == null) {
       _showErrorSnackBar('文件路径不存在');
       return;
     }
-    
+
     final file = File(item.savedPath!);
     final directory = file.parent;
-    
+
     if (!await directory.exists()) {
       _showErrorSnackBar('文件夹不存在');
       return;
     }
-    
+
     try {
       final uri = Uri.directory(directory.path);
       if (await canLaunchUrl(uri)) {
@@ -557,14 +561,16 @@ class HistoryPageState extends State<HistoryPage> {
       _showErrorSnackBar('打开文件夹失败: $e');
     }
   }
-  
+
   /// Delete a single record
   Future<void> _deleteRecord(TransferHistory item) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('删除记录'),
-        content: Text('确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。'),
+        content: Text(
+          '确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -578,11 +584,11 @@ class HistoryPageState extends State<HistoryPage> {
         ],
       ),
     );
-    
+
     if (confirmed == true) {
       await _historyService.deleteTransfer(item);
       await _loadHistory();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -593,7 +599,7 @@ class HistoryPageState extends State<HistoryPage> {
       }
     }
   }
-  
+
   /// Show error snackbar
   void _showErrorSnackBar(String message) {
     if (mounted) {
@@ -606,7 +612,7 @@ class HistoryPageState extends State<HistoryPage> {
       );
     }
   }
-  
+
   /// Show detail dialog for a transfer history item
   void _showDetailDialog(TransferHistory item) {
     showDialog(
@@ -679,7 +685,7 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-  
+
   /// Build a detail row in the dialog
   Widget _buildDetailRow(
     String label,
@@ -725,17 +731,17 @@ class HistoryPageState extends State<HistoryPage> {
       ],
     );
   }
-  
+
   /// Format full date time for detail view
   String _formatFullDateTime(DateTime dateTime) {
     return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
         '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
   }
-  
+
   /// Copy file path to clipboard
   Future<void> _copyPathToClipboard(String path) async {
     await Clipboard.setData(ClipboardData(text: path));
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

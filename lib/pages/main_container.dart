@@ -8,10 +8,7 @@ import '../services/http_server_manager.dart';
 class MainContainer extends StatefulWidget {
   final HTTPServerManager serverManager;
 
-  const MainContainer({
-    super.key,
-    required this.serverManager,
-  });
+  const MainContainer({super.key, required this.serverManager});
 
   @override
   State<MainContainer> createState() => _MainContainerState();
@@ -19,7 +16,8 @@ class MainContainer extends StatefulWidget {
 
 class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
-  final GlobalKey<HistoryPageState> _historyPageKey = GlobalKey<HistoryPageState>();
+  final GlobalKey<HistoryPageState> _historyPageKey =
+      GlobalKey<HistoryPageState>();
 
   @override
   Widget build(BuildContext context) {
@@ -44,18 +42,9 @@ class _MainContainerState extends State<MainContainer> {
           }
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '主页',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: '历史记录',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: '设置',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: '历史记录'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
         ],
       ),
     );

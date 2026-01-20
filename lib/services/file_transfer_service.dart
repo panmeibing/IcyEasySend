@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:mime/mime.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'notification_service.dart';
 import 'transfer_history_service.dart';
@@ -31,11 +30,7 @@ class TransferResult {
   final String? errorMessage;
   final String? savedPath;
 
-  TransferResult({
-    required this.success,
-    this.errorMessage,
-    this.savedPath,
-  });
+  TransferResult({required this.success, this.errorMessage, this.savedPath});
 }
 
 /// Result of file receive operation
@@ -44,11 +39,7 @@ class ReceiveResult {
   final String? savedPath;
   final String? errorMessage;
 
-  ReceiveResult({
-    required this.accepted,
-    this.savedPath,
-    this.errorMessage,
-  });
+  ReceiveResult({required this.accepted, this.savedPath, this.errorMessage});
 }
 
 /// Result of direct file receive operation (without confirmation)
@@ -78,36 +69,35 @@ class ConfirmationResult {
 }
 
 /// Service for handling file transfers (sender side)
-/// 
+///
 /// Provides functionality to:
 /// - Check health of target devices
 /// - Send files to target devices
 class FileTransferService {
   // Timeout for network requests
   static const Duration _requestTimeout = Duration(seconds: 10);
-  
+
   // Timeout for confirmation requests (longer to allow user to respond)
   // User has 30 seconds to confirm, so we add 5 seconds buffer
   static const Duration _confirmTimeout = Duration(seconds: 35);
-  
+
   // Maximum file size (2GB)
   static const int _maxFileSize = 2 * 1024 * 1024 * 1024;
-  
+
   // Transfer history service
   final TransferHistoryService _historyService = TransferHistoryService();
-  
+
   // Preferences service
   final PreferencesService _preferencesService = PreferencesService();
-  
+
   /// Check if target device is healthy and ready to receive files
-  /// 
+  ///
   /// Sends a GET request to the target device's /health endpoint.
   /// Returns [HealthCheckResult] indicating if the device is healthy.
-  /// 
+  ///
   /// Parameters:
   /// - [targetIP]: IP address of the target device (format: "192.168.1.100:8080")
-  /// 
-  /// Requirements: 6.1, 6.2
+  ///
   Future<HealthCheckResult> checkHealth(String targetIP) async {
     try {
       // Ensure targetIP includes port, default to 8080 if not specified
@@ -117,34 +107,29 @@ class FileTransferService {
       } else {
         url = 'http://$targetIP:8080/health';
       }
-      
+
       print('[Health Check] ========================================');
       print('[Health Check] 开始健康检查');
       print('[Health Check] 目标URL: $url');
       print('[Health Check] 当前时间: ${DateTime.now()}');
       print('[Health Check] ========================================');
-      
+
       // Send GET request to health endpoint
-      final response = await http.get(
-        Uri.parse(url),
-      ).timeout(_requestTimeout);
-      
+      final response = await http.get(Uri.parse(url)).timeout(_requestTimeout);
+
       print('[Health Check] 收到响应，状态码: ${response.statusCode}');
       print('[Health Check] 响应内容: ${response.body}');
-      
+
       // Check if response is successful
       if (response.statusCode == 200) {
         try {
           // Parse JSON response
           final data = jsonDecode(response.body) as Map<String, dynamic>;
-          
+
           // Verify response contains expected fields
           if (data.containsKey('status') && data['status'] == 'ok') {
             print('[Health Check] 健康检查成功');
-            return HealthCheckResult(
-              isHealthy: true,
-              responseData: data,
-            );
+            return HealthCheckResult(isHealthy: true, responseData: data);
           } else {
             print('[Health Check] 响应格式不正确: $data');
             return HealthCheckResult(
@@ -163,7 +148,9 @@ class FileTransferService {
         print('[Health Check] 服务器返回错误状态码: ${response.statusCode}');
         return HealthCheckResult(
           isHealthy: false,
-          errorMessage: ErrorMessages.responseStatusCodeError(response.statusCode),
+          errorMessage: ErrorMessages.responseStatusCodeError(
+            response.statusCode,
+          ),
         );
       }
     } on SocketException catch (e) {
@@ -175,10 +162,7 @@ class FileTransferService {
       );
     } on http.ClientException catch (e) {
       print('[Health Check] HTTP客户端异常: $e');
-      return HealthCheckResult(
-        isHealthy: false,
-        errorMessage: '网络请求失败: $e',
-      );
+      return HealthCheckResult(isHealthy: false, errorMessage: '网络请求失败: $e');
     } on TimeoutException {
       print('[Health Check] 连接超时（10秒）');
       print('[Health Check] 目标地址: $targetIP');
@@ -195,46 +179,46 @@ class FileTransferService {
       );
     }
   }
-  
+
   /// Send a file to the target device
-  /// 
+  ///
   /// First calls /confirm-receive endpoint to ask for user confirmation.
   /// If user accepts, then sends the file using /transfer endpoint.
-  /// 
+  ///
   /// Parameters:
   /// Send a file to the target device
-  /// 
+  ///
   /// First calls /confirm-receive endpoint to ask for user confirmation.
   /// If user accepts, then sends the file using /transfer endpoint.
-  /// 
+  ///
   /// Parameters:
   /// - [targetIP]: IP address of the target device (format: "192.168.1.100:8080")
   /// - [file]: The file to send
   /// - [onProgress]: Optional callback for progress updates (0.0 to 1.0)
   /// - [onStatusChange]: Optional callback for status updates
   /// - [remainingFiles]: Number of remaining files in batch (optional)
-  /// 
-  /// Requirements: 6.1, 6.3, 6.4, 6.5
+  ///
   Future<TransferResult> sendFile({
     required String targetIP,
     required File file,
-    void Function(double progress, int bytesTransferred, int totalBytes)? onProgress,
+    void Function(double progress, int bytesTransferred, int totalBytes)?
+    onProgress,
     void Function(String status)? onStatusChange,
     int? remainingFiles,
   }) async {
     final fileName = file.path.split('/').last;
-    
+
     try {
       // Step 1: Check if file exists and is readable
       onStatusChange?.call('[步骤1/5] 检查文件...');
-      
+
       if (!await file.exists()) {
         return TransferResult(
           success: false,
           errorMessage: '[步骤1失败] ${ErrorMessages.fileNotFound}',
         );
       }
-      
+
       // Check file size
       final fileSize = await file.length();
       if (fileSize > _maxFileSize) {
@@ -243,7 +227,7 @@ class FileTransferService {
           errorMessage: '[步骤1失败] ${ErrorMessages.fileTooLarge}',
         );
       }
-      
+
       // Step 2: Perform health check first
       onStatusChange?.call('[步骤2/5] 正在检查目标设备...');
       final healthResult = await checkHealth(targetIP);
@@ -254,43 +238,46 @@ class FileTransferService {
           errorMessage: '[步骤2失败] 目标设备不可用\n错误: ${healthResult.errorMessage}',
         );
       }
-      
+
       // Extract target device name from health check response
       String? targetDeviceName;
-      if (healthResult.responseData != null && 
+      if (healthResult.responseData != null &&
           healthResult.responseData!.containsKey('deviceName')) {
         targetDeviceName = healthResult.responseData!['deviceName'] as String?;
       }
-      
+
       // Step 3: Get local IP address for senderIP field
       onStatusChange?.call('[步骤3/5] 准备传输信息...');
-      
+
       final senderIP = await _getLocalIPAddress();
-      
+
       // Get device name (use saved name or fallback to device model)
       String? deviceName = await _preferencesService.getDeviceName();
       if (deviceName == null || deviceName.isEmpty) {
         deviceName = await _getDeviceModel();
       }
-      
+
       // Step 4: Call /confirm-receive endpoint to ask for user confirmation
       onStatusChange?.call('[步骤4/5] 等待接收方确认...');
-      
+
       String confirmUrl;
       if (targetIP.contains(':')) {
         confirmUrl = 'http://$targetIP/confirm-receive';
       } else {
         confirmUrl = 'http://$targetIP:8080/confirm-receive';
       }
-      
-      final confirmUri = Uri.parse(confirmUrl).replace(queryParameters: {
-        'fileName': fileName,
-        'fileSize': fileSize.toString(),
-        'senderIP': senderIP,
-        if (deviceName != null) 'senderDeviceName': deviceName,
-        if (remainingFiles != null) 'remainingFiles': remainingFiles.toString(),
-      });
-      
+
+      final confirmUri = Uri.parse(confirmUrl).replace(
+        queryParameters: {
+          'fileName': fileName,
+          'fileSize': fileSize.toString(),
+          'senderIP': senderIP,
+          if (deviceName != null) 'senderDeviceName': deviceName,
+          if (remainingFiles != null)
+            'remainingFiles': remainingFiles.toString(),
+        },
+      );
+
       // Use longer timeout for confirmation request to allow user time to respond
       // User has 30 seconds to confirm, so we use 35 seconds timeout
       http.Response confirmResponse;
@@ -307,14 +294,15 @@ class FileTransferService {
           errorMessage: '[步骤4失败] 无法连接到接收方\n错误: ${e.message}',
         );
       }
-      
+
       // Check confirmation response
       if (confirmResponse.statusCode != 200) {
         try {
           final data = jsonDecode(confirmResponse.body) as Map<String, dynamic>;
           return TransferResult(
             success: false,
-            errorMessage: '[步骤4失败] ${data['message'] as String? ?? '接收方拒绝接收'}\n状态码: ${confirmResponse.statusCode}',
+            errorMessage:
+                '[步骤4失败] ${data['message'] as String? ?? '接收方拒绝接收'}\n状态码: ${confirmResponse.statusCode}',
           );
         } catch (e) {
           return TransferResult(
@@ -323,19 +311,21 @@ class FileTransferService {
           );
         }
       }
-      
+
       // Parse confirmation response
       String transferId;
       try {
-        final confirmData = jsonDecode(confirmResponse.body) as Map<String, dynamic>;
-        
+        final confirmData =
+            jsonDecode(confirmResponse.body) as Map<String, dynamic>;
+
         if (confirmData['accepted'] != true) {
           return TransferResult(
             success: false,
-            errorMessage: '[步骤4失败] ${confirmData['message'] as String? ?? '接收方拒绝接收'}',
+            errorMessage:
+                '[步骤4失败] ${confirmData['message'] as String? ?? '接收方拒绝接收'}',
           );
         }
-        
+
         transferId = confirmData['transferId'] as String;
       } catch (e) {
         return TransferResult(
@@ -343,10 +333,10 @@ class FileTransferService {
           errorMessage: '[步骤4失败] 无法解析接收方响应\n错误: $e',
         );
       }
-      
+
       // Step 5: User accepted, proceed with file transfer
       onStatusChange?.call('[步骤5/5] 正在传输文件...');
-      
+
       // Prepare URL with metadata as query parameters
       String baseUrl;
       if (targetIP.contains(':')) {
@@ -354,28 +344,30 @@ class FileTransferService {
       } else {
         baseUrl = 'http://$targetIP:8080/transfer';
       }
-      
+
       // Build URL with query parameters including transferId
-      final uri = Uri.parse(baseUrl).replace(queryParameters: {
-        'fileName': fileName,
-        'fileSize': fileSize.toString(),
-        'senderIP': senderIP,
-        if (deviceName != null) 'senderDeviceName': deviceName,
-        'transferId': transferId,
-      });
-      
+      final uri = Uri.parse(baseUrl).replace(
+        queryParameters: {
+          'fileName': fileName,
+          'fileSize': fileSize.toString(),
+          'senderIP': senderIP,
+          if (deviceName != null) 'senderDeviceName': deviceName,
+          'transferId': transferId,
+        },
+      );
+
       // Create a streaming request with raw binary body
       final request = http.StreamedRequest('POST', uri);
       request.headers['Content-Type'] = 'application/octet-stream';
       request.headers['Content-Length'] = fileSize.toString();
-      
+
       // Start the request (this returns a Future<StreamedResponse>)
       final responseFuture = request.send();
-      
+
       // Stream file data with progress tracking
       final fileStream = file.openRead();
       int bytesTransferred = 0;
-      
+
       // Stream file data chunk by chunk with progress tracking
       // Phase 1: Reading file and sending over network (0-90% progress)
       // Note: request.sink.add() blocks until data is sent, so this phase
@@ -402,45 +394,52 @@ class FileTransferService {
           errorMessage: '[步骤5失败] 文件传输过程中出错\n错误: $e',
         );
       }
-      
+
       // Phase 2: Waiting for server response (90-100% progress)
       // At this point, all data has been sent over the network
       // We're just waiting for the server to process and respond
       onStatusChange?.call('等待服务器响应...');
-      
+
       // Set progress to 90%
       if (onProgress != null) {
         onProgress(0.90, fileSize, fileSize);
       }
-      
-      print('[Progress] Phase 1 complete at 90%, waiting for server response...');
-      print('[Progress] Phase 1 complete at 90%, waiting for server response...');
-      
+
+      print(
+        '[Progress] Phase 1 complete at 90%, waiting for server response...',
+      );
+      print(
+        '[Progress] Phase 1 complete at 90%, waiting for server response...',
+      );
+
       // Wait for response with extended timeout for large files
       final responseCompleter = Completer<http.Response>();
-      
+
       final startWaitTime = DateTime.now();
       print('[Progress] Waiting for response at ${startWaitTime}...');
-      
+
       // Handle response
-      responseFuture.timeout(
-        Duration(seconds: 60 + (fileSize ~/ (1024 * 1024))),
-      ).then((streamedResponse) async {
-        final waitDuration = DateTime.now().difference(startWaitTime);
-        print('[Progress] Response received after ${waitDuration.inMilliseconds}ms!');
-        
-        // Set progress to 100%
-        if (onProgress != null) {
-          onProgress(1.0, fileSize, fileSize);
-        }
-        
-        final response = await http.Response.fromStream(streamedResponse);
-        responseCompleter.complete(response);
-      }).catchError((error) {
-        print('[Progress] Error: $error');
-        responseCompleter.completeError(error);
-      });
-      
+      responseFuture
+          .timeout(Duration(seconds: 60 + (fileSize ~/ (1024 * 1024))))
+          .then((streamedResponse) async {
+            final waitDuration = DateTime.now().difference(startWaitTime);
+            print(
+              '[Progress] Response received after ${waitDuration.inMilliseconds}ms!',
+            );
+
+            // Set progress to 100%
+            if (onProgress != null) {
+              onProgress(1.0, fileSize, fileSize);
+            }
+
+            final response = await http.Response.fromStream(streamedResponse);
+            responseCompleter.complete(response);
+          })
+          .catchError((error) {
+            print('[Progress] Error: $error');
+            responseCompleter.completeError(error);
+          });
+
       // Await the response
       http.Response response;
       try {
@@ -456,15 +455,16 @@ class FileTransferService {
           errorMessage: '[步骤5失败] 等待服务器响应时出错\n错误: $e',
         );
       }
-      
+
       // Check response
       if (response.statusCode == 200) {
-          try {
-            final data = jsonDecode(response.body) as Map<String, dynamic>;
-            
-            if (data['success'] == true) {
-              // Save to history
-              await _historyService.saveTransfer(TransferHistory(
+        try {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+          if (data['success'] == true) {
+            // Save to history
+            await _historyService.saveTransfer(
+              TransferHistory(
                 fileName: fileName,
                 fileSize: fileSize,
                 peerIP: targetIP,
@@ -472,15 +472,17 @@ class FileTransferService {
                 timestamp: DateTime.now(),
                 isReceived: false,
                 success: true,
-              ));
-              
-              return TransferResult(
-                success: true,
-                savedPath: data['savedPath'] as String?,
-              );
-            } else {
-              // Save failed transfer to history
-              await _historyService.saveTransfer(TransferHistory(
+              ),
+            );
+
+            return TransferResult(
+              success: true,
+              savedPath: data['savedPath'] as String?,
+            );
+          } else {
+            // Save failed transfer to history
+            await _historyService.saveTransfer(
+              TransferHistory(
                 fileName: fileName,
                 fileSize: fileSize,
                 peerIP: targetIP,
@@ -488,22 +490,25 @@ class FileTransferService {
                 timestamp: DateTime.now(),
                 isReceived: false,
                 success: false,
-              ));
-              
-              return TransferResult(
-                success: false,
-                errorMessage: '[步骤5失败] 服务器返回错误\n${data['message'] as String? ?? '未知错误'}',
-              );
-            }
-          } catch (e) {
+              ),
+            );
+
             return TransferResult(
               success: false,
-              errorMessage: '[步骤5失败] 无法解析服务器响应\n错误: $e',
+              errorMessage:
+                  '[步骤5失败] 服务器返回错误\n${data['message'] as String? ?? '未知错误'}',
             );
           }
-        } else if (response.statusCode == 403) {
-          // Save rejected transfer to history
-          await _historyService.saveTransfer(TransferHistory(
+        } catch (e) {
+          return TransferResult(
+            success: false,
+            errorMessage: '[步骤5失败] 无法解析服务器响应\n错误: $e',
+          );
+        }
+      } else if (response.statusCode == 403) {
+        // Save rejected transfer to history
+        await _historyService.saveTransfer(
+          TransferHistory(
             fileName: fileName,
             fileSize: fileSize,
             peerIP: targetIP,
@@ -511,23 +516,24 @@ class FileTransferService {
             timestamp: DateTime.now(),
             isReceived: false,
             success: false,
-          ));
-          
-          return TransferResult(
-            success: false,
-            errorMessage: '[步骤5失败] 接收方拒绝接收\n状态码: 403',
-          );
-        } else if (response.statusCode == 413) {
-          return TransferResult(
-            success: false,
-            errorMessage: '[步骤5失败] 文件过大或存储空间不足\n状态码: 413',
-          );
-        } else {
-          return TransferResult(
-            success: false,
-            errorMessage: '[步骤5失败] 服务器返回错误\n状态码: ${response.statusCode}',
-          );
-        }
+          ),
+        );
+
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 接收方拒绝接收\n状态码: 403',
+        );
+      } else if (response.statusCode == 413) {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 文件过大或存储空间不足\n状态码: 413',
+        );
+      } else {
+        return TransferResult(
+          success: false,
+          errorMessage: '[步骤5失败] 服务器返回错误\n状态码: ${response.statusCode}',
+        );
+      }
     } on SocketException catch (e) {
       return TransferResult(
         success: false,
@@ -552,9 +558,9 @@ class FileTransferService {
       );
     }
   }
-  
+
   /// Get the local IP address of the device
-  /// 
+  ///
   /// Priority order:
   /// 1. Private network addresses (192.168.x.x, 172.16-31.x.x, 10.x.x.x)
   /// 2. Other non-loopback IPv4 addresses
@@ -575,7 +581,7 @@ class FileTransferService {
         for (var addr in interface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
             final ip = addr.address;
-            
+
             // Check if it's a private network address
             if (_isPrivateNetwork(ip)) {
               privateAddresses.add(ip);
@@ -613,7 +619,7 @@ class FileTransferService {
   }
 
   /// Check if an IP address is in a private network range
-  /// 
+  ///
   /// Private network ranges:
   /// - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
   /// - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
@@ -646,25 +652,25 @@ class FileTransferService {
       return false;
     }
   }
-  
+
   /// Ask user for confirmation to receive a file (without actually receiving it)
-  /// 
+  ///
   /// This method is called by the /confirm-receive endpoint to show a confirmation
   /// dialog to the user BEFORE the file transfer begins.
-  /// 
+  ///
   /// Parameters:
   /// Ask user for confirmation to receive a file (without actually receiving it)
-  /// 
+  ///
   /// This method is called by the /confirm-receive endpoint to show a confirmation
   /// dialog to the user BEFORE the file transfer begins.
-  /// 
+  ///
   /// Parameters:
   /// - [context]: BuildContext for showing dialogs
   /// - [fileName]: Name of the file
   /// - [fileSize]: Size of the file in bytes
   /// - [senderIP]: IP address of the sender device
   /// - [remainingFiles]: Number of remaining files in batch (optional)
-  /// 
+  ///
   /// Returns [ConfirmationResult] indicating whether the user accepted
   Future<ConfirmationResult> askReceiveConfirmation({
     required BuildContext context,
@@ -677,32 +683,32 @@ class FileTransferService {
     try {
       // Show confirmation dialog to user
       final notificationService = NotificationService();
-      final confirmationResult = await notificationService.showReceiveConfirmation(
-        context: context,
-        senderIP: senderIP,
-        senderDeviceName: senderDeviceName,
-        fileName: fileName,
-        fileSize: fileSize,
-        remainingFiles: remainingFiles,
-      );
-      
+      final confirmationResult = await notificationService
+          .showReceiveConfirmation(
+            context: context,
+            senderIP: senderIP,
+            senderDeviceName: senderDeviceName,
+            fileName: fileName,
+            fileSize: fileSize,
+            remainingFiles: remainingFiles,
+          );
+
       // Check if user rejected or timed out
       if (!confirmationResult.accepted) {
         return ConfirmationResult(
           accepted: false,
-          errorMessage: confirmationResult.timedOut 
+          errorMessage: confirmationResult.timedOut
               ? ErrorMessages.receiveTimeout
               : ErrorMessages.userRejected,
           autoAcceptRemaining: false,
         );
       }
-      
+
       // User accepted
       return ConfirmationResult(
         accepted: true,
         autoAcceptRemaining: confirmationResult.autoAcceptRemaining,
       );
-      
     } catch (e) {
       return ConfirmationResult(
         accepted: false,
@@ -711,19 +717,19 @@ class FileTransferService {
       );
     }
   }
-  
+
   /// Receive a file directly without user confirmation (confirmation already done)
-  /// 
+  ///
   /// This method is called by the /transfer endpoint after user has already
   /// confirmed via /confirm-receive endpoint.
-  /// 
+  ///
   /// Parameters:
   /// - [fileStream]: Stream of raw file data
   /// - [fileName]: Name of the file
   /// - [fileSize]: Size of the file in bytes
   /// - [senderIP]: IP address of the sender device
   /// - [senderDeviceName]: (optional) Name of the sender device
-  /// 
+  ///
   /// Returns [DirectReceiveResult] indicating whether the file was saved successfully
   Future<DirectReceiveResult> receiveFileDirectly({
     required Stream<List<int>> fileStream,
@@ -738,33 +744,36 @@ class FileTransferService {
       if (!hasEnoughSpace) {
         // Drain the stream
         await fileStream.drain();
-        
+
         return DirectReceiveResult(
           success: false,
           errorMessage: ErrorMessages.storageInsufficient,
         );
       }
-      
+
       // Get downloads directory
       final downloadsDir = await _getDownloadsDirectory();
       if (downloadsDir == null) {
         // Drain the stream
         await fileStream.drain();
-        
+
         return DirectReceiveResult(
           success: false,
           errorMessage: ErrorMessages.downloadsDirectoryUnavailable,
         );
       }
-      
+
       // Handle file name conflicts
-      final finalFileName = await _resolveFileNameConflict(downloadsDir, fileName);
+      final finalFileName = await _resolveFileNameConflict(
+        downloadsDir,
+        fileName,
+      );
       final filePath = '${downloadsDir.path}/$finalFileName';
-      
+
       // Save file data using streaming for memory efficiency
       final file = File(filePath);
       final sink = file.openWrite();
-      
+
       try {
         // Write file data from stream
         await for (final chunk in fileStream) {
@@ -778,9 +787,77 @@ class FileTransferService {
         if (await file.exists()) {
           await file.delete();
         }
-        
+
         // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
+        await _historyService.saveTransfer(
+          TransferHistory(
+            fileName: fileName,
+            fileSize: fileSize,
+            peerIP: senderIP,
+            peerDeviceName: senderDeviceName,
+            timestamp: DateTime.now(),
+            isReceived: true,
+            success: false,
+          ),
+        );
+
+        return DirectReceiveResult(
+          success: false,
+          errorMessage: ErrorMessages.fileSaveFailed,
+        );
+      }
+
+      // Verify file was saved correctly
+      if (!await file.exists()) {
+        return DirectReceiveResult(
+          success: false,
+          errorMessage: ErrorMessages.fileSaveFailed,
+        );
+      }
+
+      final savedSize = await file.length();
+      if (savedSize != fileSize) {
+        // File size mismatch, delete the file
+        await file.delete();
+
+        // Save failed transfer to history
+        await _historyService.saveTransfer(
+          TransferHistory(
+            fileName: fileName,
+            fileSize: fileSize,
+            peerIP: senderIP,
+            peerDeviceName: senderDeviceName,
+            timestamp: DateTime.now(),
+            isReceived: true,
+            success: false,
+          ),
+        );
+
+        return DirectReceiveResult(
+          success: false,
+          errorMessage: ErrorMessages.fileSizeMismatch,
+        );
+      }
+
+      // Save to history with saved path
+      await _historyService.saveTransfer(
+        TransferHistory(
+          fileName: fileName,
+          fileSize: fileSize,
+          peerIP: senderIP,
+          peerDeviceName: senderDeviceName,
+          timestamp: DateTime.now(),
+          isReceived: true,
+          success: true,
+          savedPath: filePath,
+        ),
+      );
+
+      return DirectReceiveResult(success: true, savedPath: filePath);
+    } catch (e) {
+      // Save failed transfer to history
+      await _historyService.saveTransfer(
+        TransferHistory(
           fileName: fileName,
           fileSize: fileSize,
           peerIP: senderIP,
@@ -788,432 +865,18 @@ class FileTransferService {
           timestamp: DateTime.now(),
           isReceived: true,
           success: false,
-        ));
-        
-        return DirectReceiveResult(
-          success: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      // Verify file was saved correctly
-      if (!await file.exists()) {
-        return DirectReceiveResult(
-          success: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      final savedSize = await file.length();
-      if (savedSize != fileSize) {
-        // File size mismatch, delete the file
-        await file.delete();
-        
-        // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          peerIP: senderIP,
-          peerDeviceName: senderDeviceName,
-          timestamp: DateTime.now(),
-          isReceived: true,
-          success: false,
-        ));
-        
-        return DirectReceiveResult(
-          success: false,
-          errorMessage: ErrorMessages.fileSizeMismatch,
-        );
-      }
-      
-      // Save to history with saved path
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        peerDeviceName: senderDeviceName,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: true,
-        savedPath: filePath,
-      ));
-      
-      return DirectReceiveResult(
-        success: true,
-        savedPath: filePath,
+        ),
       );
-      
-    } catch (e) {
-      // Save failed transfer to history
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        peerDeviceName: senderDeviceName,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: false,
-      ));
-      
+
       return DirectReceiveResult(
         success: false,
         errorMessage: ErrorMessages.unexpectedError(e.toString()),
       );
     }
   }
-  
-  /// Receive a file from another device (using raw binary stream)
-  /// 
-  /// This method is called by the HTTP server when a file transfer request arrives.
-  /// It shows a confirmation dialog to the user, and if accepted, saves the file
-  /// to the downloads directory using streaming to optimize memory usage.
-  /// 
-  /// IMPORTANT: The fileStream will only be consumed AFTER user confirmation,
-  /// ensuring that file data is not read from the network until the user accepts.
-  /// 
-  /// Parameters:
-  /// - [context]: BuildContext for showing dialogs
-  /// - [fileStream]: Stream of raw file data (consumed only after confirmation)
-  /// - [fileName]: Name of the file
-  /// - [fileSize]: Size of the file in bytes
-  /// - [senderIP]: IP address of the sender device
-  /// 
-  /// Returns [ReceiveResult] indicating whether the file was accepted and saved
-  /// 
-  /// Requirements: 3.3, 3.4, 3.5, 9.1, 9.2, 9.3
-  Future<ReceiveResult> receiveFileFromStream({
-    required BuildContext context,
-    required Stream<List<int>> fileStream,
-    required String fileName,
-    required int fileSize,
-    required String senderIP,
-  }) async {
-    try {
-      // Step 1: Show confirmation dialog to user BEFORE reading file data
-      final notificationService = NotificationService();
-      final confirmationResult = await notificationService.showReceiveConfirmation(
-        context: context,
-        senderIP: senderIP,
-        fileName: fileName,
-        fileSize: fileSize,
-      );
-      
-      // Check if user rejected or timed out
-      if (!confirmationResult.accepted) {
-        // User rejected - drain the stream to complete the HTTP request properly
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: confirmationResult.timedOut 
-              ? ErrorMessages.receiveTimeout
-              : ErrorMessages.userRejected,
-        );
-      }
-      
-      // Step 2: User accepted, check storage space
-      final hasEnoughSpace = await _checkStorageSpace(fileSize);
-      if (!hasEnoughSpace) {
-        // Drain the stream
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.storageInsufficient,
-        );
-      }
-      
-      // Step 3: Get downloads directory
-      final downloadsDir = await _getDownloadsDirectory();
-      if (downloadsDir == null) {
-        // Drain the stream
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.downloadsDirectoryUnavailable,
-        );
-      }
-      
-      // Step 4: Handle file name conflicts
-      final finalFileName = await _resolveFileNameConflict(downloadsDir, fileName);
-      final filePath = '${downloadsDir.path}/$finalFileName';
-      
-      // Step 5: NOW read and save file data using streaming for memory efficiency
-      final file = File(filePath);
-      final sink = file.openWrite();
-      
-      try {
-        // Write file data from stream - this is when data is actually read from network
-        await for (final chunk in fileStream) {
-          sink.add(chunk);
-        }
-        await sink.flush();
-        await sink.close();
-      } catch (e) {
-        // Clean up on error
-        await sink.close();
-        if (await file.exists()) {
-          await file.delete();
-        }
-        
-        // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          peerIP: senderIP,
-          timestamp: DateTime.now(),
-          isReceived: true,
-          success: false,
-        ));
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      // Verify file was saved correctly
-      if (!await file.exists()) {
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      final savedSize = await file.length();
-      if (savedSize != fileSize) {
-        // File size mismatch, delete the file
-        await file.delete();
-        
-        // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          peerIP: senderIP,
-          timestamp: DateTime.now(),
-          isReceived: true,
-          success: false,
-        ));
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSizeMismatch,
-        );
-      }
-      
-      // Step 6: Return success result
-      // Save to history with saved path
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: true,
-        savedPath: filePath,
-      ));
-      
-      return ReceiveResult(
-        accepted: true,
-        savedPath: filePath,
-      );
-      
-    } catch (e) {
-      // Save failed transfer to history
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: false,
-      ));
-      
-      return ReceiveResult(
-        accepted: false,
-        errorMessage: ErrorMessages.unexpectedError(e.toString()),
-      );
-    }
-  }
-  
-  /// Receive a file from another device
-  /// 
-  /// This method is called by the HTTP server when a file transfer request arrives.
-  /// It shows a confirmation dialog to the user, and if accepted, saves the file
-  /// to the downloads directory using streaming to optimize memory usage.
-  /// 
-  /// IMPORTANT: The fileStream will only be consumed AFTER user confirmation,
-  /// ensuring that file data is not read from the network until the user accepts.
-  /// 
-  /// Parameters:
-  /// - [context]: BuildContext for showing dialogs
-  /// - [fileStream]: MimeMultipart stream of file data (consumed only after confirmation)
-  /// - [fileName]: Name of the file
-  /// - [fileSize]: Size of the file in bytes
-  /// - [senderIP]: IP address of the sender device
-  /// 
-  /// Returns [ReceiveResult] indicating whether the file was accepted and saved
-  /// 
-  /// Requirements: 3.3, 3.4, 3.5, 9.1, 9.2, 9.3
-  Future<ReceiveResult> receiveFile({
-    required BuildContext context,
-    required MimeMultipart fileStream,
-    required String fileName,
-    required int fileSize,
-    required String senderIP,
-  }) async {
-    try {
-      // Step 1: Show confirmation dialog to user BEFORE reading file data
-      final notificationService = NotificationService();
-      final confirmationResult = await notificationService.showReceiveConfirmation(
-        context: context,
-        senderIP: senderIP,
-        fileName: fileName,
-        fileSize: fileSize,
-      );
-      
-      // Check if user rejected or timed out
-      if (!confirmationResult.accepted) {
-        // User rejected - drain the stream to complete the HTTP request properly
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: confirmationResult.timedOut 
-              ? ErrorMessages.receiveTimeout
-              : ErrorMessages.userRejected,
-        );
-      }
-      
-      // Step 2: User accepted, check storage space
-      final hasEnoughSpace = await _checkStorageSpace(fileSize);
-      if (!hasEnoughSpace) {
-        // Drain the stream
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.storageInsufficient,
-        );
-      }
-      
-      // Step 3: Get downloads directory
-      final downloadsDir = await _getDownloadsDirectory();
-      if (downloadsDir == null) {
-        // Drain the stream
-        await fileStream.drain();
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.downloadsDirectoryUnavailable,
-        );
-      }
-      
-      // Step 4: Handle file name conflicts
-      final finalFileName = await _resolveFileNameConflict(downloadsDir, fileName);
-      final filePath = '${downloadsDir.path}/$finalFileName';
-      
-      // Step 5: NOW read and save file data using streaming for memory efficiency
-      final file = File(filePath);
-      final sink = file.openWrite();
-      
-      try {
-        // Write file data from stream - this is when data is actually read from network
-        await for (final chunk in fileStream) {
-          sink.add(chunk);
-        }
-        await sink.flush();
-        await sink.close();
-      } catch (e) {
-        // Clean up on error
-        await sink.close();
-        if (await file.exists()) {
-          await file.delete();
-        }
-        
-        // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          peerIP: senderIP,
-          timestamp: DateTime.now(),
-          isReceived: true,
-          success: false,
-        ));
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      // Verify file was saved correctly
-      if (!await file.exists()) {
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSaveFailed,
-        );
-      }
-      
-      final savedSize = await file.length();
-      if (savedSize != fileSize) {
-        // File size mismatch, delete the file
-        await file.delete();
-        
-        // Save failed transfer to history
-        await _historyService.saveTransfer(TransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          peerIP: senderIP,
-          timestamp: DateTime.now(),
-          isReceived: true,
-          success: false,
-        ));
-        
-        return ReceiveResult(
-          accepted: false,
-          errorMessage: ErrorMessages.fileSizeMismatch,
-        );
-      }
-      
-      // Step 6: Return success result
-      // Save to history with saved path
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: true,
-        savedPath: filePath,
-      ));
-      
-      return ReceiveResult(
-        accepted: true,
-        savedPath: filePath,
-      );
-      
-    } catch (e) {
-      // Save failed transfer to history
-      await _historyService.saveTransfer(TransferHistory(
-        fileName: fileName,
-        fileSize: fileSize,
-        peerIP: senderIP,
-        timestamp: DateTime.now(),
-        isReceived: true,
-        success: false,
-      ));
-      
-      return ReceiveResult(
-        accepted: false,
-        errorMessage: ErrorMessages.unexpectedError(e.toString()),
-      );
-    }
-  }
-  
+
   /// Get the downloads directory for the current platform
-  /// 
+  ///
   /// Returns the downloads directory, or null if it cannot be accessed
   Future<Directory?> _getDownloadsDirectory() async {
     try {
@@ -1222,14 +885,17 @@ class FileTransferService {
         final directory = await getExternalStorageDirectory();
         if (directory != null) {
           // Navigate to the Downloads folder
-          final downloadsPath = directory.path.replaceAll('Android/data/com.example.icy_easy_send/files', 'Download');
+          final downloadsPath = directory.path.replaceAll(
+            'Android/data/com.example.icy_easy_send/files',
+            'Download',
+          );
           final downloadsDir = Directory(downloadsPath);
-          
+
           // Create directory if it doesn't exist
           if (!await downloadsDir.exists()) {
             await downloadsDir.create(recursive: true);
           }
-          
+
           return downloadsDir;
         }
       } else if (Platform.isIOS) {
@@ -1239,18 +905,18 @@ class FileTransferService {
         // On desktop platforms, use the downloads directory
         return await getDownloadsDirectory();
       }
-      
+
       return null;
     } catch (e) {
       return null;
     }
   }
-  
+
   /// Check if there is enough storage space for the file
-  /// 
+  ///
   /// Parameters:
   /// - [requiredBytes]: Number of bytes needed
-  /// 
+  ///
   /// Returns true if there is enough space, false otherwise
   Future<bool> _checkStorageSpace(int requiredBytes) async {
     try {
@@ -1259,48 +925,50 @@ class FileTransferService {
       if (directory == null) {
         return false;
       }
-      
+
       // Check available space using statfs (platform-specific)
       // For simplicity, we'll use a basic check
       // In production, you might want to use a platform channel for accurate space checking
-      
+
       // Try to get filesystem stats
       // ignore: unused_local_variable
       final stat = await directory.stat();
-      
+
       // For now, we'll assume there's enough space if we can access the directory
       // A more robust implementation would use platform channels to check actual free space
       // This is a simplified version that checks if the directory is accessible
-      
+
       // Add a safety margin (100MB)
       // ignore: unused_local_variable
       const safetyMargin = 100 * 1024 * 1024;
-      
+
       // For this implementation, we'll return true if the file is under 1GB
       // In production, you'd want to check actual available space
       return requiredBytes < (1024 * 1024 * 1024);
-      
     } catch (e) {
       // If we can't check, assume there's not enough space to be safe
       return false;
     }
   }
-  
+
   /// Resolve file name conflicts by adding a number suffix
-  /// 
+  ///
   /// If a file with the same name exists, adds (1), (2), etc. to the filename
-  /// 
+  ///
   /// Parameters:
   /// - [directory]: Directory where the file will be saved
   /// - [fileName]: Original file name
-  /// 
+  ///
   /// Returns a unique file name that doesn't conflict with existing files
-  Future<String> _resolveFileNameConflict(Directory directory, String fileName) async {
+  Future<String> _resolveFileNameConflict(
+    Directory directory,
+    String fileName,
+  ) async {
     // Split filename into name and extension
     final lastDotIndex = fileName.lastIndexOf('.');
     String baseName;
     String extension;
-    
+
     if (lastDotIndex != -1 && lastDotIndex < fileName.length - 1) {
       baseName = fileName.substring(0, lastDotIndex);
       extension = fileName.substring(lastDotIndex);
@@ -1308,27 +976,27 @@ class FileTransferService {
       baseName = fileName;
       extension = '';
     }
-    
+
     // Check if file exists
     String candidateName = fileName;
     int counter = 1;
-    
+
     while (await File('${directory.path}/$candidateName').exists()) {
       candidateName = '$baseName($counter)$extension';
       counter++;
     }
-    
+
     return candidateName;
   }
-  
+
   /// Get device model name
-  /// 
+  ///
   /// Returns the device model name using device_info_plus package.
   /// Falls back to Platform.localHostname if device info is unavailable.
   Future<String?> _getDeviceModel() async {
     try {
       final deviceInfo = DeviceInfoPlugin();
-      
+
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         return '${androidInfo.manufacturer} ${androidInfo.model}';
@@ -1345,7 +1013,7 @@ class FileTransferService {
         final linuxInfo = await deviceInfo.linuxInfo;
         return linuxInfo.name;
       }
-      
+
       // Fallback to hostname
       try {
         return Platform.localHostname;

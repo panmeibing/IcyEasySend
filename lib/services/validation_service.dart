@@ -4,7 +4,7 @@ import '../utils/error_messages.dart';
 /// ValidationService provides input validation functionality
 class ValidationService {
   /// Validates IPv4 address format
-  /// 
+  ///
   /// Returns a ValidationResult indicating whether the IP is valid
   /// and an error message if invalid
   ValidationResult validateIPv4(String ip) {
@@ -16,9 +16,7 @@ class ValidationService {
     }
 
     // IPv4 format: xxx.xxx.xxx.xxx where xxx is 0-255
-    final ipv4Pattern = RegExp(
-      r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$',
-    );
+    final ipv4Pattern = RegExp(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$');
 
     final match = ipv4Pattern.firstMatch(ip);
     if (match == null) {
@@ -43,7 +41,7 @@ class ValidationService {
   }
 
   /// Validates if a file exists and is readable
-  /// 
+  ///
   /// Returns a ValidationResult indicating whether the file is valid
   /// and an error message if invalid
   ValidationResult validateFile(File file) {
@@ -74,8 +72,5 @@ class ValidationResult {
   final bool isValid;
   final String? errorMessage;
 
-  ValidationResult({
-    required this.isValid,
-    this.errorMessage,
-  });
+  ValidationResult({required this.isValid, this.errorMessage});
 }

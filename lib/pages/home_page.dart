@@ -13,7 +13,7 @@ import '../utils/error_messages.dart';
 import '../utils/network_diagnostics.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
-/// 
+///
 /// It provides:
 /// - IP address input for target device
 /// - File selection functionality
@@ -22,10 +22,7 @@ import '../utils/network_diagnostics.dart';
 class HomePage extends StatefulWidget {
   final HTTPServerManager serverManager;
 
-  const HomePage({
-    super.key,
-    required this.serverManager,
-  });
+  const HomePage({super.key, required this.serverManager});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -38,7 +35,7 @@ class _HomePageState extends State<HomePage> {
   bool isServerRunning = false;
   String? serverAddress;
   bool isSending = false;
-  
+
   // Progress tracking
   double _transferProgress = 0.0;
   int _bytesTransferred = 0;
@@ -47,7 +44,7 @@ class _HomePageState extends State<HomePage> {
   double _transferSpeed = 0.0; // bytes per second
   Duration? _estimatedTimeRemaining;
   String _transferStatus = ''; // Transfer status message
-  
+
   // Multi-file transfer tracking
   int _currentFileIndex = 0;
   int _totalFilesCount = 0;
@@ -62,33 +59,33 @@ class _HomePageState extends State<HomePage> {
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
   String? _ipErrorMessage;
-  
+
   // IP history
   List<String> _ipHistory = [];
 
   @override
   void initState() {
     super.initState();
-    
+
     // Set context for server manager to show dialogs
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         widget.serverManager.setContext(context);
       }
     });
-    
+
     _updateServerStatus();
-    
+
     // Add listener for IP address validation
     _ipController.addListener(_validateIPAddress);
-    
+
     // Load last used IP address
     _loadLastUsedIP();
-    
+
     // Load IP history
     _loadIPHistory();
   }
-  
+
   /// Validate the IP address in real-time
   void _validateIPAddress() {
     final ip = _ipController.text.trim();
@@ -102,7 +99,7 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
-  
+
   /// Load the last used IP address from preferences
   Future<void> _loadLastUsedIP() async {
     final lastIP = await _preferencesService.getLastUsedIP();
@@ -112,7 +109,7 @@ class _HomePageState extends State<HomePage> {
       _validateIPAddress();
     }
   }
-  
+
   /// Load IP address history from preferences
   Future<void> _loadIPHistory() async {
     final history = await _preferencesService.getIPHistory();
@@ -122,7 +119,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
-  
+
   /// Save the current IP address to preferences
   Future<void> _saveCurrentIP() async {
     final ip = _ipController.text.trim();
@@ -132,14 +129,14 @@ class _HomePageState extends State<HomePage> {
       await _loadIPHistory();
     }
   }
-  
+
   /// Delete an IP address from history
   Future<void> _deleteIPFromHistory(String ip) async {
     final success = await _preferencesService.removeIPFromHistory(ip);
     if (success) {
       // Reload history to update the list
       await _loadIPHistory();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -157,7 +154,7 @@ class _HomePageState extends State<HomePage> {
     _ipController.dispose();
     super.dispose();
   }
-  
+
   /// Format bytes to human-readable format
   String _formatBytes(int bytes) {
     if (bytes < 1024) {
@@ -170,7 +167,7 @@ class _HomePageState extends State<HomePage> {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     }
   }
-  
+
   /// Format speed to human-readable format
   String _formatSpeed(double bytesPerSecond) {
     if (bytesPerSecond < 1024) {
@@ -181,7 +178,7 @@ class _HomePageState extends State<HomePage> {
       return '${(bytesPerSecond / (1024 * 1024)).toStringAsFixed(1)} MB/s';
     }
   }
-  
+
   /// Format duration to human-readable format
   String _formatDuration(Duration duration) {
     if (duration.inSeconds < 60) {
@@ -220,173 +217,199 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              // Server status indicator will be added in sub-task 11.6
-              _buildServerStatusIndicator(),
-              const SizedBox(height: 24),
-              
-              // IP address input will be added in sub-task 11.2
-              const Text(
-                '目标设备 IP 地址',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _ipController,
-                      decoration: InputDecoration(
-                        hintText: '例如: 192.168.1.100',
-                        border: const OutlineInputBorder(),
-                        errorText: _ipErrorMessage,
-                        suffixIcon: _ipHistory.isNotEmpty
-                            ? PopupMenuButton<String>(
-                                icon: const Icon(Icons.history),
-                                tooltip: '历史记录',
-                                onSelected: (String ip) {
-                                  _ipController.text = ip;
-                                  _validateIPAddress();
-                                },
-                                itemBuilder: (BuildContext context) {
-                                  return _ipHistory.map((String ip) {
-                                    return PopupMenuItem<String>(
-                                      value: ip,
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.access_time, size: 16),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: Text(ip)),
-                                          const SizedBox(width: 8),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(),
-                                            onPressed: () {
-                                              Navigator.of(context).pop(); // Close the menu
-                                              _deleteIPFromHistory(ip);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList();
-                                },
-                              )
-                            : null,
-                      ),
-                      keyboardType: TextInputType.number,
-                      enabled: isServerRunning,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // 诊断按钮
-                  IconButton(
-                    onPressed: isServerRunning ? _runNetworkDiagnostics : null,
-                    icon: const Icon(Icons.network_check),
-                    tooltip: '网络诊断',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.blue.shade50,
-                      foregroundColor: Colors.blue,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // Quick IP address suggestions
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _buildQuickIPButton('192.168.1.1'),
-                  _buildQuickIPButton('192.168.0.1'),
-                  _buildQuickIPButton('10.0.0.1'),
-                ],
-              ),
-              const SizedBox(height: 24),
-              
-              // File selection will be added in sub-task 11.3
-              const Text(
-                '选择文件',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: isServerRunning ? _selectFiles : null,
-                icon: const Icon(Icons.folder_open),
-                label: const Text('选择文件'),
-              ),
-              if (selectedFiles.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '已选择 ${selectedFiles.length} 个文件',
-                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 150),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: selectedFiles.length,
-                    itemBuilder: (context, index) {
-                      final file = selectedFiles[index];
-                      final fileName = file.path.split('/').last;
-                      return ListTile(
-                        dense: true,
-                        leading: const Icon(Icons.insert_drive_file, size: 20),
-                        title: Text(
-                          fileName,
-                          style: const TextStyle(fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: isSending ? null : () {
-                            setState(() {
-                              selectedFiles.removeAt(index);
-                            });
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              
-              // Send button will be added in sub-task 11.5
-              ElevatedButton.icon(
-                onPressed: _canSend() ? _sendFiles : null,
-                icon: isSending
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(isSending ? '发送中...' : selectedFiles.length > 1 ? '发送 ${selectedFiles.length} 个文件' : '发送文件'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-              
-              // Progress indicator
-              if (isSending) ...[
+                // Server status indicator will be added in sub-task 11.6
+                _buildServerStatusIndicator(),
                 const SizedBox(height: 24),
-                _buildProgressIndicator(),
+
+                // IP address input will be added in sub-task 11.2
+                const Text(
+                  '目标设备 IP 地址',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _ipController,
+                        decoration: InputDecoration(
+                          hintText: '例如: 192.168.1.100',
+                          border: const OutlineInputBorder(),
+                          errorText: _ipErrorMessage,
+                          suffixIcon: _ipHistory.isNotEmpty
+                              ? PopupMenuButton<String>(
+                                  icon: const Icon(Icons.history),
+                                  tooltip: '历史记录',
+                                  onSelected: (String ip) {
+                                    _ipController.text = ip;
+                                    _validateIPAddress();
+                                  },
+                                  itemBuilder: (BuildContext context) {
+                                    return _ipHistory.map((String ip) {
+                                      return PopupMenuItem<String>(
+                                        value: ip,
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.access_time,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Text(ip)),
+                                            const SizedBox(width: 8),
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.delete,
+                                                size: 16,
+                                                color: Colors.red,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              constraints:
+                                                  const BoxConstraints(),
+                                              onPressed: () {
+                                                Navigator.of(
+                                                  context,
+                                                ).pop(); // Close the menu
+                                                _deleteIPFromHistory(ip);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                )
+                              : null,
+                        ),
+                        keyboardType: TextInputType.number,
+                        enabled: isServerRunning,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 诊断按钮
+                    IconButton(
+                      onPressed: isServerRunning
+                          ? _runNetworkDiagnostics
+                          : null,
+                      icon: const Icon(Icons.network_check),
+                      tooltip: '网络诊断',
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.blue.shade50,
+                        foregroundColor: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Quick IP address suggestions
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildQuickIPButton('192.168.1.1'),
+                    _buildQuickIPButton('192.168.0.1'),
+                    _buildQuickIPButton('10.0.0.1'),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // File selection will be added in sub-task 11.3
+                const Text(
+                  '选择文件',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: isServerRunning ? _selectFiles : null,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('选择文件'),
+                ),
+                if (selectedFiles.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '已选择 ${selectedFiles.length} 个文件',
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: selectedFiles.length,
+                      itemBuilder: (context, index) {
+                        final file = selectedFiles[index];
+                        final fileName = file.path.split('/').last;
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(
+                            Icons.insert_drive_file,
+                            size: 20,
+                          ),
+                          title: Text(
+                            fileName,
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: isSending
+                                ? null
+                                : () {
+                                    setState(() {
+                                      selectedFiles.removeAt(index);
+                                    });
+                                  },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+
+                // Send button will be added in sub-task 11.5
+                ElevatedButton.icon(
+                  onPressed: _canSend() ? _sendFiles : null,
+                  icon: isSending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send),
+                  label: Text(
+                    isSending
+                        ? '发送中...'
+                        : selectedFiles.length > 1
+                        ? '发送 ${selectedFiles.length} 个文件'
+                        : '发送文件',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+
+                // Progress indicator
+                if (isSending) ...[
+                  const SizedBox(height: 24),
+                  _buildProgressIndicator(),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -423,7 +446,9 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isServerRunning ? Colors.green[900] : Colors.red[900],
+                    color: isServerRunning
+                        ? Colors.green[900]
+                        : Colors.red[900],
                   ),
                 ),
               ],
@@ -434,10 +459,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Text(
                     '本机IP: ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   Text(
                     ip,
@@ -464,10 +486,7 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(width: 16),
                   Text(
                     '端口: ',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   Text(
                     port,
@@ -485,11 +504,11 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  
+
   /// Copy text to clipboard
   Future<void> _copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -500,7 +519,7 @@ class _HomePageState extends State<HomePage> {
       );
     }
   }
-  
+
   /// Build quick IP address button
   Widget _buildQuickIPButton(String ip) {
     return OutlinedButton.icon(
@@ -519,7 +538,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  
+
   /// Build progress indicator widget
   Widget _buildProgressIndicator() {
     return Card(
@@ -534,10 +553,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const Text(
                   '传输进度',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 if (_totalFilesCount > 1) ...[
                   Text(
@@ -561,10 +577,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 8),
             Text(
               '${(_transferProgress * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
             // Status message
             if (_transferStatus.isNotEmpty) ...[
@@ -576,7 +589,9 @@ class _HomePageState extends State<HomePage> {
                     height: 12,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.blue[700]!,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -597,30 +612,21 @@ class _HomePageState extends State<HomePage> {
             if (_totalBytes > 0) ...[
               Text(
                 '已传输: ${_formatBytes(_bytesTransferred)} / ${_formatBytes(_totalBytes)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             ],
             if (_transferSpeed > 0) ...[
               const SizedBox(height: 4),
               Text(
                 '传输速度: ${_formatSpeed(_transferSpeed)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             ],
             if (_estimatedTimeRemaining != null) ...[
               const SizedBox(height: 4),
               Text(
                 '剩余时间: ${_formatDuration(_estimatedTimeRemaining!)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
               ),
             ],
           ],
@@ -630,20 +636,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Select multiple files using the file picker
-  /// 
+  ///
   /// Requests storage permission before opening the file picker.
   /// If permission is denied, shows an error message.
-  /// 
-  /// Requirements: 9.4, 10.4
+  ///
   Future<void> _selectFiles() async {
     try {
       // Step 1: Check and request storage permission
       final hasPermission = await _permissionService.hasStoragePermission();
-      
+
       if (!hasPermission) {
         // Request permission
-        final permissionResult = await _permissionService.requestStoragePermission();
-        
+        final permissionResult = await _permissionService
+            .requestStoragePermission();
+
         if (!permissionResult.granted) {
           // Permission denied
           if (mounted) {
@@ -661,7 +667,7 @@ class _HomePageState extends State<HomePage> {
           return;
         }
       }
-      
+
       // Step 2: Permission granted, open file picker with multiple selection enabled
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowMultiple: true, // Enable multiple file selection
@@ -670,13 +676,13 @@ class _HomePageState extends State<HomePage> {
       if (result != null && result.files.isNotEmpty) {
         final List<File> validFiles = [];
         final List<String> invalidFileNames = [];
-        
+
         // Validate each selected file
         for (final platformFile in result.files) {
           if (platformFile.path != null) {
             final file = File(platformFile.path!);
             final validationResult = _validationService.validateFile(file);
-            
+
             if (validationResult.isValid) {
               validFiles.add(file);
             } else {
@@ -684,14 +690,14 @@ class _HomePageState extends State<HomePage> {
             }
           }
         }
-        
+
         // Update state with valid files
         if (validFiles.isNotEmpty) {
           setState(() {
             selectedFiles = validFiles;
           });
         }
-        
+
         // Show error for invalid files
         if (invalidFileNames.isNotEmpty && mounted) {
           await _notificationService.showError(
@@ -719,20 +725,18 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
-  
+
   /// Show dialog when permission is permanently denied
-  /// 
+  ///
   /// Offers the user the option to open app settings to grant permission manually
   Future<void> _showPermissionDeniedDialog(String? message) async {
     if (!mounted) return;
-    
+
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('需要权限'),
-        content: Text(
-          message ?? '需要存储权限才能选择文件。请在设置中手动开启权限。',
-        ),
+        content: Text(message ?? '需要存储权限才能选择文件。请在设置中手动开启权限。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -789,7 +793,7 @@ class _HomePageState extends State<HomePage> {
         final file = selectedFiles[i];
         final fileName = file.path.split('/').last;
         final remainingFiles = selectedFiles.length - i - 1; // 计算剩余文件数量
-        
+
         setState(() {
           _currentFileIndex = i;
           _transferProgress = 0.0;
@@ -806,24 +810,30 @@ class _HomePageState extends State<HomePage> {
           final result = await _fileTransferService.sendFile(
             targetIP: targetIP,
             file: file,
-            remainingFiles: remainingFiles, // 传递剩余文件数量
+            remainingFiles: remainingFiles,
+            // 传递剩余文件数量
             onProgress: (progress, bytesTransferred, totalBytes) {
               setState(() {
                 _transferProgress = progress;
                 _bytesTransferred = bytesTransferred;
                 _totalBytes = totalBytes;
-                
+
                 // Calculate transfer speed
                 if (_transferStartTime != null) {
-                  final elapsed = DateTime.now().difference(_transferStartTime!);
+                  final elapsed = DateTime.now().difference(
+                    _transferStartTime!,
+                  );
                   if (elapsed.inMilliseconds > 0) {
-                    _transferSpeed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-                    
+                    _transferSpeed =
+                        bytesTransferred / (elapsed.inMilliseconds / 1000.0);
+
                     // Calculate estimated time remaining
                     if (_transferSpeed > 0) {
                       final remainingBytes = totalBytes - bytesTransferred;
                       final remainingSeconds = remainingBytes / _transferSpeed;
-                      _estimatedTimeRemaining = Duration(seconds: remainingSeconds.toInt());
+                      _estimatedTimeRemaining = Duration(
+                        seconds: remainingSeconds.toInt(),
+                      );
                     }
                   }
                 }
@@ -846,7 +856,7 @@ class _HomePageState extends State<HomePage> {
           failureCount++;
           failedFiles.add(fileName);
         }
-        
+
         // Small delay between files to avoid overwhelming the receiver
         if (i < selectedFiles.length - 1) {
           await Future.delayed(const Duration(milliseconds: 500));
@@ -859,14 +869,14 @@ class _HomePageState extends State<HomePage> {
           // All files sent successfully
           await _notificationService.showSuccess(
             context,
-            selectedFiles.length == 1 
-                ? '文件发送成功！' 
+            selectedFiles.length == 1
+                ? '文件发送成功！'
                 : '所有 ${selectedFiles.length} 个文件发送成功！',
           );
-          
+
           // Save the IP address for next time
           await _saveCurrentIP();
-          
+
           // Clear the selected files after successful send
           setState(() {
             selectedFiles.clear();
@@ -894,10 +904,10 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           );
-          
+
           // Save the IP address even if some files failed
           await _saveCurrentIP();
-          
+
           // Remove successfully sent files from the list
           setState(() {
             selectedFiles.removeWhere((file) {
@@ -948,12 +958,12 @@ class _HomePageState extends State<HomePage> {
       }
     }
   }
-  
+
   /// Run network diagnostics
   Future<void> _runNetworkDiagnostics() async {
     // Show loading dialog
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -968,12 +978,12 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-    
+
     try {
       // Parse target IP and port
       String? diagTargetIP;
       int? diagTargetPort;
-      
+
       if (targetIP.isNotEmpty && _ipErrorMessage == null) {
         if (targetIP.contains(':')) {
           final parts = targetIP.split(':');
@@ -984,18 +994,18 @@ class _HomePageState extends State<HomePage> {
           diagTargetPort = 8080;
         }
       }
-      
+
       // Run diagnostics
       final report = await NetworkDiagnostics.runDiagnostics(
         targetIP: diagTargetIP,
         targetPort: diagTargetPort,
       );
-      
+
       // Close loading dialog
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Show diagnostics report
       if (mounted) {
         showDialog(
@@ -1011,10 +1021,7 @@ class _HomePageState extends State<HomePage> {
             content: SingleChildScrollView(
               child: SelectableText(
                 report.toString(),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
             ),
             actions: [
@@ -1043,13 +1050,10 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Show error
       if (mounted) {
-        await _notificationService.showError(
-          context,
-          '运行诊断时出错: $e',
-        );
+        await _notificationService.showError(context, '运行诊断时出错: $e');
       }
     }
   }
