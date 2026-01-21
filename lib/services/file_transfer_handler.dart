@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:flutter/material.dart';
 import 'file_transfer_service.dart';
+import 'notification_service.dart';
 import '../utils/error_messages.dart';
 
 /// Result of file transfer operation
@@ -38,10 +39,67 @@ class FileTransferHandler {
   // Store auto-accept state for batch transfers: senderIP -> remaining count
   final Map<String, int> _autoAcceptRemaining = {};
 
+  // Store progress callbacks for active transfers: transferId -> callback
+  final Map<String, void Function(double, int, int)> _progressCallbacks = {};
+
   FileTransferHandler({
     this.contextGetter,
     FileTransferService? fileTransferService,
   }) : _fileTransferService = fileTransferService ?? FileTransferService();
+
+  /// Register a progress callback for a transfer
+  void registerProgressCallback(
+    String transferId,
+    void Function(double progress, int bytesReceived, int totalBytes) callback,
+  ) {
+    _progressCallbacks[transferId] = callback;
+  }
+
+  /// Unregister a progress callback
+  void unregisterProgressCallback(String transferId) {
+    _progressCallbacks.remove(transferId);
+  }
+
+  /// Show progress dialog for a transfer
+  Future<void> _showProgressDialogForTransfer(
+    BuildContext context,
+    String transferId,
+    String fileName,
+    int fileSize,
+    String senderIP,
+    String? senderDeviceName, {
+    bool isAutoAccept = false,
+  }) async {
+    // Check if context is still mounted
+    if (!context.mounted) return;
+
+    // Import notification service
+    final notificationService = NotificationService();
+
+    // Show progress dialog
+    final controller = await notificationService.showReceiveProgress(
+      context: context,
+      fileName: fileName,
+      fileSize: fileSize,
+      senderIP: senderIP,
+      senderDeviceName: senderDeviceName,
+      isAutoAccept: isAutoAccept,
+    );
+
+    // Register progress callback
+    registerProgressCallback(transferId, (progress, bytesReceived, totalBytes) {
+      controller.updateProgress(progress, bytesReceived, totalBytes);
+
+      // Auto-close dialog when complete
+      if (progress >= 1.0 && context.mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (context.mounted) {
+            controller.close(context);
+          }
+        });
+      }
+    });
+  }
 
   /// Handle GET /confirm-receive requests
   ///
@@ -123,7 +181,7 @@ class FileTransferHandler {
         // Check if context is available for showing dialogs
         final ctx = contextGetter?.call();
 
-        if (ctx == null) {
+        if (ctx == null || !ctx.mounted) {
           return Response(
             500,
             body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
@@ -168,6 +226,23 @@ class FileTransferHandler {
       final transferId =
           '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
       _pendingConfirmations[transferId] = true;
+
+      // Show progress dialog if context is available (for both manual and auto-accept)
+      if (contextGetter != null) {
+        final ctx = contextGetter!();
+        if (ctx != null && ctx.mounted) {
+          // Show progress dialog in background (don't await)
+          _showProgressDialogForTransfer(
+            ctx,
+            transferId,
+            fileName,
+            fileSize,
+            senderIP,
+            senderDeviceName,
+            isAutoAccept: autoAcceptCount > 0,
+          );
+        }
+      }
 
       // Return success response with transfer ID
       return Response.ok(
@@ -276,6 +351,9 @@ class FileTransferHandler {
       // Get the request body stream (file data)
       final fileStream = request.read();
 
+      // Get progress callback if registered
+      final progressCallback = _progressCallbacks[transferId];
+
       // Call FileTransferService to save the file directly (no confirmation needed)
       final receiveResult = await _fileTransferService.receiveFileDirectly(
         fileStream: fileStream,
@@ -283,7 +361,11 @@ class FileTransferHandler {
         fileSize: fileSize,
         senderIP: senderIP,
         senderDeviceName: senderDeviceName,
+        onProgress: progressCallback,
       );
+
+      // Clean up progress callback
+      _progressCallbacks.remove(transferId);
 
       // Check if file was saved successfully
       if (!receiveResult.success) {

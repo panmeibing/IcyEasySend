@@ -292,4 +292,9 @@ class HTTPServerManager {
   int? getCurrentPort() {
     return _currentPort;
   }
+
+  /// Get the file transfer handler for registering progress callbacks
+  FileTransferHandler getFileTransferHandler() {
+    return _fileTransferHandler;
+  }
 }

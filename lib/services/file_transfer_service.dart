@@ -729,6 +729,7 @@ class FileTransferService {
   /// - [fileSize]: Size of the file in bytes
   /// - [senderIP]: IP address of the sender device
   /// - [senderDeviceName]: (optional) Name of the sender device
+  /// - [onProgress]: Optional callback for progress updates (0.0 to 1.0)
   ///
   /// Returns [DirectReceiveResult] indicating whether the file was saved successfully
   Future<DirectReceiveResult> receiveFileDirectly({
@@ -737,6 +738,7 @@ class FileTransferService {
     required int fileSize,
     required String senderIP,
     String? senderDeviceName,
+    void Function(double progress, int bytesReceived, int totalBytes)? onProgress,
   }) async {
     try {
       // Check storage space
@@ -774,10 +776,20 @@ class FileTransferService {
       final file = File(filePath);
       final sink = file.openWrite();
 
+      // Track progress
+      int bytesReceived = 0;
+
       try {
-        // Write file data from stream
+        // Write file data from stream with progress tracking
         await for (final chunk in fileStream) {
           sink.add(chunk);
+          
+          // Update progress
+          bytesReceived += chunk.length;
+          if (onProgress != null) {
+            final progress = bytesReceived / fileSize;
+            onProgress(progress, bytesReceived, fileSize);
+          }
         }
         await sink.flush();
         await sink.close();

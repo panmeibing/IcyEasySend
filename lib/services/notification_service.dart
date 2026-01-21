@@ -142,6 +142,71 @@ class NotificationService {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     }
   }
+
+  /// Show a receiving progress dialog
+  ///
+  /// Returns a function to update the progress and a function to close the dialog
+  Future<ReceiveProgressController> showReceiveProgress({
+    required BuildContext context,
+    required String fileName,
+    required int fileSize,
+    required String senderIP,
+    String? senderDeviceName,
+    bool isAutoAccept = false,
+  }) async {
+    final controller = ReceiveProgressController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return _ReceiveProgressDialog(
+          fileName: fileName,
+          fileSize: fileSize,
+          senderIP: senderIP,
+          senderDeviceName: senderDeviceName,
+          controller: controller,
+          isAutoAccept: isAutoAccept,
+        );
+      },
+    ).then((_) {
+      // Dialog closed
+      controller._dialogClosed = true;
+    });
+
+    return controller;
+  }
+}
+
+/// Controller for receive progress dialog
+class ReceiveProgressController {
+  double _progress = 0.0;
+  int _bytesReceived = 0;
+  int _totalBytes = 0;
+  bool _dialogClosed = false;
+  void Function()? _updateCallback;
+
+  /// Update the progress
+  void updateProgress(double progress, int bytesReceived, int totalBytes) {
+    if (_dialogClosed) return;
+    
+    _progress = progress;
+    _bytesReceived = bytesReceived;
+    _totalBytes = totalBytes;
+    _updateCallback?.call();
+  }
+
+  /// Close the dialog
+  void close(BuildContext context) {
+    if (!_dialogClosed) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _dialogClosed = true;
+    }
+  }
+
+  void _setUpdateCallback(void Function() callback) {
+    _updateCallback = callback;
+  }
 }
 
 /// Internal widget for the receive confirmation dialog
@@ -279,6 +344,125 @@ class _ReceiveConfirmationDialogState
           },
         ),
       ],
+    );
+  }
+}
+
+/// Internal widget for the receive progress dialog
+class _ReceiveProgressDialog extends StatefulWidget {
+  final String fileName;
+  final int fileSize;
+  final String senderIP;
+  final String? senderDeviceName;
+  final ReceiveProgressController controller;
+  final bool isAutoAccept;
+
+  const _ReceiveProgressDialog({
+    required this.fileName,
+    required this.fileSize,
+    required this.senderIP,
+    this.senderDeviceName,
+    required this.controller,
+    this.isAutoAccept = false,
+  });
+
+  @override
+  State<_ReceiveProgressDialog> createState() => _ReceiveProgressDialogState();
+}
+
+class _ReceiveProgressDialogState extends State<_ReceiveProgressDialog> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller._setUpdateCallback(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) {
+      return '$bytes B';
+    } else if (bytes < 1024 * 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    } else if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    } else {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = widget.controller._progress;
+    final bytesReceived = widget.controller._bytesReceived;
+    final totalBytes = widget.controller._totalBytes;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Text('正在接收文件'),
+          if (widget.isAutoAccept) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '自动接收',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.blue[700],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.senderDeviceName != null) ...[
+            Text(
+              '发送者: ${widget.senderDeviceName}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'IP: ${widget.senderIP}',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ] else ...[
+            Text('发送者 IP: ${widget.senderIP}'),
+          ],
+          const SizedBox(height: 8),
+          Text('文件名: ${widget.fileName}'),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.grey[300],
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+            minHeight: 8,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${(progress * 100).toStringAsFixed(1)}%',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          if (totalBytes > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              '已接收: ${_formatBytes(bytesReceived)} / ${_formatBytes(totalBytes)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
