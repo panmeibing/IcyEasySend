@@ -1,60 +1,70 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
+import 'log_util.dart';
+
 /// Network diagnostics utility to help troubleshoot connection issues
 class NetworkDiagnostics {
   /// Perform comprehensive network diagnostics
-  /// 
+  ///
   /// Returns a detailed report of network status
   static Future<DiagnosticsReport> runDiagnostics({
     String? targetIP,
     int? targetPort,
   }) async {
     final report = DiagnosticsReport();
-    
+
     // 1. Check local network interfaces
     report.localInterfaces = await _checkLocalInterfaces();
-    
+
     // 2. Check if we can reach the target (if provided)
     if (targetIP != null && targetPort != null) {
-      report.targetReachable = await _checkTargetReachability(targetIP, targetPort);
-      report.healthCheckResult = await _testHealthEndpoint(targetIP, targetPort);
+      report.targetReachable = await _checkTargetReachability(
+        targetIP,
+        targetPort,
+      );
+      report.healthCheckResult = await _testHealthEndpoint(
+        targetIP,
+        targetPort,
+      );
     }
-    
+
     // 3. Check internet connectivity
     report.hasInternetConnection = await _checkInternetConnection();
-    
+
     return report;
   }
-  
+
   /// Check local network interfaces
   static Future<List<NetworkInterfaceInfo>> _checkLocalInterfaces() async {
     final List<NetworkInterfaceInfo> interfaces = [];
-    
+
     try {
       final networkInterfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLinkLocal: false,
       );
-      
+
       for (var interface in networkInterfaces) {
         for (var addr in interface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            interfaces.add(NetworkInterfaceInfo(
-              name: interface.name,
-              address: addr.address,
-              isPrivateNetwork: _isPrivateNetwork(addr.address),
-            ));
+            interfaces.add(
+              NetworkInterfaceInfo(
+                name: interface.name,
+                address: addr.address,
+                isPrivateNetwork: _isPrivateNetwork(addr.address),
+              ),
+            );
           }
         }
       }
     } catch (e) {
-      print('[Diagnostics] 获取网络接口失败: $e');
+      LogUtil.i('[Diagnostics] 获取网络接口失败: $e');
     }
-    
+
     return interfaces;
   }
-  
+
   /// Check if target is reachable via socket connection
   static Future<bool> _checkTargetReachability(String ip, int port) async {
     try {
@@ -66,32 +76,32 @@ class NetworkDiagnostics {
       await socket.close();
       return true;
     } catch (e) {
-      print('[Diagnostics] 目标不可达: $e');
+      LogUtil.i('[Diagnostics] 目标不可达: $e');
       return false;
     }
   }
-  
+
   /// Test health endpoint
-  static Future<HealthCheckTestResult> _testHealthEndpoint(String ip, int port) async {
+  static Future<HealthCheckTestResult> _testHealthEndpoint(
+    String ip,
+    int port,
+  ) async {
     try {
       final url = 'http://$ip:$port/health';
-      final response = await http.get(
-        Uri.parse(url),
-      ).timeout(const Duration(seconds: 5));
-      
+      final response = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 5));
+
       return HealthCheckTestResult(
         success: response.statusCode == 200,
         statusCode: response.statusCode,
         responseBody: response.body,
       );
     } catch (e) {
-      return HealthCheckTestResult(
-        success: false,
-        error: e.toString(),
-      );
+      return HealthCheckTestResult(success: false, error: e.toString());
     }
   }
-  
+
   /// Check internet connectivity
   static Future<bool> _checkInternetConnection() async {
     try {
@@ -101,7 +111,7 @@ class NetworkDiagnostics {
       return false;
     }
   }
-  
+
   /// Check if an IP address is in a private network range
   static bool _isPrivateNetwork(String ip) {
     final parts = ip.split('.');
@@ -139,13 +149,13 @@ class DiagnosticsReport {
   bool? targetReachable;
   HealthCheckTestResult? healthCheckResult;
   bool hasInternetConnection = false;
-  
+
   @override
   String toString() {
     final buffer = StringBuffer();
     buffer.writeln('========== 网络诊断报告 ==========');
     buffer.writeln();
-    
+
     buffer.writeln('本地网络接口:');
     if (localInterfaces.isEmpty) {
       buffer.writeln('  ❌ 未找到有效的网络接口');
@@ -158,13 +168,13 @@ class DiagnosticsReport {
       }
     }
     buffer.writeln();
-    
+
     if (targetReachable != null) {
       buffer.writeln('目标设备可达性:');
       buffer.writeln(targetReachable! ? '  ✅ 可以连接到目标设备' : '  ❌ 无法连接到目标设备');
       buffer.writeln();
     }
-    
+
     if (healthCheckResult != null) {
       buffer.writeln('健康检查测试:');
       if (healthCheckResult!.success) {
@@ -182,13 +192,13 @@ class DiagnosticsReport {
       }
       buffer.writeln();
     }
-    
+
     buffer.writeln('互联网连接:');
     buffer.writeln(hasInternetConnection ? '  ✅ 有互联网连接' : '  ❌ 无互联网连接');
     buffer.writeln();
-    
+
     buffer.writeln('==================================');
-    
+
     return buffer.toString();
   }
 }
@@ -198,7 +208,7 @@ class NetworkInterfaceInfo {
   final String name;
   final String address;
   final bool isPrivateNetwork;
-  
+
   NetworkInterfaceInfo({
     required this.name,
     required this.address,
@@ -212,7 +222,7 @@ class HealthCheckTestResult {
   final int? statusCode;
   final String? responseBody;
   final String? error;
-  
+
   HealthCheckTestResult({
     required this.success,
     this.statusCode,

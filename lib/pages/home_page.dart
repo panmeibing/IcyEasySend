@@ -46,8 +46,13 @@ class _HomePageState extends State<HomePage> {
   String _transferStatus = ''; // Transfer status message
 
   // Multi-file transfer tracking
-  int _currentFileIndex = 0;
   int _totalFilesCount = 0;
+  int _completedFilesCount = 0;
+  
+  // Concurrent transfer tracking
+  final Map<int, double> _fileProgress = {}; // fileIndex -> progress
+  final Map<int, String> _fileStatus = {}; // fileIndex -> status
+  final Set<int> _completedFileIndices = {}; // Track completed files to avoid duplicate counting
 
   // Services
   final ValidationService _validationService = ValidationService();
@@ -557,7 +562,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 if (_totalFilesCount > 1) ...[
                   Text(
-                    '文件 ${_currentFileIndex + 1}/$_totalFilesCount',
+                    '已完成 $_completedFilesCount/$_totalFilesCount 个文件',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -764,7 +769,7 @@ class _HomePageState extends State<HomePage> {
         _ipErrorMessage == null;
   }
 
-  /// Send multiple selected files to the target device sequentially
+  /// Send multiple selected files to the target device with batch confirmation
   Future<void> _sendFiles() async {
     if (selectedFiles.isEmpty || targetIP.isEmpty) {
       return;
@@ -772,7 +777,7 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       isSending = true;
-      _currentFileIndex = 0;
+      _completedFilesCount = 0;
       _totalFilesCount = selectedFiles.length;
       _transferProgress = 0.0;
       _bytesTransferred = 0;
@@ -781,85 +786,80 @@ class _HomePageState extends State<HomePage> {
       _transferSpeed = 0.0;
       _estimatedTimeRemaining = null;
       _transferStatus = '准备发送...';
+      _fileProgress.clear();
+      _fileStatus.clear();
+      _completedFileIndices.clear(); // Clear completed files tracking
     });
 
-    int successCount = 0;
-    int failureCount = 0;
-    final List<String> failedFiles = [];
-
     try {
-      // Send files one by one
-      for (int i = 0; i < selectedFiles.length; i++) {
-        final file = selectedFiles[i];
-        final fileName = file.path.split('/').last;
-        final remainingFiles = selectedFiles.length - i - 1; // 计算剩余文件数量
+      // Use batch confirmation for better UX
+      setState(() {
+        _transferStatus = '等待接收方确认...';
+      });
 
-        setState(() {
-          _currentFileIndex = i;
-          _transferProgress = 0.0;
-          _bytesTransferred = 0;
-          _totalBytes = 0;
-          _transferStartTime = DateTime.now();
-          _transferSpeed = 0.0;
-          _estimatedTimeRemaining = null;
-          _transferStatus = '正在发送: $fileName';
-        });
+      final results = await _fileTransferService.sendFilesWithBatchConfirm(
+        targetIP: targetIP,
+        files: selectedFiles,
+        onProgress: (progress, bytesTransferred, totalBytes) {
+          setState(() {
+            _transferProgress = progress;
+            _bytesTransferred = bytesTransferred;
+            _totalBytes = totalBytes;
 
-        try {
-          // Call FileTransferService to send the file with progress callback
-          final result = await _fileTransferService.sendFile(
-            targetIP: targetIP,
-            file: file,
-            remainingFiles: remainingFiles,
-            // 传递剩余文件数量
-            onProgress: (progress, bytesTransferred, totalBytes) {
-              setState(() {
-                _transferProgress = progress;
-                _bytesTransferred = bytesTransferred;
-                _totalBytes = totalBytes;
+            // Calculate transfer speed
+            if (_transferStartTime != null) {
+              final elapsed = DateTime.now().difference(_transferStartTime!);
+              if (elapsed.inMilliseconds > 0) {
+                _transferSpeed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
 
-                // Calculate transfer speed
-                if (_transferStartTime != null) {
-                  final elapsed = DateTime.now().difference(
-                    _transferStartTime!,
+                // Calculate estimated time remaining
+                if (_transferSpeed > 0) {
+                  final remainingBytes = totalBytes - bytesTransferred;
+                  final remainingSeconds = remainingBytes / _transferSpeed;
+                  _estimatedTimeRemaining = Duration(
+                    seconds: remainingSeconds.toInt(),
                   );
-                  if (elapsed.inMilliseconds > 0) {
-                    _transferSpeed =
-                        bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-
-                    // Calculate estimated time remaining
-                    if (_transferSpeed > 0) {
-                      final remainingBytes = totalBytes - bytesTransferred;
-                      final remainingSeconds = remainingBytes / _transferSpeed;
-                      _estimatedTimeRemaining = Duration(
-                        seconds: remainingSeconds.toInt(),
-                      );
-                    }
-                  }
                 }
-              });
-            },
-            onStatusChange: (status) {
-              setState(() {
-                _transferStatus = status;
-              });
-            },
-          );
+              }
+            }
+          });
+        },
+        onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
+          setState(() {
+            _fileProgress[fileIndex] = progress;
+            final fileName = selectedFiles[fileIndex].path.split('/').last;
+            
+            if (progress < 1.0) {
+              _fileStatus[fileIndex] = '传输中 ${(progress * 100).toStringAsFixed(1)}%';
+              _transferStatus = '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
+            } else {
+              // Only increment counter if this file hasn't been counted as completed yet
+              if (!_completedFileIndices.contains(fileIndex)) {
+                _completedFileIndices.add(fileIndex);
+                _completedFilesCount++;
+              }
+              _fileStatus[fileIndex] = '✓ 发送成功';
+            }
+          });
+        },
+        onStatusChange: (status) {
+          setState(() {
+            _transferStatus = status;
+          });
+        },
+      );
 
-          if (result.success) {
-            successCount++;
-          } else {
-            failureCount++;
-            failedFiles.add(fileName);
-          }
-        } catch (e) {
+      // Count successes and failures
+      int successCount = 0;
+      int failureCount = 0;
+      final List<String> failedFiles = [];
+
+      for (final entry in results.entries) {
+        if (entry.value.success) {
+          successCount++;
+        } else {
           failureCount++;
-          failedFiles.add(fileName);
-        }
-
-        // Small delay between files to avoid overwhelming the receiver
-        if (i < selectedFiles.length - 1) {
-          await Future.delayed(const Duration(milliseconds: 500));
+          failedFiles.add(entry.key);
         }
       }
 
@@ -869,9 +869,9 @@ class _HomePageState extends State<HomePage> {
           // All files sent successfully
           await _notificationService.showSuccess(
             context,
-            selectedFiles.length == 1
+            successCount == 1
                 ? '文件发送成功！'
-                : '所有 ${selectedFiles.length} 个文件发送成功！',
+                : '所有 $successCount 个文件发送成功！',
           );
 
           // Save the IP address for next time
@@ -945,7 +945,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() {
           isSending = false;
-          _currentFileIndex = 0;
+          _completedFilesCount = 0;
           _totalFilesCount = 0;
           _transferProgress = 0.0;
           _bytesTransferred = 0;
@@ -954,6 +954,9 @@ class _HomePageState extends State<HomePage> {
           _transferSpeed = 0.0;
           _estimatedTimeRemaining = null;
           _transferStatus = '';
+          _fileProgress.clear();
+          _fileStatus.clear();
+          _completedFileIndices.clear(); // Clear completed files tracking
         });
       }
     }

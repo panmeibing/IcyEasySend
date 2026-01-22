@@ -25,12 +25,14 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _serverPort;
   bool _isLoading = true;
   bool _isEditingName = false;
+  int _concurrentTransfers = 5;
 
   @override
   void initState() {
     super.initState();
     _loadDeviceInfo();
     _loadServerInfo();
+    _loadConcurrentTransfers();
   }
 
   @override
@@ -98,6 +100,29 @@ class _SettingsPageState extends State<SettingsPage> {
           _serverPort = parts[1];
         });
       }
+    }
+  }
+
+  /// Load concurrent transfers setting
+  Future<void> _loadConcurrentTransfers() async {
+    final count = await _preferencesService.getConcurrentTransfers();
+    if (mounted) {
+      setState(() {
+        _concurrentTransfers = count;
+      });
+    }
+  }
+
+  /// Save concurrent transfers setting
+  Future<void> _saveConcurrentTransfers(int count) async {
+    final success = await _preferencesService.saveConcurrentTransfers(count);
+    if (success) {
+      setState(() {
+        _concurrentTransfers = count;
+      });
+      _showSuccessSnackBar('并发传输数量已保存');
+    } else {
+      _showErrorSnackBar('保存失败');
     }
   }
 
@@ -198,6 +223,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildDeviceInfoCard(),
                     const SizedBox(height: 16),
                     _buildServerInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildTransferSettingsCard(),
                   ],
                 ),
               ),
@@ -442,6 +469,131 @@ class _SettingsPageState extends State<SettingsPage> {
           color: Colors.blue,
         ),
       ],
+    );
+  }
+
+  /// Build transfer settings card
+  Widget _buildTransferSettingsCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.settings_suggest, color: Colors.orange[700]),
+                const SizedBox(width: 8),
+                const Text(
+                  '传输设置',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+
+            // Concurrent transfers setting
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '并发传输数量',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[800],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '同时传输的文件数量（1-10）',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Text(
+                        '$_concurrentTransfers',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: _concurrentTransfers.toDouble(),
+                        min: 1,
+                        max: 10,
+                        divisions: 9,
+                        label: '$_concurrentTransfers',
+                        onChanged: (value) {
+                          setState(() {
+                            _concurrentTransfers = value.toInt();
+                          });
+                        },
+                        onChangeEnd: (value) {
+                          _saveConcurrentTransfers(value.toInt());
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '较高的并发数可以更好地利用带宽，但可能增加设备负载',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.blue[900],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

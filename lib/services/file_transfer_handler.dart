@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:flutter/material.dart';
+import '../utils/log_util.dart';
 import 'file_transfer_service.dart';
-import 'notification_service.dart';
+import 'batch_receive_manager.dart';
 import '../utils/error_messages.dart';
 
 /// Result of file transfer operation
@@ -32,12 +34,10 @@ class FileTransferResult {
 class FileTransferHandler {
   final BuildContext? Function()? contextGetter;
   final FileTransferService _fileTransferService;
+  final BatchReceiveManager _batchReceiveManager = BatchReceiveManager();
 
   // Store pending transfer confirmations with transfer ID as key
   final Map<String, bool> _pendingConfirmations = {};
-
-  // Store auto-accept state for batch transfers: senderIP -> remaining count
-  final Map<String, int> _autoAcceptRemaining = {};
 
   // Store progress callbacks for active transfers: transferId -> callback
   final Map<String, void Function(double, int, int)> _progressCallbacks = {};
@@ -60,48 +60,169 @@ class FileTransferHandler {
     _progressCallbacks.remove(transferId);
   }
 
-  /// Show progress dialog for a transfer
-  Future<void> _showProgressDialogForTransfer(
-    BuildContext context,
-    String transferId,
-    String fileName,
-    int fileSize,
-    String senderIP,
-    String? senderDeviceName, {
-    bool isAutoAccept = false,
-  }) async {
-    // Check if context is still mounted
-    if (!context.mounted) return;
+  /// Handle POST /batch-confirm-receive requests
+  ///
+  /// This endpoint is called BEFORE file transfer to ask user for confirmation of multiple files.
+  /// Expects JSON body with:
+  /// - files: array of file objects with fileName and fileSize
+  /// - senderIP: IP address of the sender
+  /// - senderDeviceName: (optional) name of the sender device
+  ///
+  /// Returns a JSON response with:
+  /// - accepted: true if user accepted, false if rejected
+  /// - transferIds: map of fileName -> transferId (if accepted)
+  /// - message: error or success message
+  Future<Response> handleBatchConfirmReceive(Request request) async {
+    try {
+      // Parse JSON body
+      final bodyString = await request.readAsString();
+      final Map<String, dynamic> body;
 
-    // Import notification service
-    final notificationService = NotificationService();
+      try {
+        body = jsonDecode(bodyString) as Map<String, dynamic>;
+      } catch (e) {
+        return Response(
+          400,
+          body: jsonEncode({'accepted': false, 'message': '无效的JSON格式'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
 
-    // Show progress dialog
-    final controller = await notificationService.showReceiveProgress(
-      context: context,
-      fileName: fileName,
-      fileSize: fileSize,
-      senderIP: senderIP,
-      senderDeviceName: senderDeviceName,
-      isAutoAccept: isAutoAccept,
-    );
+      // Extract parameters
+      final files = body['files'] as List<dynamic>?;
+      final senderIP = body['senderIP'] as String?;
+      final senderDeviceName = body['senderDeviceName'] as String?;
 
-    // Register progress callback
-    registerProgressCallback(transferId, (progress, bytesReceived, totalBytes) {
-      controller.updateProgress(progress, bytesReceived, totalBytes);
+      // Validate required parameters
+      if (files == null || files.isEmpty) {
+        return Response(
+          400,
+          body: jsonEncode({'accepted': false, 'message': '缺少文件列表参数'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
 
-      // Auto-close dialog when complete
-      if (progress >= 1.0 && context.mounted) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (context.mounted) {
-            controller.close(context);
-          }
+      if (senderIP == null || senderIP.isEmpty) {
+        return Response(
+          400,
+          body: jsonEncode({'accepted': false, 'message': '缺少发送者 IP 参数'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // Check if context is available for showing dialogs
+      final ctx = contextGetter?.call();
+
+      if (ctx == null || !ctx.mounted) {
+        return Response(
+          500,
+          body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // Create PendingFileInfo for each file
+      final pendingFiles = <PendingFileInfo>[];
+      final transferIds = <String, String>{};
+
+      for (final fileData in files) {
+        final fileMap = fileData as Map<String, dynamic>;
+        final fileName = fileMap['fileName'] as String?;
+        final fileSize = fileMap['fileSize'] as int?;
+
+        if (fileName == null || fileSize == null) {
+          continue; // Skip invalid file entries
+        }
+
+        // Generate transfer ID
+        final transferId =
+            '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
+        transferIds[fileName] = transferId;
+
+        // Create file info
+        final fileInfo = PendingFileInfo(
+          fileName: fileName,
+          fileSize: fileSize,
+          senderIP: senderIP,
+          senderDeviceName: senderDeviceName,
+          completer: Completer<bool>(),
+          transferId: transferId,
+        );
+
+        pendingFiles.add(fileInfo);
+      }
+
+      if (pendingFiles.isEmpty) {
+        return Response(
+          400,
+          body: jsonEncode({'accepted': false, 'message': '没有有效的文件'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // Show batch dialog with all files at once
+      final accepted = await _batchReceiveManager
+          .requestBatchReceiveConfirmation(
+            context: ctx,
+            files: pendingFiles,
+            senderIP: senderIP,
+            senderDeviceName: senderDeviceName,
+          );
+
+      if (!accepted) {
+        return Response(
+          403,
+          body: jsonEncode({
+            'accepted': false,
+            'message': ErrorMessages.userRejected,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // User accepted, store confirmations and register progress callbacks
+      for (final fileInfo in pendingFiles) {
+        _pendingConfirmations[fileInfo.transferId] = true;
+
+        // Register progress callback to update batch dialog
+        registerProgressCallback(fileInfo.transferId, (
+          progress,
+          bytesReceived,
+          totalBytes,
+        ) {
+          _batchReceiveManager.updateProgress(
+            fileInfo.transferId,
+            progress,
+            bytesReceived,
+            totalBytes,
+          );
         });
       }
-    });
+
+      // Return success response with transfer IDs
+      return Response.ok(
+        jsonEncode({
+          'accepted': true,
+          'transferIds': transferIds,
+          'message': '用户已确认接收所有文件',
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e, stackTrace) {
+      LogUtil.e('Error in batch confirm receive: $e');
+      LogUtil.e('Stack trace: $stackTrace');
+      return Response(
+        500,
+        body: jsonEncode({
+          'accepted': false,
+          'message': ErrorMessages.unexpectedError(e.toString()),
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
   }
 
-  /// Handle GET /confirm-receive requests
+  /// Handle GET /confirm-receive requests (legacy single file confirmation)
   ///
   /// This endpoint is called BEFORE file transfer to ask user for confirmation.
   /// Expects query parameters:
@@ -123,7 +244,6 @@ class FileTransferHandler {
       final fileSizeStr = queryParams['fileSize'];
       final senderIP = queryParams['senderIP'];
       final senderDeviceName = queryParams['senderDeviceName'];
-      final remainingFilesStr = queryParams['remainingFiles'];
 
       // Validate required parameters
       if (fileName == null || fileName.isEmpty) {
@@ -159,103 +279,72 @@ class FileTransferHandler {
         );
       }
 
-      // Parse remaining files count
-      final remainingFiles = remainingFilesStr != null
-          ? int.tryParse(remainingFilesStr)
-          : null;
+      // Check if context is available for showing dialogs
+      final ctx = contextGetter?.call();
 
-      // Check if we have auto-accept enabled for this sender
-      final autoAcceptCount = _autoAcceptRemaining[senderIP] ?? 0;
-
-      bool autoAccept = false;
-
-      if (autoAcceptCount > 0) {
-        // Auto-accept this file
-        _autoAcceptRemaining[senderIP] = autoAcceptCount - 1;
-
-        // Clean up if no more auto-accepts
-        if (_autoAcceptRemaining[senderIP]! <= 0) {
-          _autoAcceptRemaining.remove(senderIP);
-        }
-      } else {
-        // Check if context is available for showing dialogs
-        final ctx = contextGetter?.call();
-
-        if (ctx == null || !ctx.mounted) {
-          return Response(
-            500,
-            body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
-            headers: {'Content-Type': 'application/json'},
-          );
-        }
-
-        // Ask user for confirmation
-        final confirmResult = await _fileTransferService.askReceiveConfirmation(
-          context: ctx,
-          fileName: fileName,
-          fileSize: fileSize,
-          senderIP: senderIP,
-          senderDeviceName: senderDeviceName,
-          remainingFiles: remainingFiles,
+      if (ctx == null || !ctx.mounted) {
+        return Response(
+          500,
+          body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
+          headers: {'Content-Type': 'application/json'},
         );
-
-        if (!confirmResult.accepted) {
-          // User rejected, clear any auto-accept state
-          _autoAcceptRemaining.remove(senderIP);
-
-          return Response(
-            403,
-            body: jsonEncode({
-              'accepted': false,
-              'message':
-                  confirmResult.errorMessage ?? ErrorMessages.userRejected,
-            }),
-            headers: {'Content-Type': 'application/json'},
-          );
-        }
-
-        autoAccept = confirmResult.autoAcceptRemaining;
-
-        // If user chose to auto-accept remaining files, store the count
-        if (autoAccept && remainingFiles != null && remainingFiles > 0) {
-          _autoAcceptRemaining[senderIP] = remainingFiles;
-        }
       }
 
-      // User accepted (or auto-accepted), generate a transfer ID and store confirmation
+      // Generate transfer ID
       final transferId =
           '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
+
+      // Use batch receive manager to handle confirmation
+      // This will batch multiple files from the same sender into one dialog
+      final accepted = await _batchReceiveManager.requestReceiveConfirmation(
+        context: ctx,
+        fileName: fileName,
+        fileSize: fileSize,
+        senderIP: senderIP,
+        senderDeviceName: senderDeviceName,
+        transferId: transferId,
+      );
+
+      if (!accepted) {
+        return Response(
+          403,
+          body: jsonEncode({
+            'accepted': false,
+            'message': ErrorMessages.userRejected,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // User accepted, store confirmation
       _pendingConfirmations[transferId] = true;
 
-      // Show progress dialog if context is available (for both manual and auto-accept)
-      if (contextGetter != null) {
-        final ctx = contextGetter!();
-        if (ctx != null && ctx.mounted) {
-          // Show progress dialog in background (don't await)
-          _showProgressDialogForTransfer(
-            ctx,
-            transferId,
-            fileName,
-            fileSize,
-            senderIP,
-            senderDeviceName,
-            isAutoAccept: autoAcceptCount > 0,
-          );
-        }
-      }
+      // Register progress callback to update batch dialog
+      registerProgressCallback(transferId, (
+        progress,
+        bytesReceived,
+        totalBytes,
+      ) {
+        _batchReceiveManager.updateProgress(
+          transferId,
+          progress,
+          bytesReceived,
+          totalBytes,
+        );
+      });
 
       // Return success response with transfer ID
       return Response.ok(
         jsonEncode({
           'accepted': true,
           'transferId': transferId,
-          'message': autoAcceptCount > 0 ? '自动接收文件' : '用户已确认接收文件',
+          'message': '用户已确认接收文件',
         }),
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      print('Error in confirm receive: $e');
-      print('Stack trace: $stackTrace');
+      LogUtil.e('Error in confirm receive: $e');
+      LogUtil.e('Stack trace: $stackTrace');
       return Response(
         500,
         body: jsonEncode({
@@ -365,7 +454,7 @@ class FileTransferHandler {
       );
 
       // Clean up progress callback
-      _progressCallbacks.remove(transferId);
+      unregisterProgressCallback(transferId);
 
       // Check if file was saved successfully
       if (!receiveResult.success) {
@@ -392,8 +481,8 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      print('Error in file transfer: $e');
-      print('Stack trace: $stackTrace');
+      LogUtil.e('Error in file transfer: $e');
+      LogUtil.e('Stack trace: $stackTrace');
       return Response(
         500,
         body: jsonEncode({

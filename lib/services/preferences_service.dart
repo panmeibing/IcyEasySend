@@ -10,9 +10,13 @@ class PreferencesService {
   static const String _keyLastUsedIP = 'last_used_ip';
   static const String _keyIPHistory = 'ip_history';
   static const String _keyDeviceName = 'device_name';
+  static const String _keyConcurrentTransfers = 'concurrent_transfers';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxHistorySize = 10;
+  
+  // Default concurrent transfer count
+  static const int _defaultConcurrentTransfers = 5;
 
   /// Save the last used IP address
   ///
@@ -165,6 +169,37 @@ class PreferencesService {
       return prefs.getString(_keyDeviceName);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Save concurrent transfer count
+  ///
+  /// Parameters:
+  /// - [count]: Number of concurrent transfers (1-10)
+  Future<bool> saveConcurrentTransfers(int count) async {
+    try {
+      // Validate count range
+      if (count < 1 || count > 10) {
+        return false;
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyConcurrentTransfers, count);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get concurrent transfer count
+  ///
+  /// Returns the saved concurrent transfer count, or default value (5) if none exists
+  Future<int> getConcurrentTransfers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyConcurrentTransfers) ?? _defaultConcurrentTransfers;
+    } catch (e) {
+      return _defaultConcurrentTransfers;
     }
   }
 }
