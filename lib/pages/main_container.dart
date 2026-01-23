@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'history_page.dart';
-import 'settings_page.dart';
+
 import '../services/http_server_manager.dart';
+import 'history_page.dart';
+import 'home_page.dart';
+import 'settings_page.dart';
 
 /// MainContainer provides bottom navigation to switch between pages
 class MainContainer extends StatefulWidget {

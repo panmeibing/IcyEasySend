@@ -1,8 +1,9 @@
 // log_util.dart
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kDebugMode;
 
 class MyLogPrinter extends LogPrinter {
   final String? logTag;

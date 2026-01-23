@@ -1,17 +1,20 @@
 import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
-import '../services/validation_service.dart';
+
 import '../services/file_transfer_service.dart';
-import '../services/notification_service.dart';
 import '../services/http_server_manager.dart';
+import '../services/notification_service.dart';
 import '../services/permission_service.dart';
 import '../services/preferences_service.dart';
+import '../services/validation_service.dart';
+import '../utils/constants.dart';
 import '../utils/error_messages.dart';
 import '../utils/network_diagnostics.dart';
-import '../utils/constants.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 ///
@@ -886,6 +889,9 @@ class _HomePageState extends State<HomePage> {
 
     // Combine IP and port
     final targetAddress = '$targetIP:$port';
+    LogUtil.i(
+      "_sendFiles() ready to send files, targetAddress: $targetAddress",
+    );
 
     setState(() {
       isSending = true;

@@ -1,17 +1,19 @@
-import 'dart:io';
 import 'dart:async';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:device_info_plus/device_info_plus.dart';
-import '../utils/log_util.dart';
-import '../utils/constants.dart';
-import 'notification_service.dart';
-import 'transfer_history_service.dart';
-import 'preferences_service.dart';
-import '../utils/error_messages.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
 import '../models/transfer_history.dart';
+import '../utils/constants.dart';
+import '../utils/error_messages.dart';
+import '../utils/log_util.dart';
+import 'notification_service.dart';
+import 'preferences_service.dart';
+import 'transfer_history_service.dart';
 
 /// Result of health check operation
 class HealthCheckResult {
@@ -101,6 +103,7 @@ class FileTransferService {
   /// - [targetIP]: IP address of the target device (format: "192.168.1.100:8080")
   ///
   Future<HealthCheckResult> checkHealth(String targetIP) async {
+    LogUtil.i("checkHealth() targetIP: $targetIP");
     try {
       // Ensure targetIP includes port, default to AppConstants.defaultPort if not specified
       String url;
@@ -290,6 +293,10 @@ class FileTransferService {
         if (deviceName != null) 'senderDeviceName': deviceName,
       });
 
+      LogUtil.i(
+        "sendFilesWithBatchConfirm() confirmUrl: [$confirmUrl], confirmBody: [$confirmBody]",
+      );
+
       http.Response confirmResponse;
       try {
         confirmResponse = await http
@@ -301,6 +308,7 @@ class FileTransferService {
             .timeout(_confirmTimeout);
       } on TimeoutException {
         final errorMsg = '等待接收方确认超时（35秒）\n接收方可能未响应或网络连接问题';
+        LogUtil.e(errorMsg);
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = TransferResult(
             success: false,
@@ -310,6 +318,7 @@ class FileTransferService {
         return results;
       } on SocketException catch (e) {
         final errorMsg = '无法连接到接收方\n错误: ${e.message}';
+        LogUtil.e(errorMsg);
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = TransferResult(
             success: false,
@@ -320,6 +329,9 @@ class FileTransferService {
       }
 
       // Check confirmation response
+      LogUtil.d(
+        "sendFilesWithBatchConfirm() confirmResponse statusCode: ${confirmResponse.statusCode}, Body: ${confirmResponse.body}",
+      );
       if (confirmResponse.statusCode != 200) {
         String errorMsg;
         try {
@@ -327,6 +339,7 @@ class FileTransferService {
           errorMsg = data['message'] as String? ?? '接收方拒绝接收';
         } catch (e) {
           errorMsg = '接收方拒绝接收\n状态码: ${confirmResponse.statusCode}';
+          LogUtil.e(errorMsg);
         }
 
         for (final fileData in fileList) {
@@ -360,6 +373,7 @@ class FileTransferService {
         );
       } catch (e) {
         final errorMsg = '无法解析接收方响应\n错误: $e';
+        LogUtil.e(errorMsg);
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = TransferResult(
             success: false,
@@ -470,6 +484,7 @@ class FileTransferService {
       return results;
     } catch (e) {
       // Handle unexpected errors
+      LogUtil.e("sendFilesWithBatchConfirm() ${e.toString()}");
       for (final file in files) {
         final fileName = file.path.split('/').last;
         if (!results.containsKey(fileName)) {
@@ -495,6 +510,10 @@ class FileTransferService {
   }) async {
     final fileName = file.path.split('/').last;
     final fileSize = await file.length();
+
+    LogUtil.i(
+      "_sendFileWithTransferId() transferId: [$transferId], targetIP: [$targetIP], fileSize: [$fileSize], fileName: [$fileName]",
+    );
 
     try {
       // Prepare URL with metadata as query parameters
@@ -546,6 +565,7 @@ class FileTransferService {
         // Close the sink after all data is sent
         await request.sink.close();
       } catch (e) {
+        LogUtil.e(e.toString());
         try {
           await request.sink.close();
         } catch (_) {
@@ -598,6 +618,7 @@ class FileTransferService {
             errorMessage: data['message'] as String? ?? '文件传输失败',
           );
         } catch (e) {
+          LogUtil.e(e.toString());
           return TransferResult(
             success: false,
             errorMessage: '文件传输失败\n状态码: ${streamedResponse.statusCode}',
@@ -629,6 +650,7 @@ class FileTransferService {
         return TransferResult(success: true, savedPath: savedPath);
       } catch (e) {
         // Save failed transfer to history
+        LogUtil.e(e.toString());
         await _historyService.saveTransfer(
           TransferHistory(
             fileName: fileName,
@@ -660,6 +682,7 @@ class FileTransferService {
       return TransferResult(success: false, errorMessage: '文件传输超时');
     } on SocketException catch (e) {
       // Save failed transfer to history
+      LogUtil.e(e.toString());
       await _historyService.saveTransfer(
         TransferHistory(
           fileName: fileName,
@@ -678,6 +701,7 @@ class FileTransferService {
       );
     } catch (e) {
       // Save failed transfer to history
+      LogUtil.e(e.toString());
       await _historyService.saveTransfer(
         TransferHistory(
           fileName: fileName,

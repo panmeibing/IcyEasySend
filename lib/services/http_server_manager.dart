@@ -1,13 +1,15 @@
 import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
-import 'package:flutter/material.dart';
-import '../utils/log_util.dart';
+
 import '../utils/constants.dart';
-import 'health_check_handler.dart';
-import 'file_transfer_handler.dart';
 import '../utils/error_messages.dart';
+import '../utils/log_util.dart';
+import 'file_transfer_handler.dart';
+import 'health_check_handler.dart';
 
 /// Result of server start operation
 class ServerStartResult {

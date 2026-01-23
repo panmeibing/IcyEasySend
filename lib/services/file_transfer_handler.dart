@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:shelf/shelf.dart';
+
 import 'package:flutter/material.dart';
-import '../utils/log_util.dart';
-import 'file_transfer_service.dart';
-import 'batch_receive_manager.dart';
+import 'package:shelf/shelf.dart';
+
 import '../utils/error_messages.dart';
+import '../utils/log_util.dart';
+import 'batch_receive_manager.dart';
+import 'file_transfer_service.dart';
 
 /// Result of file transfer operation
 class FileTransferResult {
@@ -73,6 +75,7 @@ class FileTransferHandler {
   /// - transferIds: map of fileName -> transferId (if accepted)
   /// - message: error or success message
   Future<Response> handleBatchConfirmReceive(Request request) async {
+    LogUtil.i("Called [/batch-confirm-receive] -> handleBatchConfirmReceive()");
     try {
       // Parse JSON body
       final bodyString = await request.readAsString();
@@ -81,6 +84,7 @@ class FileTransferHandler {
       try {
         body = jsonDecode(bodyString) as Map<String, dynamic>;
       } catch (e) {
+        LogUtil.e("Invalid JSON body, bodyString: $bodyString");
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '无效的JSON格式'}),
@@ -199,6 +203,9 @@ class FileTransferHandler {
         });
       }
 
+      LogUtil.i(
+        "Called [/batch-confirm-receive] -> handleBatchConfirmReceive() finished",
+      );
       // Return success response with transfer IDs
       return Response.ok(
         jsonEncode({
@@ -209,8 +216,10 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e('Error in batch confirm receive: $e');
-      LogUtil.e('Stack trace: $stackTrace');
+      LogUtil.e(
+        'handleBatchConfirmReceive() Error in batch confirm receive: $e',
+      );
+      LogUtil.e('handleBatchConfirmReceive() Stack trace: $stackTrace');
       return Response(
         500,
         body: jsonEncode({
@@ -237,6 +246,7 @@ class FileTransferHandler {
   /// - transferId: unique ID for this transfer (if accepted)
   /// - message: error or success message
   Future<Response> handleConfirmReceive(Request request) async {
+    LogUtil.i("Called [/confirm-receive] -> handleConfirmReceive()");
     try {
       // Extract metadata from query parameters
       final queryParams = request.url.queryParameters;
@@ -333,6 +343,8 @@ class FileTransferHandler {
         );
       });
 
+      LogUtil.i("Called [/confirm-receive] -> handleConfirmReceive() finished");
+
       // Return success response with transfer ID
       return Response.ok(
         jsonEncode({
@@ -343,8 +355,8 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e('Error in confirm receive: $e');
-      LogUtil.e('Stack trace: $stackTrace');
+      LogUtil.e('handleConfirmReceive() Error in confirm receive: $e');
+      LogUtil.e('handleConfirmReceiveI() Stack trace: $stackTrace');
       return Response(
         500,
         body: jsonEncode({
@@ -368,6 +380,7 @@ class FileTransferHandler {
   ///
   /// NOTE: User confirmation should be done via /confirm-receive endpoint first
   Future<Response> handleFileTransfer(Request request) async {
+    LogUtil.i("Called [/transfer] -> handleFileTransfer()");
     try {
       // Extract metadata from query parameters
       final queryParams = request.url.queryParameters;
@@ -476,13 +489,15 @@ class FileTransferHandler {
         savedPath: receiveResult.savedPath,
       );
 
+      LogUtil.i("Called [/transfer] -> handleFileTransfer() finished");
+
       return Response.ok(
         jsonEncode(result.toJson()),
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e('Error in file transfer: $e');
-      LogUtil.e('Stack trace: $stackTrace');
+      LogUtil.e('handleFileTransfer() Error in file transfer: $e');
+      LogUtil.e('handleFileTransfer() Stack trace: $stackTrace');
       return Response(
         500,
         body: jsonEncode({

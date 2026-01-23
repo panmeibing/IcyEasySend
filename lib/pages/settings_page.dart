@@ -1,7 +1,9 @@
+import 'dart:io';
+
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
+
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 

@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:shelf/shelf.dart';
+
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:icy_easy_send/utils/log_util.dart';
+import 'package:shelf/shelf.dart';
 
 /// Handler for health check endpoint
 ///
@@ -15,6 +17,7 @@ class HealthCheckHandler {
   /// - timestamp: current timestamp in milliseconds
   /// - deviceName: name of the device
   Future<Response> handleHealthCheck(Request request) async {
+    LogUtil.i("Called [/health] -> handleHealthCheck()");
     final deviceName = await _getDeviceName();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
 
@@ -23,6 +26,8 @@ class HealthCheckHandler {
       'timestamp': timestamp,
       'deviceName': deviceName,
     };
+
+    LogUtil.i("Called [/health] -> handleHealthCheck() finished");
 
     return Response.ok(
       jsonEncode(response),

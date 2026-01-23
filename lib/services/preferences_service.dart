@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../utils/constants.dart';
 
 /// Service for managing app preferences and settings
