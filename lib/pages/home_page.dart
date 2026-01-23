@@ -11,6 +11,7 @@ import '../services/permission_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/error_messages.dart';
 import '../utils/network_diagnostics.dart';
+import '../utils/constants.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 ///
@@ -48,11 +49,12 @@ class _HomePageState extends State<HomePage> {
   // Multi-file transfer tracking
   int _totalFilesCount = 0;
   int _completedFilesCount = 0;
-  
+
   // Concurrent transfer tracking
   final Map<int, double> _fileProgress = {}; // fileIndex -> progress
   final Map<int, String> _fileStatus = {}; // fileIndex -> status
-  final Set<int> _completedFileIndices = {}; // Track completed files to avoid duplicate counting
+  final Set<int> _completedFileIndices =
+      {}; // Track completed files to avoid duplicate counting
 
   // Services
   final ValidationService _validationService = ValidationService();
@@ -63,7 +65,9 @@ class _HomePageState extends State<HomePage> {
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
-  final TextEditingController _portController = TextEditingController(text: '8080');
+  final TextEditingController _portController = TextEditingController(
+    text: '${AppConstants.defaultPort}',
+  );
   String? _ipErrorMessage;
   String? _portErrorMessage;
 
@@ -85,13 +89,13 @@ class _HomePageState extends State<HomePage> {
 
     // Add listener for IP address validation
     _ipController.addListener(_validateIPAddress);
-    
+
     // Add listener for port validation
     _portController.addListener(_validatePort);
 
     // Load last used IP address
     _loadLastUsedIP();
-    
+
     // Load last used port
     _loadLastUsedPort();
 
@@ -112,7 +116,7 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
-  
+
   /// Validate the port in real-time
   void _validatePort() {
     final portText = _portController.text.trim();
@@ -143,7 +147,7 @@ class _HomePageState extends State<HomePage> {
       _validateIPAddress();
     }
   }
-  
+
   /// Load the last used port from preferences
   Future<void> _loadLastUsedPort() async {
     final lastPort = await _preferencesService.getLastUsedPort();
@@ -173,7 +177,7 @@ class _HomePageState extends State<HomePage> {
       await _loadIPHistory();
     }
   }
-  
+
   /// Save the current port to preferences
   Future<void> _saveCurrentPort() async {
     final portText = _portController.text.trim();
@@ -366,7 +370,7 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Port input
                 const Text(
                   '目标设备端口',
@@ -379,7 +383,7 @@ class _HomePageState extends State<HomePage> {
                       child: TextField(
                         controller: _portController,
                         decoration: InputDecoration(
-                          hintText: '默认: 8080',
+                          hintText: '默认: ${AppConstants.defaultPort}',
                           border: const OutlineInputBorder(),
                           errorText: _portErrorMessage,
                           prefixIcon: const Icon(Icons.settings_ethernet),
@@ -397,12 +401,13 @@ class _HomePageState extends State<HomePage> {
                     IconButton(
                       onPressed: isServerRunning
                           ? () {
-                              _portController.text = '8080';
+                              _portController.text =
+                                  '${AppConstants.defaultPort}';
                               _validatePort();
                             }
                           : null,
                       icon: const Icon(Icons.refresh),
-                      tooltip: '重置为默认端口 (8080)',
+                      tooltip: '重置为默认端口 (${AppConstants.defaultPort})',
                       style: IconButton.styleFrom(
                         backgroundColor: Colors.grey.shade50,
                         foregroundColor: Colors.grey.shade700,
@@ -870,18 +875,15 @@ class _HomePageState extends State<HomePage> {
     if (selectedFiles.isEmpty || targetIP.isEmpty) {
       return;
     }
-    
+
     // Validate port
     final portText = _portController.text.trim();
     final port = int.tryParse(portText);
     if (port == null || port < 1 || port > 65535) {
-      await _notificationService.showError(
-        context,
-        '端口无效\n请输入 1-65535 之间的端口号',
-      );
+      await _notificationService.showError(context, '端口无效\n请输入 1-65535 之间的端口号');
       return;
     }
-    
+
     // Combine IP and port
     final targetAddress = '$targetIP:$port';
 
@@ -920,7 +922,8 @@ class _HomePageState extends State<HomePage> {
             if (_transferStartTime != null) {
               final elapsed = DateTime.now().difference(_transferStartTime!);
               if (elapsed.inMilliseconds > 0) {
-                _transferSpeed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
+                _transferSpeed =
+                    bytesTransferred / (elapsed.inMilliseconds / 1000.0);
 
                 // Calculate estimated time remaining
                 if (_transferSpeed > 0) {
@@ -938,10 +941,12 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _fileProgress[fileIndex] = progress;
             final fileName = selectedFiles[fileIndex].path.split('/').last;
-            
+
             if (progress < 1.0) {
-              _fileStatus[fileIndex] = '传输中 ${(progress * 100).toStringAsFixed(1)}%';
-              _transferStatus = '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
+              _fileStatus[fileIndex] =
+                  '传输中 ${(progress * 100).toStringAsFixed(1)}%';
+              _transferStatus =
+                  '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
             } else {
               // Only increment counter if this file hasn't been counted as completed yet
               if (!_completedFileIndices.contains(fileIndex)) {
@@ -979,9 +984,7 @@ class _HomePageState extends State<HomePage> {
           // All files sent successfully
           await _notificationService.showSuccess(
             context,
-            successCount == 1
-                ? '文件发送成功！'
-                : '所有 $successCount 个文件发送成功！',
+            successCount == 1 ? '文件发送成功！' : '所有 $successCount 个文件发送成功！',
           );
 
           // Save the IP address and port for next time
@@ -1101,14 +1104,16 @@ class _HomePageState extends State<HomePage> {
 
       if (targetIP.isNotEmpty && _ipErrorMessage == null) {
         diagTargetIP = targetIP;
-        
+
         // Use user-specified port from port controller
         final portText = _portController.text.trim();
         diagTargetPort = int.tryParse(portText);
-        
-        // If port is invalid, use default 8080
-        if (diagTargetPort == null || diagTargetPort < 1 || diagTargetPort > 65535) {
-          diagTargetPort = 8080;
+
+        // If port is invalid, use default port
+        if (diagTargetPort == null ||
+            diagTargetPort < 1 ||
+            diagTargetPort > 65535) {
+          diagTargetPort = AppConstants.defaultPort;
         }
       }
 
@@ -1132,17 +1137,21 @@ class _HomePageState extends State<HomePage> {
         reportHeader.writeln('=' * 50);
         if (diagTargetIP != null) {
           reportHeader.writeln('IP 地址: $diagTargetIP');
-          reportHeader.writeln('端口: ${diagTargetPort ?? 8080}');
-          reportHeader.writeln('完整地址: http://$diagTargetIP:${diagTargetPort ?? 8080}');
+          reportHeader.writeln(
+            '端口: ${diagTargetPort ?? AppConstants.defaultPort}',
+          );
+          reportHeader.writeln(
+            '完整地址: http://$diagTargetIP:${diagTargetPort ?? AppConstants.defaultPort}',
+          );
         } else {
           reportHeader.writeln('未设置目标设备');
         }
         reportHeader.writeln('=' * 50);
         reportHeader.writeln();
-        
+
         // Combine header with report
         final fullReport = reportHeader.toString() + report.toString();
-        
+
         showDialog(
           context: context,
           builder: (context) => AlertDialog(

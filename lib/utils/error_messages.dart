@@ -6,7 +6,10 @@
 /// - Actionability: Provide next steps the user can take
 /// - Friendliness: Avoid technical jargon, use user-understandable language
 /// - Consistency: All messages follow the same format and style
-///
+library;
+
+import 'constants.dart';
+
 class ErrorMessages {
   // Network errors (Requirement 10.1)
   static const String networkConnectionFailed = '无法连接到目标设备，请检查网络连接和 IP 地址';
@@ -36,7 +39,9 @@ class ErrorMessages {
 
   // Server errors
   static String serverStartFailed(String reason) => '无法启动服务器：$reason';
-  static const String serverPortsOccupied = '无法启动服务器：端口 8080-8090 都已被占用';
+
+  static String get serverPortsOccupied =>
+      '无法启动服务器：端口 ${AppConstants.defaultPort}-${AppConstants.maxServerPort} 都已被占用';
   static const String serverUnknownError = '无法启动服务器：未知错误';
 
   // Transfer errors

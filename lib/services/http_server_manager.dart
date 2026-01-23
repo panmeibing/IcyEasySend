@@ -4,6 +4,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
 import 'package:flutter/material.dart';
 import '../utils/log_util.dart';
+import '../utils/constants.dart';
 import 'health_check_handler.dart';
 import 'file_transfer_handler.dart';
 import '../utils/error_messages.dart';
@@ -53,8 +54,11 @@ class HTTPServerManager {
   }
 
   /// Start the HTTP server on the specified port or find an available port
-  /// in the range 8080-8090
-  Future<ServerStartResult> startServer({int port = 8080}) async {
+  /// in the range [AppConstants.defaultPort] to [AppConstants.maxServerPort]
+  Future<ServerStartResult> startServer({int? port}) async {
+    // Use default port if not specified
+    final startPort = port ?? AppConstants.defaultPort;
+
     // If server is already running, return success
     if (isRunning()) {
       LogUtil.i('[Server] 服务器已在运行: $_serverAddress');
@@ -63,11 +67,15 @@ class HTTPServerManager {
 
     LogUtil.i('[Server] ========================================');
     LogUtil.i('[Server] 开始启动HTTP服务器');
-    LogUtil.i('[Server] 尝试端口范围: $port-8090');
+    LogUtil.i('[Server] 尝试端口范围: $startPort-${AppConstants.maxServerPort}');
     LogUtil.i('[Server] ========================================');
 
     // Try to start server on the specified port or find an available port
-    for (int tryPort = port; tryPort <= 8090; tryPort++) {
+    for (
+      int tryPort = startPort;
+      tryPort <= AppConstants.maxServerPort;
+      tryPort++
+    ) {
       try {
         LogUtil.i('[Server] 尝试绑定端口: $tryPort');
 
@@ -123,9 +131,11 @@ class HTTPServerManager {
       } on SocketException {
         // Port is in use or other socket error, try next port
         LogUtil.e('[Server] ❌ 端口 $tryPort 不可用（可能被占用）');
-        if (tryPort == 8090) {
+        if (tryPort == AppConstants.maxServerPort) {
           // Last port in range, return error
-          LogUtil.w('[Server] ❌ 所有端口(8080-8090)都不可用');
+          LogUtil.w(
+            '[Server] ❌ 所有端口(${AppConstants.defaultPort}-${AppConstants.maxServerPort})都不可用',
+          );
           return ServerStartResult(
             success: false,
             errorMessage: ErrorMessages.serverPortsOccupied,

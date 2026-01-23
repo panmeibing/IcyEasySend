@@ -9,7 +9,7 @@ class PendingFileInfo {
   final String? senderDeviceName;
   final Completer<bool> completer;
   final String transferId;
-  
+
   // Progress tracking
   double progress = 0.0;
   int bytesReceived = 0;
@@ -31,18 +31,20 @@ class PendingFileInfo {
 class BatchReceiveManager {
   // Singleton instance
   static final BatchReceiveManager _instance = BatchReceiveManager._internal();
+
   factory BatchReceiveManager() => _instance;
+
   BatchReceiveManager._internal();
 
   // Pending files grouped by sender IP
   final Map<String, List<PendingFileInfo>> _pendingFilesBySender = {};
-  
+
   // Active batch dialogs by sender IP (stores the state key for updating)
   final Map<String, GlobalKey<_BatchReceiveDialogState>> _activeDialogKeys = {};
-  
+
   // Timer to batch requests within a short time window
   final Map<String, Timer> _batchTimers = {};
-  
+
   // Batch window duration (wait this long for more files from same sender)
   static const Duration _batchWindow = Duration(milliseconds: 500);
 
@@ -170,7 +172,12 @@ class BatchReceiveManager {
   }
 
   /// Update progress for a specific transfer
-  void updateProgress(String transferId, double progress, int bytesReceived, int totalBytes) {
+  void updateProgress(
+    String transferId,
+    double progress,
+    int bytesReceived,
+    int totalBytes,
+  ) {
     // Find the file info
     for (final files in _pendingFilesBySender.values) {
       for (final fileInfo in files) {
@@ -183,7 +190,7 @@ class BatchReceiveManager {
           } else {
             fileInfo.status = '接收中... ${(progress * 100).toStringAsFixed(1)}%';
           }
-          
+
           // Notify the dialog to update if it's active
           final senderIP = fileInfo.senderIP;
           if (_activeDialogKeys.containsKey(senderIP)) {
@@ -240,7 +247,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   bool _allCompleted = false;
   Timer? _countdownTimer;
   Timer? _updateTimer;
-  
+
   // Local copy of pending files (can be updated dynamically)
   late List<PendingFileInfo> _displayedFiles;
 
@@ -257,7 +264,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     if (mounted) {
       setState(() {
         _displayedFiles.add(fileInfo);
-        
+
         // If already accepted, auto-accept the new file
         if (_isAccepted) {
           fileInfo.isAccepted = true;
@@ -293,7 +300,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
           // Check if all files are completed
           _allCompleted = _displayedFiles.every((file) => file.isCompleted);
         });
-        
+
         // Auto-close dialog when all files are completed
         if (_allCompleted) {
           timer.cancel();
@@ -310,7 +317,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
       }
     });
   }
-  
+
   /// Notify that progress has been updated (called from BatchReceiveManager)
   void _notifyProgressUpdate() {
     if (mounted && _isAccepted) {
@@ -318,7 +325,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         // Check if all files are completed
         _allCompleted = _displayedFiles.every((file) => file.isCompleted);
       });
-      
+
       // Auto-close dialog when all files are completed
       if (_allCompleted) {
         _updateTimer?.cancel();
@@ -336,7 +343,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
       _isAccepted = true;
       _countdownTimer?.cancel(); // Stop countdown
     });
-    
+
     // Accept all current files
     for (final fileInfo in _displayedFiles) {
       if (!fileInfo.completer.isCompleted) {
@@ -345,7 +352,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         fileInfo.completer.complete(true);
       }
     }
-    
+
     widget.onAccept();
   }
 
@@ -359,7 +366,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         fileInfo.completer.complete(false);
       }
     }
-    
+
     widget.onReject();
   }
 
@@ -420,7 +427,10 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
               if (widget.senderDeviceName != null) ...[
                 Text(
                   '发送者: ${widget.senderDeviceName}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -431,7 +441,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                 Text('发送者 IP: ${widget.senderIP}'),
               ],
               const SizedBox(height: 8),
-              
+
               // Total size
               Text(
                 '总大小: ${_formatFileSize(totalSize)}',
@@ -445,7 +455,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              
+
               Flexible(
                 child: Container(
                   constraints: const BoxConstraints(maxHeight: 300),
@@ -456,7 +466,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: _displayedFiles.length,
-                    separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[300]),
+                    separatorBuilder: (context, index) =>
+                        Divider(height: 1, color: Colors.grey[300]),
                     itemBuilder: (context, index) {
                       final file = _displayedFiles[index];
                       return ListTile(
@@ -464,7 +475,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                         leading: Icon(
                           Icons.insert_drive_file,
                           size: 20,
-                          color: file.isAccepted 
+                          color: file.isAccepted
                               ? (file.isCompleted ? Colors.green : Colors.blue)
                               : Colors.grey,
                         ),
@@ -478,7 +489,10 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                           children: [
                             Text(
                               _formatFileSize(file.fileSize),
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
                             ),
                             if (file.isAccepted) ...[
                               const SizedBox(height: 4),
@@ -495,7 +509,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                                 file.status,
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: file.isCompleted ? Colors.green : Colors.blue[700],
+                                  color: file.isCompleted
+                                      ? Colors.green
+                                      : Colors.blue[700],
                                 ),
                               ),
                             ],
@@ -506,15 +522,19 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Status message
               if (_isAccepted) ...[
                 if (_allCompleted) ...[
                   Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         '所有文件接收完成！',
@@ -534,16 +554,15 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.blue[700]!,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '正在接收文件...',
-                        style: TextStyle(
-                          color: Colors.blue[700],
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.blue[700], fontSize: 14),
                       ),
                     ],
                   ),
@@ -553,7 +572,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                 Text(
                   '是否接收这些文件？($_remainingSeconds 秒后自动拒绝)',
                   style: TextStyle(
-                    color: _remainingSeconds <= 10 ? Colors.red : Colors.grey[600],
+                    color: _remainingSeconds <= 10
+                        ? Colors.red
+                        : Colors.grey[600],
                     fontSize: 12,
                   ),
                 ),
@@ -564,10 +585,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         actions: _isAccepted
             ? null // Hide buttons when files are being received
             : <Widget>[
-                TextButton(
-                  onPressed: _handleReject,
-                  child: const Text('全部拒绝'),
-                ),
+                TextButton(onPressed: _handleReject, child: const Text('全部拒绝')),
                 ElevatedButton(
                   onPressed: _handleAccept,
                   child: const Text('全部接受'),

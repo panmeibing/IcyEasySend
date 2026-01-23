@@ -189,7 +189,7 @@ class ReceiveProgressController {
   /// Update the progress
   void updateProgress(double progress, int bytesReceived, int totalBytes) {
     if (_dialogClosed) return;
-    
+
     _progress = progress;
     _bytesReceived = bytesReceived;
     _totalBytes = totalBytes;

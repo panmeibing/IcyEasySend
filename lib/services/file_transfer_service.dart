@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../utils/log_util.dart';
+import '../utils/constants.dart';
 import 'notification_service.dart';
 import 'transfer_history_service.dart';
 import 'preferences_service.dart';
@@ -101,12 +102,12 @@ class FileTransferService {
   ///
   Future<HealthCheckResult> checkHealth(String targetIP) async {
     try {
-      // Ensure targetIP includes port, default to 8080 if not specified
+      // Ensure targetIP includes port, default to AppConstants.defaultPort if not specified
       String url;
       if (targetIP.contains(':')) {
         url = 'http://$targetIP/health';
       } else {
-        url = 'http://$targetIP:8080/health';
+        url = 'http://$targetIP:${AppConstants.defaultPort}/health';
       }
 
       LogUtil.i('[Health Check] ========================================');
@@ -279,7 +280,8 @@ class FileTransferService {
       if (targetIP.contains(':')) {
         confirmUrl = 'http://$targetIP/batch-confirm-receive';
       } else {
-        confirmUrl = 'http://$targetIP:8080/batch-confirm-receive';
+        confirmUrl =
+            'http://$targetIP:${AppConstants.defaultPort}/batch-confirm-receive';
       }
 
       final confirmBody = jsonEncode({
@@ -500,7 +502,7 @@ class FileTransferService {
       if (targetIP.contains(':')) {
         baseUrl = 'http://$targetIP/transfer';
       } else {
-        baseUrl = 'http://$targetIP:8080/transfer';
+        baseUrl = 'http://$targetIP:${AppConstants.defaultPort}/transfer';
       }
 
       // Build URL with query parameters including transferId
@@ -781,7 +783,8 @@ class FileTransferService {
       if (targetIP.contains(':')) {
         confirmUrl = 'http://$targetIP/confirm-receive';
       } else {
-        confirmUrl = 'http://$targetIP:8080/confirm-receive';
+        confirmUrl =
+            'http://$targetIP:${AppConstants.defaultPort}/confirm-receive';
       }
 
       final confirmUri = Uri.parse(confirmUrl).replace(
@@ -859,7 +862,7 @@ class FileTransferService {
       if (targetIP.contains(':')) {
         baseUrl = 'http://$targetIP/transfer';
       } else {
-        baseUrl = 'http://$targetIP:8080/transfer';
+        baseUrl = 'http://$targetIP:${AppConstants.defaultPort}/transfer';
       }
 
       // Build URL with query parameters including transferId

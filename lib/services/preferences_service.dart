@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/constants.dart';
 
 /// Service for managing app preferences and settings
 ///
@@ -15,12 +16,9 @@ class PreferencesService {
 
   // Maximum number of IP addresses to keep in history
   static const int _maxHistorySize = 10;
-  
+
   // Default concurrent transfer count
   static const int _defaultConcurrentTransfers = 5;
-  
-  // Default port
-  static const int _defaultPort = 8080;
 
   /// Save the last used IP address
   ///
@@ -53,7 +51,7 @@ class PreferencesService {
       return null;
     }
   }
-  
+
   /// Save the last used port
   ///
   /// Parameters:
@@ -63,7 +61,7 @@ class PreferencesService {
       if (port < 1 || port > 65535) {
         return false;
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyLastUsedPort, port);
       return true;
@@ -74,13 +72,13 @@ class PreferencesService {
 
   /// Get the last used port
   ///
-  /// Returns the last used port, or default port (8080) if none exists
+  /// Returns the last used port, or default port if none exists
   Future<int> getLastUsedPort() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt(_keyLastUsedPort) ?? _defaultPort;
+      return prefs.getInt(_keyLastUsedPort) ?? AppConstants.defaultPort;
     } catch (e) {
-      return _defaultPort;
+      return AppConstants.defaultPort;
     }
   }
 
@@ -216,7 +214,7 @@ class PreferencesService {
       if (count < 1 || count > 10) {
         return false;
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyConcurrentTransfers, count);
       return true;
@@ -231,7 +229,8 @@ class PreferencesService {
   Future<int> getConcurrentTransfers() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt(_keyConcurrentTransfers) ?? _defaultConcurrentTransfers;
+      return prefs.getInt(_keyConcurrentTransfers) ??
+          _defaultConcurrentTransfers;
     } catch (e) {
       return _defaultConcurrentTransfers;
     }
