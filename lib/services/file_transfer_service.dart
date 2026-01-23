@@ -1500,33 +1500,54 @@ class FileTransferService {
   Future<Directory?> _getDownloadsDirectory() async {
     try {
       if (Platform.isAndroid) {
-        // On Android, use the external storage downloads directory
+        // On Android, try to use the public Downloads directory
+        // First, try to get the external storage directory
         final directory = await getExternalStorageDirectory();
         if (directory != null) {
-          // Navigate to the Downloads folder
-          final downloadsPath = directory.path.replaceAll(
-            'Android/data/com.example.icy_easy_send/files',
-            'Download',
-          );
-          final downloadsDir = Directory(downloadsPath);
+          // Extract the base path (e.g., /storage/emulated/0)
+          // The app-specific path is like: /storage/emulated/0/Android/data/com.icyhope.icyEasySend/files
+          // We want to get: /storage/emulated/0/Download
+          final pathParts = directory.path.split('/');
 
-          // Create directory if it doesn't exist
-          if (!await downloadsDir.exists()) {
-            await downloadsDir.create(recursive: true);
+          // Find the index of 'Android' in the path
+          final androidIndex = pathParts.indexOf('Android');
+
+          if (androidIndex > 0) {
+            // Reconstruct the path up to the storage root
+            final basePath = pathParts.sublist(0, androidIndex).join('/');
+            final downloadsPath = '$basePath/Download';
+            LogUtil.i("_getDownloadsDirectory() downloadsPath: $downloadsPath");
+            final downloadsDir = Directory(downloadsPath);
+
+            // Create directory if it doesn't exist
+            if (!await downloadsDir.exists()) {
+              try {
+                await downloadsDir.create(recursive: true);
+              } catch (e) {
+                LogUtil.e('Failed to create downloads directory: $e');
+                // If we can't create the public Downloads directory,
+                // fall back to app-specific directory
+                return directory;
+              }
+            }
+
+            return downloadsDir;
           }
-
-          return downloadsDir;
         }
+
+        // Fallback: use app-specific directory if public Downloads is not accessible
+        return directory;
       } else if (Platform.isIOS) {
         // On iOS, use the documents directory
         return await getApplicationDocumentsDirectory();
-      } else {
+      } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
         // On desktop platforms, use the downloads directory
         return await getDownloadsDirectory();
       }
 
       return null;
     } catch (e) {
+      LogUtil.e('Error getting downloads directory: $e');
       return null;
     }
   }

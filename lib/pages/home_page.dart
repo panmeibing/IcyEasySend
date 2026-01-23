@@ -268,9 +268,7 @@ class _HomePageState extends State<HomePage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          centerTitle: true,
           title: const Text('Icy Easy Send'),
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
         body: SingleChildScrollView(
           child: Padding(
@@ -534,80 +532,117 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    return Card(
-      color: isServerRunning ? Colors.green[50] : Colors.red[50],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isServerRunning ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                isServerRunning ? '服务器运行中' : '服务器已停止',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                ),
+              ),
+            ],
+          ),
+          if (isServerRunning && ip != null && port != null) ...[
+            const SizedBox(height: 16),
             Row(
               children: [
-                Icon(
-                  isServerRunning ? Icons.check_circle : Icons.error,
-                  color: isServerRunning ? Colors.green : Colors.red,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isServerRunning ? '服务器运行中' : '服务器已停止',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isServerRunning
-                        ? Colors.green[900]
-                        : Colors.red[900],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '本机IP',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            ip,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF2E7D32),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => _copyToClipboard(ip!),
+                            borderRadius: BorderRadius.circular(4),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(
+                                Icons.copy,
+                                size: 16,
+                                color: Color(0xFF2E7D32),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '端口',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      port,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF424242),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            if (isServerRunning && ip != null && port != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    '本机IP: ',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  Text(
-                    ip,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[900],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  InkWell(
-                    onTap: () => _copyToClipboard(ip!),
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.copy,
-                        size: 16,
-                        color: Colors.green[700],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    '端口: ',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  Text(
-                    port,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -648,96 +683,112 @@ class _HomePageState extends State<HomePage> {
 
   /// Build progress indicator widget
   Widget _buildProgressIndicator() {
-    return Card(
-      color: Colors.blue[50],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  '传输进度',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                if (_totalFilesCount > 1) ...[
-                  Text(
-                    '已完成 $_completedFilesCount/$_totalFilesCount 个文件',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF2196F3),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '传输进度',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              if (_totalFilesCount > 1) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2196F3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$_completedFilesCount/$_totalFilesCount',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
+            ],
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
               value: _transferProgress,
               backgroundColor: Colors.grey[300],
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
               minHeight: 8,
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${(_transferProgress * 100).toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '${(_transferProgress * 100).toStringAsFixed(1)}%',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1976D2),
             ),
-            // Status message
-            if (_transferStatus.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue[700]!,
-                      ),
+          ),
+          // Status message
+          if (_transferStatus.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _transferStatus,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF424242),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _transferStatus,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.blue[700],
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 8),
-            if (_totalBytes > 0) ...[
-              Text(
-                '已传输: ${_formatBytes(_bytesTransferred)} / ${_formatBytes(_totalBytes)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-              ),
-            ],
-            if (_transferSpeed > 0) ...[
-              const SizedBox(height: 4),
-              Text(
-                '传输速度: ${_formatSpeed(_transferSpeed)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-              ),
-            ],
-            if (_estimatedTimeRemaining != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                '剩余时间: ${_formatDuration(_estimatedTimeRemaining!)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-              ),
-            ],
+                ),
+              ],
+            ),
           ],
-        ),
+          if (_totalBytes > 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              '已传输: ${_formatBytes(_bytesTransferred)} / ${_formatBytes(_totalBytes)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ],
+          if (_transferSpeed > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              '传输速度: ${_formatSpeed(_transferSpeed)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ],
+          if (_estimatedTimeRemaining != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              '剩余时间: ${_formatDuration(_estimatedTimeRemaining!)}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -864,13 +915,17 @@ class _HomePageState extends State<HomePage> {
 
   /// Check if the send button should be enabled
   bool _canSend() {
+    // Check if port is valid
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    final isPortValid = port != null && port >= 1 && port <= 65535;
+    
     return isServerRunning &&
         !isSending &&
         selectedFiles.isNotEmpty &&
         targetIP.isNotEmpty &&
         _ipErrorMessage == null &&
-        _portErrorMessage == null &&
-        _portController.text.trim().isNotEmpty;
+        isPortValid;
   }
 
   /// Send multiple selected files to the target device with batch confirmation

@@ -60,6 +60,12 @@ dependencies:
   # URL launcher for opening files and folders
   url_launcher: ^6.3.1
   
+  # Open files with default application
+  open_filex: ^4.5.0
+  
+  # Open file manager to show folder
+  open_file_manager: ^2.0.1
+  
   # Device information
   device_info_plus: ^11.2.0
   logger: ^2.6.2

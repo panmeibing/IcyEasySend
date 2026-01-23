@@ -31,22 +31,32 @@ class _MainContainerState extends State<MainContainer> {
           SettingsPage(serverManager: widget.serverManager),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          // Refresh history page when switching to it
-          if (index == 1) {
-            _historyPageKey.currentState?.refreshHistory();
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: '历史记录'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: Colors.grey.shade200,
+              width: 1,
+            ),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+            // Refresh history page when switching to it
+            if (index == 1) {
+              _historyPageKey.currentState?.refreshHistory();
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
+            BottomNavigationBarItem(icon: Icon(Icons.history), label: '历史记录'),
+            BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
+          ],
+        ),
       ),
     );
   }

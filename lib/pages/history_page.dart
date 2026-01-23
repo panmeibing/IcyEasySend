@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_file_manager/open_file_manager.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/transfer_history.dart';
@@ -118,7 +120,7 @@ class HistoryPageState extends State<HistoryPage> {
   /// Build filter chips
   Widget _buildFilterChips() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           _buildFilterChip(
@@ -154,40 +156,55 @@ class HistoryPageState extends State<HistoryPage> {
   }) {
     final isSelected = _currentFilter == filter;
     return Expanded(
-      child: FilterChip(
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 14),
-              const SizedBox(width: 4),
-            ],
-            Text(label),
-            const SizedBox(width: 4),
-            Text(
-              '($count)',
-              style: TextStyle(
-                fontSize: 11,
-                color: isSelected ? Colors.white70 : Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-        selected: isSelected,
-        onSelected: (selected) {
-          if (selected) {
-            setState(() {
-              _currentFilter = filter;
-            });
-          }
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _currentFilter = filter;
+          });
         },
-        showCheckmark: false,
-        selectedColor: Colors.blue,
-        labelStyle: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
-          fontSize: 12,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF2196F3) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF2196F3) : Colors.grey.shade300,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 14,
+                  color: isSelected ? Colors.white : const Color(0xFF616161),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF212121),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '($count)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isSelected ? Colors.white70 : Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
     );
   }
@@ -195,8 +212,14 @@ class HistoryPageState extends State<HistoryPage> {
   Widget _buildAppBar() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.inversePrimary,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFFE0E0E0),
+            width: 1,
+          ),
+        ),
       ),
       child: SafeArea(
         bottom: false,
@@ -206,7 +229,11 @@ class HistoryPageState extends State<HistoryPage> {
             const Center(
               child: Text(
                 '传输历史',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF212121),
+                ),
               ),
             ),
             if (_history.isNotEmpty)
@@ -216,6 +243,7 @@ class HistoryPageState extends State<HistoryPage> {
                   icon: const Icon(Icons.delete_outline),
                   onPressed: _clearHistory,
                   tooltip: '清除历史',
+                  color: const Color(0xFF757575),
                 ),
               ),
           ],
@@ -242,8 +270,13 @@ class HistoryPageState extends State<HistoryPage> {
 
   Widget _buildStatistics() {
     final stats = _statistics!;
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
       child: Column(
         children: [
           InkWell(
@@ -252,20 +285,32 @@ class HistoryPageState extends State<HistoryPage> {
                 _isStatisticsExpanded = !_isStatisticsExpanded;
               });
             },
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.bar_chart, size: 20, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(
+                          Icons.bar_chart,
+                          size: 18,
+                          color: Color(0xFF2196F3),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
                       const Text(
                         '统计信息',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -290,9 +335,12 @@ class HistoryPageState extends State<HistoryPage> {
             ),
           ),
           if (_isStatisticsExpanded) ...[
-            const Divider(height: 1),
+            Container(
+              height: 1,
+              color: Colors.grey.shade200,
+            ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   Row(
@@ -301,47 +349,47 @@ class HistoryPageState extends State<HistoryPage> {
                         child: _buildStatItem(
                           '总传输',
                           stats.totalTransfers.toString(),
-                          Colors.blue,
+                          const Color(0xFF2196F3),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
                           '成功',
                           stats.successfulTransfers.toString(),
-                          Colors.green,
+                          const Color(0xFF4CAF50),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
                           '失败',
                           stats.failedTransfers.toString(),
-                          Colors.red,
+                          const Color(0xFFE53935),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: _buildStatItem(
                           '已发送',
                           stats.sentFiles.toString(),
-                          Colors.orange,
+                          const Color(0xFFFF9800),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
                           '已接收',
                           stats.receivedFiles.toString(),
-                          Colors.purple,
+                          const Color(0xFF9C27B0),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
                           '总大小',
                           _formatBytes(stats.totalBytes),
-                          Colors.teal,
+                          const Color(0xFF009688),
                         ),
                       ),
                     ],
@@ -361,16 +409,20 @@ class HistoryPageState extends State<HistoryPage> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
             color: color,
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -407,36 +459,54 @@ class HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHistoryItem(TransferHistory item) {
     final icon = item.isReceived ? Icons.download : Icons.upload;
-    final iconColor = item.isReceived ? Colors.green : Colors.blue;
+    final iconColor = item.isReceived ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
     final statusIcon = item.success ? Icons.check_circle : Icons.error;
-    final statusColor = item.success ? Colors.green : Colors.red;
+    final statusColor = item.success ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
 
     // Display device name if available, otherwise show IP
     final peerDisplay = item.peerDeviceName ?? item.peerIP;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: iconColor.withValues(alpha: 0.1),
-          child: Icon(icon, color: iconColor),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: iconColor, size: 22),
         ),
         title: Text(
           item.fileName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        subtitle: Text(
-          '${item.isReceived ? '来自' : '发送至'}: $peerDisplay',
-          style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            '${item.isReceived ? '来自' : '发送至'}: $peerDisplay',
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(statusIcon, color: statusColor, size: 20),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
+              icon: Icon(Icons.more_vert, color: Colors.grey[600]),
               tooltip: '更多操作',
               onSelected: (value) => _handleMenuAction(value, item),
               itemBuilder: (context) => [
@@ -526,11 +596,20 @@ class HistoryPageState extends State<HistoryPage> {
     }
 
     try {
-      final uri = Uri.file(item.savedPath!);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Use open_filex for Android and iOS
+        final result = await OpenFilex.open(item.savedPath!);
+        if (result.type != ResultType.done) {
+          _showErrorSnackBar('无法打开文件: ${result.message}');
+        }
       } else {
-        _showErrorSnackBar('无法打开文件');
+        // Use url_launcher for desktop platforms (macOS, Windows, Linux)
+        final uri = Uri.file(item.savedPath!);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          _showErrorSnackBar('无法打开文件');
+        }
       }
     } catch (e) {
       _showErrorSnackBar('打开文件失败: $e');
@@ -553,11 +632,64 @@ class HistoryPageState extends State<HistoryPage> {
     }
 
     try {
-      final uri = Uri.directory(directory.path);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
+      if (Platform.isAndroid) {
+        // On Android, use open_file_manager to open the folder
+        final path = directory.path;
+        
+        // Try to extract the relative path from common Android storage paths
+        String? relativePath;
+        
+        // Common Android storage paths
+        final storagePrefixes = [
+          '/storage/emulated/0/',
+          '/sdcard/',
+          '/mnt/sdcard/',
+        ];
+        
+        for (final prefix in storagePrefixes) {
+          if (path.startsWith(prefix)) {
+            relativePath = path.substring(prefix.length);
+            break;
+          }
+        }
+        
+        if (relativePath != null && relativePath.isNotEmpty) {
+          // Open the specific folder
+          await openFileManager(
+            androidConfig: AndroidConfig(
+              folderType: AndroidFolderType.other,
+              folderPath: relativePath,
+            ),
+          );
+        } else {
+          // Fallback: try to determine folder type based on path
+          if (path.toLowerCase().contains('download')) {
+            await openFileManager(
+              androidConfig: AndroidConfig(
+                folderType: AndroidFolderType.download,
+              ),
+            );
+          } else {
+            // Open recent folder as last resort
+            await openFileManager(
+              androidConfig: AndroidConfig(
+                folderType: AndroidFolderType.recent,
+              ),
+            );
+            _showErrorSnackBar('已打开最近文件，请手动查找');
+          }
+        }
+      } else if (Platform.isIOS) {
+        // iOS doesn't allow opening folders directly
+        _showErrorSnackBar('iOS 不支持直接打开文件夹');
       } else {
-        _showErrorSnackBar('无法打开文件夹');
+        // Use url_launcher for desktop platforms (macOS, Windows, Linux)
+        final uri = Uri.directory(directory.path);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        } else {
+          _showErrorSnackBar('无法打开文件夹');
+        }
       }
     } catch (e) {
       _showErrorSnackBar('打开文件夹失败: $e');

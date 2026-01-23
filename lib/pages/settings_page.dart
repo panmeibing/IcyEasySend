@@ -210,9 +210,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: const Text('设置'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -237,23 +235,33 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Build device information card
   Widget _buildDeviceInfoCard() {
     return Card(
-      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.phone_android, color: Colors.blue[700]),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.phone_android,
+                    color: Color(0xFF2196F3),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 const Text(
                   '设备信息',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            const SizedBox(height: 20),
 
             // Device Name
             Row(
@@ -271,16 +279,15 @@ class _SettingsPageState extends State<SettingsPage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       if (_isEditingName)
                         TextField(
                           controller: _deviceNameController,
                           decoration: const InputDecoration(
                             hintText: '输入设备名',
-                            border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 8,
+                              vertical: 12,
                             ),
                           ),
                           autofocus: true,
@@ -291,6 +298,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: Color(0xFF212121),
                           ),
                         ),
                     ],
@@ -299,12 +307,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(width: 8),
                 if (_isEditingName) ...[
                   IconButton(
-                    icon: const Icon(Icons.check, color: Colors.green),
+                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
                     onPressed: _saveDeviceName,
                     tooltip: '保存',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
                     onPressed: () {
                       setState(() {
                         _deviceNameController.text = _deviceName;
@@ -315,7 +323,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ] else ...[
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
+                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
                     onPressed: () {
                       setState(() {
                         _isEditingName = true;
@@ -324,14 +332,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     tooltip: '编辑',
                   ),
                   IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: Icon(Icons.refresh, size: 20, color: Colors.grey[600]),
                     onPressed: _resetDeviceName,
                     tooltip: '重置为设备型号',
                   ),
                 ],
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Device Model
             Column(
@@ -345,10 +353,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
                   _deviceModel,
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF616161),
+                  ),
                 ),
               ],
             ),
@@ -362,70 +373,90 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildServerInfoCard() {
     final isServerRunning = widget.serverManager.isRunning();
 
-    return Card(
-      elevation: 2,
-      color: isServerRunning ? Colors.green[50] : Colors.red[50],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isServerRunning ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isServerRunning
+                      ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
+                      : const Color(0xFFE53935).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
                   isServerRunning ? Icons.wifi : Icons.wifi_off,
-                  color: isServerRunning ? Colors.green[700] : Colors.red[700],
+                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                  size: 20,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '服务器信息',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isServerRunning
-                        ? Colors.green[900]
-                        : Colors.red[900],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            if (isServerRunning &&
-                _serverIP != null &&
-                _serverPort != null) ...[
-              // Server IP
-              _buildInfoRow(
-                label: '服务器 IP',
-                value: _serverIP!,
-                icon: Icons.computer,
-                onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
               ),
-              const SizedBox(height: 16),
-
-              // Server Port
-              _buildInfoRow(
-                label: '端口',
-                value: _serverPort!,
-                icon: Icons.settings_ethernet,
-                onCopy: () => _copyToClipboard(_serverPort!, '端口'),
-              ),
-            ] else ...[
-              Center(
-                child: Column(
-                  children: [
-                    Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
-                    const SizedBox(height: 8),
-                    Text(
-                      '服务器未运行',
-                      style: TextStyle(fontSize: 16, color: Colors.red[700]),
-                    ),
-                  ],
+              const SizedBox(width: 12),
+              Text(
+                '服务器信息',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+
+          if (isServerRunning &&
+              _serverIP != null &&
+              _serverPort != null) ...[
+            // Server IP
+            _buildInfoRow(
+              label: '服务器 IP',
+              value: _serverIP!,
+              icon: Icons.computer,
+              onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
+            ),
+            const SizedBox(height: 16),
+
+            // Server Port
+            _buildInfoRow(
+              label: '端口',
+              value: _serverPort!,
+              icon: Icons.settings_ethernet,
+              onCopy: () => _copyToClipboard(_serverPort!, '端口'),
+            ),
+          ] else ...[
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: const Color(0xFFE53935).withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    '服务器未运行',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFFC62828),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -440,7 +471,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Row(
       children: [
         Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,22 +484,33 @@ class _SettingsPageState extends State<SettingsPage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 value,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: Color(0xFF212121),
                 ),
               ),
             ],
           ),
         ),
-        IconButton(
-          icon: const Icon(Icons.copy, size: 18),
-          onPressed: onCopy,
-          tooltip: '复制',
-          color: Colors.blue,
+        InkWell(
+          onTap: onCopy,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.copy,
+              size: 18,
+              color: Color(0xFF2196F3),
+            ),
+          ),
         ),
       ],
     );
@@ -477,23 +519,33 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Build transfer settings card
   Widget _buildTransferSettingsCard() {
     return Card(
-      elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.settings_suggest, color: Colors.orange[700]),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.settings_suggest,
+                    color: Color(0xFFFF9800),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 const Text(
                   '传输设置',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-            const Divider(height: 24),
+            const SizedBox(height: 20),
 
             // Concurrent transfers setting
             Column(
@@ -505,11 +557,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             '并发传输数量',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[800],
+                              color: Color(0xFF212121),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -526,69 +578,70 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
+                        horizontal: 16,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange[50],
+                        color: const Color(0xFFFF9800),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.orange[200]!),
                       ),
                       child: Text(
                         '$_concurrentTransfers',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange[900],
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Slider(
-                        value: _concurrentTransfers.toDouble(),
-                        min: 1,
-                        max: 10,
-                        divisions: 9,
-                        label: '$_concurrentTransfers',
-                        onChanged: (value) {
-                          setState(() {
-                            _concurrentTransfers = value.toInt();
-                          });
-                        },
-                        onChangeEnd: (value) {
-                          _saveConcurrentTransfers(value.toInt());
-                        },
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                SliderTheme(
+                  data: SliderThemeData(
+                    activeTrackColor: const Color(0xFFFF9800),
+                    inactiveTrackColor: Colors.grey[300],
+                    thumbColor: const Color(0xFFFF9800),
+                    overlayColor: const Color(0xFFFF9800).withValues(alpha: 0.2),
+                    trackHeight: 4,
+                  ),
+                  child: Slider(
+                    value: _concurrentTransfers.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    label: '$_concurrentTransfers',
+                    onChanged: (value) {
+                      setState(() {
+                        _concurrentTransfers = value.toInt();
+                      });
+                    },
+                    onChangeEnd: (value) {
+                      _saveConcurrentTransfers(value.toInt());
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.info_outline,
                         size: 16,
-                        color: Colors.blue[700],
+                        color: Color(0xFF1976D2),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           '较高的并发数可以更好地利用带宽，但可能增加设备负载',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.blue[900],
+                            color: Colors.grey[700],
                           ),
                         ),
                       ),

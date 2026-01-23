@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 /// Result of permission request operation
@@ -26,30 +27,19 @@ class PermissionService {
   /// Request storage/file access permissions
   ///
   /// On Android 13+ (API 33+), requests READ_MEDIA_* permissions
-  /// On Android 10-12 (API 29-32), requests READ_EXTERNAL_STORAGE
+  /// On Android 10-12 (API 29-32), requests READ_EXTERNAL_STORAGE and WRITE_EXTERNAL_STORAGE
   /// On iOS, requests photo library access
   ///
-  /// Note: For Android 13+, file_picker uses the system file picker
-  /// which doesn't require storage permissions for most file types.
-  /// We request media permissions for accessing photos, videos, and audio.
+  /// Note: For receiving files, we need WRITE_EXTERNAL_STORAGE on Android 12 and below
+  /// to save files to the public Downloads directory.
   ///
   /// Returns [PermissionRequestResult] indicating if permission was granted
   Future<PermissionRequestResult> requestStoragePermission() async {
     try {
       if (Platform.isAndroid) {
-        // For Android 13+ (API 33+), request granular media permissions
-        // For file_picker, these permissions are optional as it uses SAF (Storage Access Framework)
-        // But we request them for better user experience when accessing media files
-
-        // Try requesting photos permission first (most common use case)
-        var status = await ph.Permission.photos.request();
-
-        if (status.isGranted || status.isLimited) {
-          return PermissionRequestResult(granted: true);
-        }
-
-        // If photos permission is denied, try storage permission (for Android 12 and below)
-        status = await ph.Permission.storage.request();
+        // For Android 12 and below (API 32 and below), we need WRITE_EXTERNAL_STORAGE
+        // to save files to the public Downloads directory
+        var status = await ph.Permission.storage.request();
 
         if (status.isGranted) {
           return PermissionRequestResult(granted: true);
@@ -57,19 +47,29 @@ class PermissionService {
           return PermissionRequestResult(
             granted: false,
             permanentlyDenied: true,
-            errorMessage: '存储权限已被永久拒绝，请在设置中手动开启',
+            errorMessage: '存储权限已被永久拒绝，请在设置中手动开启\n\n需要此权限才能将文件保存到下载文件夹',
           );
         } else if (status.isDenied) {
-          // For Android 13+, file_picker can still work without these permissions
-          // So we return granted=true but with a note
+          // Try requesting photos permission for Android 13+
+          status = await ph.Permission.photos.request();
+
+          if (status.isGranted || status.isLimited) {
+            // On Android 13+, we can still save files even without full storage permission
+            // The app will use app-specific directory or SAF
+            return PermissionRequestResult(
+              granted: true,
+              errorMessage: '已授予部分权限，文件将保存到下载文件夹',
+            );
+          }
+
           return PermissionRequestResult(
-            granted: true, // Allow to proceed
-            errorMessage: '部分权限被拒绝，但仍可以使用文件选择器',
+            granted: false,
+            errorMessage: '需要存储权限才能保存文件到下载文件夹\n\n您可以在设置中授予权限',
           );
         } else {
           return PermissionRequestResult(
-            granted: true, // Allow to proceed with file picker
-            errorMessage: '部分权限未授予，但可以继续使用',
+            granted: false,
+            errorMessage: '存储权限请求失败',
           );
         }
       } else if (Platform.isIOS) {
@@ -100,14 +100,7 @@ class PermissionService {
         return PermissionRequestResult(granted: true);
       }
     } catch (e) {
-      // If permission request fails, still allow file picker to work
-      // as it uses SAF on Android 13+
-      if (Platform.isAndroid) {
-        return PermissionRequestResult(
-          granted: true,
-          errorMessage: '权限请求出错，但可以继续使用文件选择器',
-        );
-      }
+      LogUtil.e("requestStoragePermission() error: $e");
       return PermissionRequestResult(
         granted: false,
         errorMessage: '权限请求出错: ${e.toString()}',
@@ -118,25 +111,25 @@ class PermissionService {
   /// Check if storage permission is already granted
   ///
   /// Returns true if permission is granted, false otherwise
-  /// Note: On Android 13+, returns true even without permissions
-  /// as file_picker uses SAF which doesn't require permissions
+  /// Note: On Android, checks for WRITE_EXTERNAL_STORAGE permission
+  /// which is needed to save files to public Downloads directory
   Future<bool> hasStoragePermission() async {
     try {
       if (Platform.isAndroid) {
-        // Check photos permission first (Android 13+)
-        var status = await ph.Permission.photos.status;
-        if (status.isGranted || status.isLimited) {
-          return true;
-        }
-
-        // Check storage permission (Android 12 and below)
-        status = await ph.Permission.storage.status;
+        // Check storage permission (needed for Android 12 and below)
+        var status = await ph.Permission.storage.status;
         if (status.isGranted) {
           return true;
         }
 
-        // On Android 13+, file_picker works without these permissions
-        // So we return true to allow the app to proceed
+        // Check photos permission (Android 13+)
+        status = await ph.Permission.photos.status;
+        if (status.isGranted || status.isLimited) {
+          return true;
+        }
+
+        // On Android 13+, we can still save files to app-specific directory
+        // even without these permissions, so return true
         return true;
       } else if (Platform.isIOS) {
         final status = await ph.Permission.photos.status;
@@ -146,7 +139,7 @@ class PermissionService {
         return true;
       }
     } catch (e) {
-      // If check fails on Android, assume we can still use file picker
+      // If check fails on Android, assume we can still use app-specific directory
       return Platform.isAndroid;
     }
   }
