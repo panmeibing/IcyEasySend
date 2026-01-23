@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PreferencesService {
   // Keys for SharedPreferences
   static const String _keyLastUsedIP = 'last_used_ip';
+  static const String _keyLastUsedPort = 'last_used_port';
   static const String _keyIPHistory = 'ip_history';
   static const String _keyDeviceName = 'device_name';
   static const String _keyConcurrentTransfers = 'concurrent_transfers';
@@ -17,6 +18,9 @@ class PreferencesService {
   
   // Default concurrent transfer count
   static const int _defaultConcurrentTransfers = 5;
+  
+  // Default port
+  static const int _defaultPort = 8080;
 
   /// Save the last used IP address
   ///
@@ -47,6 +51,36 @@ class PreferencesService {
       return prefs.getString(_keyLastUsedIP);
     } catch (e) {
       return null;
+    }
+  }
+  
+  /// Save the last used port
+  ///
+  /// Parameters:
+  /// - [port]: The port number to save (1-65535)
+  Future<bool> saveLastUsedPort(int port) async {
+    try {
+      if (port < 1 || port > 65535) {
+        return false;
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyLastUsedPort, port);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get the last used port
+  ///
+  /// Returns the last used port, or default port (8080) if none exists
+  Future<int> getLastUsedPort() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyLastUsedPort) ?? _defaultPort;
+    } catch (e) {
+      return _defaultPort;
     }
   }
 

@@ -63,7 +63,9 @@ class _HomePageState extends State<HomePage> {
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
+  final TextEditingController _portController = TextEditingController(text: '8080');
   String? _ipErrorMessage;
+  String? _portErrorMessage;
 
   // IP history
   List<String> _ipHistory = [];
@@ -83,9 +85,15 @@ class _HomePageState extends State<HomePage> {
 
     // Add listener for IP address validation
     _ipController.addListener(_validateIPAddress);
+    
+    // Add listener for port validation
+    _portController.addListener(_validatePort);
 
     // Load last used IP address
     _loadLastUsedIP();
+    
+    // Load last used port
+    _loadLastUsedPort();
 
     // Load IP history
     _loadIPHistory();
@@ -104,6 +112,27 @@ class _HomePageState extends State<HomePage> {
       }
     });
   }
+  
+  /// Validate the port in real-time
+  void _validatePort() {
+    final portText = _portController.text.trim();
+    setState(() {
+      if (portText.isEmpty) {
+        _portErrorMessage = '端口不能为空';
+      } else {
+        final port = int.tryParse(portText);
+        if (port == null) {
+          _portErrorMessage = '端口必须是数字';
+        } else if (port < 1 || port > 65535) {
+          _portErrorMessage = '端口范围: 1-65535';
+        } else {
+          _portErrorMessage = null;
+          // Auto-save valid port
+          _saveCurrentPort();
+        }
+      }
+    });
+  }
 
   /// Load the last used IP address from preferences
   Future<void> _loadLastUsedIP() async {
@@ -112,6 +141,16 @@ class _HomePageState extends State<HomePage> {
       _ipController.text = lastIP;
       // Trigger validation
       _validateIPAddress();
+    }
+  }
+  
+  /// Load the last used port from preferences
+  Future<void> _loadLastUsedPort() async {
+    final lastPort = await _preferencesService.getLastUsedPort();
+    if (mounted) {
+      _portController.text = lastPort.toString();
+      // Trigger validation
+      _validatePort();
     }
   }
 
@@ -132,6 +171,15 @@ class _HomePageState extends State<HomePage> {
       await _preferencesService.saveLastUsedIP(ip);
       // Reload history to update the list
       await _loadIPHistory();
+    }
+  }
+  
+  /// Save the current port to preferences
+  Future<void> _saveCurrentPort() async {
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    if (port != null && port >= 1 && port <= 65535) {
+      await _preferencesService.saveLastUsedPort(port);
     }
   }
 
@@ -157,6 +205,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _ipController.dispose();
+    _portController.dispose();
     super.dispose();
   }
 
@@ -314,6 +363,51 @@ class _HomePageState extends State<HomePage> {
                     _buildQuickIPButton('192.168.1.1'),
                     _buildQuickIPButton('192.168.0.1'),
                     _buildQuickIPButton('10.0.0.1'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Port input
+                const Text(
+                  '目标设备端口',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _portController,
+                        decoration: InputDecoration(
+                          hintText: '默认: 8080',
+                          border: const OutlineInputBorder(),
+                          errorText: _portErrorMessage,
+                          prefixIcon: const Icon(Icons.settings_ethernet),
+                        ),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(5),
+                        ],
+                        enabled: isServerRunning,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 重置为默认端口按钮
+                    IconButton(
+                      onPressed: isServerRunning
+                          ? () {
+                              _portController.text = '8080';
+                              _validatePort();
+                            }
+                          : null,
+                      icon: const Icon(Icons.refresh),
+                      tooltip: '重置为默认端口 (8080)',
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey.shade50,
+                        foregroundColor: Colors.grey.shade700,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -766,7 +860,9 @@ class _HomePageState extends State<HomePage> {
         !isSending &&
         selectedFiles.isNotEmpty &&
         targetIP.isNotEmpty &&
-        _ipErrorMessage == null;
+        _ipErrorMessage == null &&
+        _portErrorMessage == null &&
+        _portController.text.trim().isNotEmpty;
   }
 
   /// Send multiple selected files to the target device with batch confirmation
@@ -774,6 +870,20 @@ class _HomePageState extends State<HomePage> {
     if (selectedFiles.isEmpty || targetIP.isEmpty) {
       return;
     }
+    
+    // Validate port
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    if (port == null || port < 1 || port > 65535) {
+      await _notificationService.showError(
+        context,
+        '端口无效\n请输入 1-65535 之间的端口号',
+      );
+      return;
+    }
+    
+    // Combine IP and port
+    final targetAddress = '$targetIP:$port';
 
     setState(() {
       isSending = true;
@@ -798,7 +908,7 @@ class _HomePageState extends State<HomePage> {
       });
 
       final results = await _fileTransferService.sendFilesWithBatchConfirm(
-        targetIP: targetIP,
+        targetIP: targetAddress,
         files: selectedFiles,
         onProgress: (progress, bytesTransferred, totalBytes) {
           setState(() {
@@ -874,8 +984,9 @@ class _HomePageState extends State<HomePage> {
                 : '所有 $successCount 个文件发送成功！',
           );
 
-          // Save the IP address for next time
+          // Save the IP address and port for next time
           await _saveCurrentIP();
+          await _saveCurrentPort();
 
           // Clear the selected files after successful send
           setState(() {
@@ -905,8 +1016,9 @@ class _HomePageState extends State<HomePage> {
             ),
           );
 
-          // Save the IP address even if some files failed
+          // Save the IP address and port even if some files failed
           await _saveCurrentIP();
+          await _saveCurrentPort();
 
           // Remove successfully sent files from the list
           setState(() {
@@ -988,12 +1100,14 @@ class _HomePageState extends State<HomePage> {
       int? diagTargetPort;
 
       if (targetIP.isNotEmpty && _ipErrorMessage == null) {
-        if (targetIP.contains(':')) {
-          final parts = targetIP.split(':');
-          diagTargetIP = parts[0];
-          diagTargetPort = int.tryParse(parts[1]);
-        } else {
-          diagTargetIP = targetIP;
+        diagTargetIP = targetIP;
+        
+        // Use user-specified port from port controller
+        final portText = _portController.text.trim();
+        diagTargetPort = int.tryParse(portText);
+        
+        // If port is invalid, use default 8080
+        if (diagTargetPort == null || diagTargetPort < 1 || diagTargetPort > 65535) {
           diagTargetPort = 8080;
         }
       }
@@ -1011,6 +1125,24 @@ class _HomePageState extends State<HomePage> {
 
       // Show diagnostics report
       if (mounted) {
+        // Build report header with target info
+        final reportHeader = StringBuffer();
+        reportHeader.writeln('=' * 50);
+        reportHeader.writeln('目标设备信息');
+        reportHeader.writeln('=' * 50);
+        if (diagTargetIP != null) {
+          reportHeader.writeln('IP 地址: $diagTargetIP');
+          reportHeader.writeln('端口: ${diagTargetPort ?? 8080}');
+          reportHeader.writeln('完整地址: http://$diagTargetIP:${diagTargetPort ?? 8080}');
+        } else {
+          reportHeader.writeln('未设置目标设备');
+        }
+        reportHeader.writeln('=' * 50);
+        reportHeader.writeln();
+        
+        // Combine header with report
+        final fullReport = reportHeader.toString() + report.toString();
+        
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -1023,14 +1155,14 @@ class _HomePageState extends State<HomePage> {
             ),
             content: SingleChildScrollView(
               child: SelectableText(
-                report.toString(),
+                fullReport,
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
             ),
             actions: [
               TextButton(
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: report.toString()));
+                  Clipboard.setData(ClipboardData(text: fullReport));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('诊断报告已复制到剪贴板'),

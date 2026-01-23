@@ -196,12 +196,19 @@ class FileTransferService {
   Future<Map<String, TransferResult>> sendFilesWithBatchConfirm({
     required String targetIP,
     required List<File> files,
-    void Function(double progress, int bytesTransferred, int totalBytes)? onProgress,
-    void Function(int fileIndex, double progress, int bytesTransferred, int totalBytes)? onFileProgress,
+    void Function(double progress, int bytesTransferred, int totalBytes)?
+    onProgress,
+    void Function(
+      int fileIndex,
+      double progress,
+      int bytesTransferred,
+      int totalBytes,
+    )?
+    onFileProgress,
     void Function(String status)? onStatusChange,
   }) async {
     final results = <String, TransferResult>{};
-    
+
     if (files.isEmpty) {
       return results;
     }
@@ -233,7 +240,7 @@ class FileTransferService {
       // Step 3: Prepare file list for batch confirmation
       final fileList = <Map<String, dynamic>>[];
       int totalBytes = 0;
-      
+
       for (final file in files) {
         if (!await file.exists()) {
           final fileName = file.path.split('/').last;
@@ -243,7 +250,7 @@ class FileTransferService {
           );
           continue;
         }
-        
+
         final fileSize = await file.length();
         if (fileSize > _maxFileSize) {
           final fileName = file.path.split('/').last;
@@ -253,7 +260,7 @@ class FileTransferService {
           );
           continue;
         }
-        
+
         totalBytes += fileSize;
         fileList.add({
           'fileName': file.path.split('/').last,
@@ -267,7 +274,7 @@ class FileTransferService {
 
       // Step 4: Send batch confirmation request
       onStatusChange?.call('等待接收方确认 ${fileList.length} 个文件...');
-      
+
       String confirmUrl;
       if (targetIP.contains(':')) {
         confirmUrl = 'http://$targetIP/batch-confirm-receive';
@@ -283,11 +290,13 @@ class FileTransferService {
 
       http.Response confirmResponse;
       try {
-        confirmResponse = await http.post(
-          Uri.parse(confirmUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: confirmBody,
-        ).timeout(_confirmTimeout);
+        confirmResponse = await http
+            .post(
+              Uri.parse(confirmUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: confirmBody,
+            )
+            .timeout(_confirmTimeout);
       } on TimeoutException {
         final errorMsg = '等待接收方确认超时（35秒）\n接收方可能未响应或网络连接问题';
         for (final fileData in fileList) {
@@ -317,7 +326,7 @@ class FileTransferService {
         } catch (e) {
           errorMsg = '接收方拒绝接收\n状态码: ${confirmResponse.statusCode}';
         }
-        
+
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = TransferResult(
             success: false,
@@ -330,7 +339,8 @@ class FileTransferService {
       // Parse confirmation response
       Map<String, String> transferIds;
       try {
-        final confirmData = jsonDecode(confirmResponse.body) as Map<String, dynamic>;
+        final confirmData =
+            jsonDecode(confirmResponse.body) as Map<String, dynamic>;
 
         if (confirmData['accepted'] != true) {
           final errorMsg = confirmData['message'] as String? ?? '接收方拒绝接收';
@@ -343,7 +353,9 @@ class FileTransferService {
           return results;
         }
 
-        transferIds = Map<String, String>.from(confirmData['transferIds'] as Map);
+        transferIds = Map<String, String>.from(
+          confirmData['transferIds'] as Map,
+        );
       } catch (e) {
         final errorMsg = '无法解析接收方响应\n错误: $e';
         for (final fileData in fileList) {
@@ -357,11 +369,12 @@ class FileTransferService {
 
       // Step 5: Send files with concurrent control
       // Get concurrent transfer count from preferences
-      final concurrentCount = await _preferencesService.getConcurrentTransfers();
-      
+      final concurrentCount = await _preferencesService
+          .getConcurrentTransfers();
+
       final Map<int, double> fileProgress = {}; // fileIndex -> progress
       final Map<int, int> fileBytes = {}; // fileIndex -> bytes transferred
-      
+
       // Initialize fileBytes for all valid files
       for (int i = 0; i < files.length; i++) {
         final fileName = files[i].path.split('/').last;
@@ -369,7 +382,7 @@ class FileTransferService {
           fileBytes[i] = 0; // Initialize to 0
         }
       }
-      
+
       // Create a list of valid file indices (files that passed validation and have transferIds)
       final validFileIndices = <int>[];
       for (int i = 0; i < files.length; i++) {
@@ -379,27 +392,26 @@ class FileTransferService {
           validFileIndices.add(i);
         }
       }
-      
+
       // Function to send a single file
       Future<TransferResult> sendFile(int fileIndex) async {
         final file = files[fileIndex];
         final fileName = file.path.split('/').last;
-        
+
         // Skip files that failed validation
         if (results.containsKey(fileName)) {
           return results[fileName]!;
         }
-        
+
         // Get transfer ID for this file
         final transferId = transferIds[fileName];
         if (transferId == null) {
-          return TransferResult(
-            success: false,
-            errorMessage: '未找到传输ID',
-          );
+          return TransferResult(success: false, errorMessage: '未找到传输ID');
         }
 
-        onStatusChange?.call('正在传输文件 ${fileIndex + 1}/${files.length}: $fileName');
+        onStatusChange?.call(
+          '正在传输文件 ${fileIndex + 1}/${files.length}: $fileName',
+        );
 
         // Send the file
         final result = await _sendFileWithTransferId(
@@ -413,37 +425,41 @@ class FileTransferService {
             fileProgress[fileIndex] = progress;
             fileBytes[fileIndex] = bytes;
             onFileProgress?.call(fileIndex, progress, bytes, total);
-            
+
             // Calculate overall progress
             int overallBytes = 0;
             for (final entry in fileBytes.entries) {
               overallBytes += entry.value;
             }
-            final overallProgress = totalBytes > 0 ? overallBytes / totalBytes : 0.0;
+            final overallProgress = totalBytes > 0
+                ? overallBytes / totalBytes
+                : 0.0;
             onProgress?.call(overallProgress, overallBytes, totalBytes);
           },
         );
-        
+
         return result;
       }
-      
+
       // Process files with concurrent control
       // Use validFileIndices instead of all files to ensure correct concurrency
       for (int i = 0; i < validFileIndices.length; i += concurrentCount) {
         final batchEnd = (i + concurrentCount < validFileIndices.length)
             ? i + concurrentCount
             : validFileIndices.length;
-        
+
         // Create batch of futures
         final batch = <Future<void>>[];
         for (int j = i; j < batchEnd; j++) {
           final fileIndex = validFileIndices[j];
-          batch.add(sendFile(fileIndex).then((result) {
-            final fileName = files[fileIndex].path.split('/').last;
-            results[fileName] = result;
-          }));
+          batch.add(
+            sendFile(fileIndex).then((result) {
+              final fileName = files[fileIndex].path.split('/').last;
+              results[fileName] = result;
+            }),
+          );
         }
-        
+
         // Wait for all files in this batch to complete before starting next batch
         // Use eagerError: false to ensure all files complete even if some fail
         await Future.wait(batch, eagerError: false);
@@ -472,7 +488,8 @@ class FileTransferService {
     required String transferId,
     required String senderIP,
     String? deviceName,
-    void Function(double progress, int bytesTransferred, int totalBytes)? onProgress,
+    void Function(double progress, int bytesTransferred, int totalBytes)?
+    onProgress,
   }) async {
     final fileName = file.path.split('/').last;
     final fileSize = await file.length();
@@ -523,7 +540,7 @@ class FileTransferService {
           // Call progress callback
           onProgress?.call(progress, bytesSent, fileSize);
         }
-        
+
         // Close the sink after all data is sent
         await request.sink.close();
       } catch (e) {
@@ -532,7 +549,7 @@ class FileTransferService {
         } catch (_) {
           // Ignore close errors
         }
-        
+
         // Save failed transfer to history
         await _historyService.saveTransfer(
           TransferHistory(
@@ -545,11 +562,8 @@ class FileTransferService {
             success: false,
           ),
         );
-        
-        return TransferResult(
-          success: false,
-          errorMessage: '文件读取失败\n错误: $e',
-        );
+
+        return TransferResult(success: false, errorMessage: '文件读取失败\n错误: $e');
       }
 
       // Now wait for the server response (file has been fully transmitted at this point)
@@ -574,7 +588,7 @@ class FileTransferService {
             success: false,
           ),
         );
-        
+
         try {
           final data = jsonDecode(responseBody) as Map<String, dynamic>;
           return TransferResult(
@@ -602,9 +616,11 @@ class FileTransferService {
             peerIP: targetIP.split(':').first,
             peerDeviceName: deviceName,
             timestamp: DateTime.now(),
-            isReceived: false, // This is a send operation
+            isReceived: false,
+            // This is a send operation
             success: true,
-            savedPath: null, // Sent files don't have a saved path on sender side
+            savedPath:
+                null, // Sent files don't have a saved path on sender side
           ),
         );
 
@@ -622,11 +638,8 @@ class FileTransferService {
             success: false,
           ),
         );
-        
-        return TransferResult(
-          success: false,
-          errorMessage: '无法解析响应\n错误: $e',
-        );
+
+        return TransferResult(success: false, errorMessage: '无法解析响应\n错误: $e');
       }
     } on TimeoutException {
       // Save failed transfer to history
@@ -641,11 +654,8 @@ class FileTransferService {
           success: false,
         ),
       );
-      
-      return TransferResult(
-        success: false,
-        errorMessage: '文件传输超时',
-      );
+
+      return TransferResult(success: false, errorMessage: '文件传输超时');
     } on SocketException catch (e) {
       // Save failed transfer to history
       await _historyService.saveTransfer(
@@ -659,7 +669,7 @@ class FileTransferService {
           success: false,
         ),
       );
-      
+
       return TransferResult(
         success: false,
         errorMessage: '网络连接失败\n错误: ${e.message}',
@@ -677,7 +687,7 @@ class FileTransferService {
           success: false,
         ),
       );
-      
+
       return TransferResult(
         success: false,
         errorMessage: ErrorMessages.unexpectedError(e.toString()),
@@ -712,6 +722,8 @@ class FileTransferService {
     int? remainingFiles,
   }) async {
     final fileName = file.path.split('/').last;
+
+    LogUtil.i('sendFile() targetIP: $targetIP');
 
     try {
       // Step 1: Check if file exists and is readable
@@ -1248,7 +1260,7 @@ class FileTransferService {
   }) async {
     IOSink? sink;
     File? file;
-    
+
     try {
       // Check storage space
       final hasEnoughSpace = await _checkStorageSpace(fileSize);
@@ -1308,14 +1320,14 @@ class FileTransferService {
             onProgress(progress, bytesReceived, fileSize);
           }
         }
-        
+
         // Ensure all data is written
         await sink.flush();
         await sink.close();
         sink = null; // Mark as closed
       } catch (e) {
         LogUtil.e('Error writing file: $e');
-        
+
         // Clean up on error
         if (sink != null) {
           try {
@@ -1325,7 +1337,7 @@ class FileTransferService {
           }
           sink = null;
         }
-        
+
         // Delete the partially written file
         // ignore: unnecessary_null_comparison
         if (file != null) {
@@ -1368,7 +1380,7 @@ class FileTransferService {
       final savedSize = await file.length();
       if (savedSize != fileSize) {
         LogUtil.w('File size mismatch: expected $fileSize, got $savedSize');
-        
+
         // File size mismatch, delete the file
         try {
           await file.delete();
@@ -1413,7 +1425,7 @@ class FileTransferService {
     } catch (e, stackTrace) {
       LogUtil.e('Unexpected error in receiveFileDirectly: $e');
       LogUtil.e('Stack trace: $stackTrace');
-      
+
       // Clean up on error
       if (sink != null) {
         try {
@@ -1422,7 +1434,7 @@ class FileTransferService {
           LogUtil.e('Error closing sink: $closeError');
         }
       }
-      
+
       // Delete the partially written file
       // ignore: unnecessary_null_comparison
       if (file != null) {
@@ -1434,7 +1446,7 @@ class FileTransferService {
           LogUtil.e('Error deleting file: $deleteError');
         }
       }
-      
+
       // Save failed transfer to history
       await _historyService.saveTransfer(
         TransferHistory(
