@@ -109,14 +109,34 @@ class _HomePageState extends State<HomePage> {
   /// Validate the IP address in real-time
   void _validateIPAddress() {
     final ip = _ipController.text.trim();
+    
+    if (ip.isEmpty) {
+      setState(() {
+        targetIP = ip;
+        _ipErrorMessage = null;
+      });
+      return;
+    }
+
+    // First do basic format validation
+    final basicResult = _validationService.validateIPv4(ip);
+    if (!basicResult.isValid) {
+      setState(() {
+        targetIP = ip;
+        _ipErrorMessage = basicResult.errorMessage;
+      });
+      return;
+    }
+
+    // Then do subnet validation with server address
+    final subnetResult = _validationService.validateIPv4WithSubnet(
+      ip,
+      serverAddress: serverAddress, // Use server address from HTTPServerManager
+    );
+    
     setState(() {
       targetIP = ip;
-      if (ip.isEmpty) {
-        _ipErrorMessage = null;
-      } else {
-        final result = _validationService.validateIPv4(ip);
-        _ipErrorMessage = result.isValid ? null : result.errorMessage;
-      }
+      _ipErrorMessage = subnetResult.isValid ? null : subnetResult.errorMessage;
     });
   }
 
@@ -295,6 +315,7 @@ class _HomePageState extends State<HomePage> {
                           hintText: '例如: 192.168.1.100',
                           border: const OutlineInputBorder(),
                           errorText: _ipErrorMessage,
+                          errorMaxLines: 10, // Allow multi-line error messages
                           suffixIcon: _ipHistory.isNotEmpty
                               ? PopupMenuButton<String>(
                                   icon: const Icon(Icons.history),

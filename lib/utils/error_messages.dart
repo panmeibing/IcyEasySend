@@ -57,6 +57,21 @@ class ErrorMessages {
       'IP 地址格式无效，请使用 xxx.xxx.xxx.xxx 格式';
   static const String ipAddressInvalidRange = 'IP 地址格式无效，每个数字必须在 0-255 之间';
 
+  /// Warning message when target IP is not in the same subnet as local IP
+  static String ipAddressNotInSameSubnet(String localIP, String targetIP) {
+    // Extract network portion (first 3 octets)
+    final localNetwork = localIP.split('.').take(3).join('.');
+    final targetNetwork = targetIP.split('.').take(3).join('.');
+
+    return '⚠️ 网段不匹配\n'
+        '本机IP: $localIP (网段: $localNetwork.x)\n'
+        '目标IP: $targetIP (网段: $targetNetwork.x)\n'
+        '\n'
+        '提示：两台设备需要在同一个局域网（相同网段）才能传输文件。\n'
+        'C类IPv4地址应该保证两个IP地址的前三个数字相同，例如都是192.169.2，只是最后一个数字不同\n'
+        '最简单的方法就是让两个设备都连接同一个WiFi或路由器。\n';
+  }
+
   // Response parsing errors
   static const String responseParseError = '无法解析服务器响应';
   static const String responseInvalidFormat = '目标设备响应格式不正确';
