@@ -28,6 +28,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = true;
   bool _isEditingName = false;
   int _concurrentTransfers = 5;
+  int _tempConcurrentTransfers = 5; // Temporary value for slider
 
   @override
   void initState() {
@@ -111,7 +112,96 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) {
       setState(() {
         _concurrentTransfers = count;
+        _tempConcurrentTransfers = count; // Initialize temp value
       });
+    }
+  }
+
+  /// Show confirmation dialog for concurrent transfers change
+  Future<void> _confirmAndSaveConcurrentTransfers(int newCount) async {
+    // If value hasn't changed, no need to confirm
+    if (newCount == _concurrentTransfers) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.settings_suggest, color: Color(0xFF2196F3)),
+            SizedBox(width: 12),
+            Text('确认修改'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '确定要将并发传输数量从 $_concurrentTransfers 修改为 $newCount 吗？',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Color(0xFF2196F3),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      newCount > _concurrentTransfers
+                          ? '增加并发数可能会提高传输速度，但也会增加设备负载'
+                          : '降低并发数可以减少设备负载，但可能会降低传输速度',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('确认修改'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _saveConcurrentTransfers(newCount);
+    } else {
+      // User cancelled, revert to previous value
+      if (mounted) {
+        setState(() {
+          _tempConcurrentTransfers = _concurrentTransfers;
+        });
+      }
     }
   }
 
@@ -373,13 +463,100 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildServerInfoCard() {
     final isServerRunning = widget.serverManager.isRunning();
 
+    // When server is running, use Card with white background (consistent with other cards)
+    if (isServerRunning) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.wifi,
+                      color: Color(0xFF2196F3),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    '服务器信息',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              if (_serverIP != null && _serverPort != null) ...[
+                // Server IP
+                _buildInfoRow(
+                  label: '服务器 IP',
+                  value: _serverIP!,
+                  icon: Icons.computer,
+                  onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
+                ),
+                const SizedBox(height: 16),
+
+                // Server Port
+                _buildInfoRow(
+                  label: '端口',
+                  value: _serverPort!,
+                  icon: Icons.settings_ethernet,
+                  onCopy: () => _copyToClipboard(_serverPort!, '端口'),
+                ),
+                const SizedBox(height: 16),
+
+                // Server status indicator
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2196F3),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        '服务器运行正常',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF1976D2),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    // When server is not running, use red background Container
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isServerRunning ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+        color: const Color(0xFFFFEBEE),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+          color: const Color(0xFFE53935),
           width: 1.5,
         ),
       ),
@@ -391,71 +568,47 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isServerRunning
-                      ? const Color(0xFF4CAF50).withValues(alpha: 0.2)
-                      : const Color(0xFFE53935).withValues(alpha: 0.2),
+                  color: const Color(0xFFE53935).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  isServerRunning ? Icons.wifi : Icons.wifi_off,
-                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                child: const Icon(
+                  Icons.wifi_off,
+                  color: Color(0xFFC62828),
                   size: 20,
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
+              const Text(
                 '服务器信息',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                  color: Color(0xFFC62828),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-
-          if (isServerRunning &&
-              _serverIP != null &&
-              _serverPort != null) ...[
-            // Server IP
-            _buildInfoRow(
-              label: '服务器 IP',
-              value: _serverIP!,
-              icon: Icons.computer,
-              onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
-            ),
-            const SizedBox(height: 16),
-
-            // Server Port
-            _buildInfoRow(
-              label: '端口',
-              value: _serverPort!,
-              icon: Icons.settings_ethernet,
-              onCopy: () => _copyToClipboard(_serverPort!, '端口'),
-            ),
-          ] else ...[
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: const Color(0xFFE53935).withValues(alpha: 0.5),
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: const Color(0xFFE53935).withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '服务器未运行',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFFC62828),
+                    fontWeight: FontWeight.w500,
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '服务器未运行',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFFC62828),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -529,12 +682,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.settings_suggest,
-                    color: Color(0xFFFF9800),
+                    color: Color(0xFF2196F3),
                     size: 20,
                   ),
                 ),
@@ -582,11 +735,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF9800),
+                        color: const Color(0xFF2196F3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '$_concurrentTransfers',
+                        '$_tempConcurrentTransfers',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -599,25 +752,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 16),
                 SliderTheme(
                   data: SliderThemeData(
-                    activeTrackColor: const Color(0xFFFF9800),
+                    activeTrackColor: const Color(0xFF2196F3),
                     inactiveTrackColor: Colors.grey[300],
-                    thumbColor: const Color(0xFFFF9800),
-                    overlayColor: const Color(0xFFFF9800).withValues(alpha: 0.2),
+                    thumbColor: const Color(0xFF2196F3),
+                    overlayColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
                     trackHeight: 4,
                   ),
                   child: Slider(
-                    value: _concurrentTransfers.toDouble(),
+                    value: _tempConcurrentTransfers.toDouble(),
                     min: 1,
                     max: 10,
                     divisions: 9,
-                    label: '$_concurrentTransfers',
+                    label: '$_tempConcurrentTransfers',
                     onChanged: (value) {
                       setState(() {
-                        _concurrentTransfers = value.toInt();
+                        _tempConcurrentTransfers = value.toInt();
                       });
                     },
                     onChangeEnd: (value) {
-                      _saveConcurrentTransfers(value.toInt());
+                      _confirmAndSaveConcurrentTransfers(value.toInt());
                     },
                   ),
                 ),

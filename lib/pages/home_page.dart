@@ -77,6 +77,9 @@ class _HomePageState extends State<HomePage> {
   // IP history
   List<String> _ipHistory = [];
 
+  // Scroll controller for auto-scrolling
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -233,6 +236,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _ipController.dispose();
     _portController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -271,6 +275,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Scroll to bottom of the page with animation
+  void _scrollToBottom() {
+    // Use WidgetsBinding to ensure the scroll happens after the widget tree is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   /// Update server status from the server manager
   void _updateServerStatus() {
     setState(() {
@@ -291,6 +309,7 @@ class _HomePageState extends State<HomePage> {
           title: const Text('Icy Easy Send'),
         ),
         body: SingleChildScrollView(
+          controller: _scrollController,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -556,10 +575,10 @@ class _HomePageState extends State<HomePage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isServerRunning ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+        color: isServerRunning ? const Color(0xFFE3F2FD) : const Color(0xFFFFEBEE),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+          color: isServerRunning ? const Color(0xFF2196F3) : const Color(0xFFE53935),
           width: 1.5,
         ),
       ),
@@ -572,7 +591,7 @@ class _HomePageState extends State<HomePage> {
                 width: 10,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: isServerRunning ? const Color(0xFF4CAF50) : const Color(0xFFE53935),
+                  color: isServerRunning ? const Color(0xFF2196F3) : const Color(0xFFE53935),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -582,7 +601,7 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: isServerRunning ? const Color(0xFF2E7D32) : const Color(0xFFC62828),
+                  color: isServerRunning ? const Color(0xFF1976D2) : const Color(0xFFC62828),
                 ),
               ),
             ],
@@ -611,7 +630,7 @@ class _HomePageState extends State<HomePage> {
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF2E7D32),
+                              color: Color(0xFF212121),
                               letterSpacing: 0.5,
                             ),
                           ),
@@ -622,13 +641,13 @@ class _HomePageState extends State<HomePage> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Icon(
                                 Icons.copy,
                                 size: 16,
-                                color: Color(0xFF2E7D32),
+                                color: Color(0xFF2196F3),
                               ),
                             ),
                           ),
@@ -875,6 +894,9 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             selectedFiles = validFiles;
           });
+          
+          // Auto-scroll to bottom to show the send button
+          _scrollToBottom();
         }
 
         // Show error for invalid files
@@ -984,6 +1006,9 @@ class _HomePageState extends State<HomePage> {
       _fileStatus.clear();
       _completedFileIndices.clear(); // Clear completed files tracking
     });
+
+    // Auto-scroll to bottom to show the progress indicator
+    _scrollToBottom();
 
     try {
       // Use batch confirmation for better UX
