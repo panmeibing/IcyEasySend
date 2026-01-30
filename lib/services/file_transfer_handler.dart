@@ -9,34 +9,14 @@ import '../utils/log_util.dart';
 import 'batch_receive_manager.dart';
 import 'file_transfer_service.dart';
 
-/// Result of file transfer operation
-class FileTransferResult {
-  final bool success;
-  final String message;
-  final String? savedPath;
-
-  FileTransferResult({
-    required this.success,
-    required this.message,
-    this.savedPath,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'success': success,
-      'message': message,
-      if (savedPath != null) 'savedPath': savedPath,
-    };
-  }
-}
-
 /// Handler for file transfer endpoint
 ///
 /// Provides a RESTful endpoint to receive files from other devices.
 class FileTransferHandler {
   final BuildContext? Function()? contextGetter;
   final FileTransferService _fileTransferService;
-  final BatchReceiveManager _batchReceiveManager = BatchReceiveManager();
+  final BatchReceiveManager _batchReceiveManager;
+  final String logTag = LogTags.server;
 
   // Store pending transfer confirmations with transfer ID as key
   final Map<String, bool> _pendingConfirmations = {};
@@ -47,7 +27,9 @@ class FileTransferHandler {
   FileTransferHandler({
     this.contextGetter,
     FileTransferService? fileTransferService,
-  }) : _fileTransferService = fileTransferService ?? FileTransferService();
+    BatchReceiveManager? batchReceiveManager,
+  }) : _fileTransferService = fileTransferService ?? FileTransferService(),
+       _batchReceiveManager = batchReceiveManager ?? BatchReceiveManager();
 
   /// Register a progress callback for a transfer
   void registerProgressCallback(
@@ -75,7 +57,8 @@ class FileTransferHandler {
   /// - transferIds: map of fileName -> transferId (if accepted)
   /// - message: error or success message
   Future<Response> handleBatchConfirmReceive(Request request) async {
-    LogUtil.i("Called [/batch-confirm-receive] -> handleBatchConfirmReceive()");
+    LogUtil.iTag(logTag, '收到批量确认请求: /batch-confirm-receive');
+
     try {
       // Parse JSON body
       final bodyString = await request.readAsString();
@@ -84,7 +67,7 @@ class FileTransferHandler {
       try {
         body = jsonDecode(bodyString) as Map<String, dynamic>;
       } catch (e) {
-        LogUtil.e("Invalid JSON body, bodyString: $bodyString");
+        LogUtil.wTag(logTag, '无效的JSON格式: $bodyString');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '无效的JSON格式'}),
@@ -97,8 +80,14 @@ class FileTransferHandler {
       final senderIP = body['senderIP'] as String?;
       final senderDeviceName = body['senderDeviceName'] as String?;
 
+      LogUtil.dTag(
+        logTag,
+        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName',
+      );
+
       // Validate required parameters
       if (files == null || files.isEmpty) {
+        LogUtil.wTag(logTag, '缺少文件列表参数');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '缺少文件列表参数'}),
@@ -107,6 +96,7 @@ class FileTransferHandler {
       }
 
       if (senderIP == null || senderIP.isEmpty) {
+        LogUtil.wTag(logTag, '缺少发送者IP参数');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '缺少发送者 IP 参数'}),
@@ -118,6 +108,7 @@ class FileTransferHandler {
       final ctx = contextGetter?.call();
 
       if (ctx == null || !ctx.mounted) {
+        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
         return Response(
           500,
           body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
@@ -135,6 +126,7 @@ class FileTransferHandler {
         final fileSize = fileMap['fileSize'] as int?;
 
         if (fileName == null || fileSize == null) {
+          LogUtil.wTag(logTag, '跳过无效的文件条目: $fileMap');
           continue; // Skip invalid file entries
         }
 
@@ -157,12 +149,15 @@ class FileTransferHandler {
       }
 
       if (pendingFiles.isEmpty) {
+        LogUtil.wTag(logTag, '没有有效的文件');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '没有有效的文件'}),
           headers: {'Content-Type': 'application/json'},
         );
       }
+
+      LogUtil.iTag(logTag, '显示批量接收确认对话框: ${pendingFiles.length}个文件');
 
       // Show batch dialog with all files at once
       final accepted = await _batchReceiveManager
@@ -174,6 +169,7 @@ class FileTransferHandler {
           );
 
       if (!accepted) {
+        LogUtil.iTag(logTag, '用户拒绝接收批量文件');
         return Response(
           403,
           body: jsonEncode({
@@ -203,9 +199,8 @@ class FileTransferHandler {
         });
       }
 
-      LogUtil.i(
-        "Called [/batch-confirm-receive] -> handleBatchConfirmReceive() finished",
-      );
+      LogUtil.iTag(logTag, '用户确认接收批量文件: ${pendingFiles.length}个文件');
+
       // Return success response with transfer IDs
       return Response.ok(
         jsonEncode({
@@ -216,10 +211,7 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e(
-        'handleBatchConfirmReceive() Error in batch confirm receive: $e',
-      );
-      LogUtil.e('handleBatchConfirmReceive() Stack trace: $stackTrace');
+      LogUtil.eTag(logTag, '批量确认接收处理异常: $e', e, stackTrace);
       return Response(
         500,
         body: jsonEncode({
@@ -246,7 +238,8 @@ class FileTransferHandler {
   /// - transferId: unique ID for this transfer (if accepted)
   /// - message: error or success message
   Future<Response> handleConfirmReceive(Request request) async {
-    LogUtil.i("Called [/confirm-receive] -> handleConfirmReceive()");
+    LogUtil.iTag(logTag, '收到单文件确认请求: /confirm-receive');
+
     try {
       // Extract metadata from query parameters
       final queryParams = request.url.queryParameters;
@@ -255,8 +248,14 @@ class FileTransferHandler {
       final senderIP = queryParams['senderIP'];
       final senderDeviceName = queryParams['senderDeviceName'];
 
+      LogUtil.dTag(
+        logTag,
+        '确认参数: 文件=$fileName, 大小=$fileSizeStr, 发送方=$senderIP',
+      );
+
       // Validate required parameters
       if (fileName == null || fileName.isEmpty) {
+        LogUtil.wTag(logTag, '缺少文件名参数');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '缺少文件名参数'}),
@@ -265,6 +264,7 @@ class FileTransferHandler {
       }
 
       if (fileSizeStr == null) {
+        LogUtil.wTag(logTag, '缺少文件大小参数');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '缺少文件大小参数'}),
@@ -274,6 +274,7 @@ class FileTransferHandler {
 
       final fileSize = int.tryParse(fileSizeStr);
       if (fileSize == null) {
+        LogUtil.wTag(logTag, '文件大小参数格式错误: $fileSizeStr');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '文件大小参数格式错误'}),
@@ -282,6 +283,7 @@ class FileTransferHandler {
       }
 
       if (senderIP == null || senderIP.isEmpty) {
+        LogUtil.wTag(logTag, '缺少发送者IP参数');
         return Response(
           400,
           body: jsonEncode({'accepted': false, 'message': '缺少发送者 IP 参数'}),
@@ -293,6 +295,7 @@ class FileTransferHandler {
       final ctx = contextGetter?.call();
 
       if (ctx == null || !ctx.mounted) {
+        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
         return Response(
           500,
           body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
@@ -303,6 +306,8 @@ class FileTransferHandler {
       // Generate transfer ID
       final transferId =
           '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
+
+      LogUtil.iTag(logTag, '显示接收确认对话框: $fileName');
 
       // Use batch receive manager to handle confirmation
       // This will batch multiple files from the same sender into one dialog
@@ -316,6 +321,7 @@ class FileTransferHandler {
       );
 
       if (!accepted) {
+        LogUtil.iTag(logTag, '用户拒绝接收文件: $fileName');
         return Response(
           403,
           body: jsonEncode({
@@ -343,7 +349,7 @@ class FileTransferHandler {
         );
       });
 
-      LogUtil.i("Called [/confirm-receive] -> handleConfirmReceive() finished");
+      LogUtil.iTag(logTag, '用户确认接收文件: $fileName, transferId=$transferId');
 
       // Return success response with transfer ID
       return Response.ok(
@@ -355,8 +361,7 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e('handleConfirmReceive() Error in confirm receive: $e');
-      LogUtil.e('handleConfirmReceiveI() Stack trace: $stackTrace');
+      LogUtil.eTag(logTag, '确认接收处理异常: $e', e, stackTrace);
       return Response(
         500,
         body: jsonEncode({
@@ -380,7 +385,8 @@ class FileTransferHandler {
   ///
   /// NOTE: User confirmation should be done via /confirm-receive endpoint first
   Future<Response> handleFileTransfer(Request request) async {
-    LogUtil.i("Called [/transfer] -> handleFileTransfer()");
+    LogUtil.iTag(LogTags.transfer, '收到文件传输请求: /transfer');
+
     try {
       // Extract metadata from query parameters
       final queryParams = request.url.queryParameters;
@@ -390,8 +396,14 @@ class FileTransferHandler {
       final senderDeviceName = queryParams['senderDeviceName'];
       final transferId = queryParams['transferId'];
 
+      LogUtil.dTag(
+        LogTags.transfer,
+        '传输参数: 文件=$fileName, 大小=$fileSizeStr, 发送方=$senderIP, transferId=$transferId',
+      );
+
       // Validate required parameters
       if (fileName == null || fileName.isEmpty) {
+        LogUtil.wTag(LogTags.transfer, '缺少文件名参数');
         return Response(
           400,
           body: jsonEncode({'success': false, 'message': '缺少文件名参数'}),
@@ -400,6 +412,7 @@ class FileTransferHandler {
       }
 
       if (fileSizeStr == null) {
+        LogUtil.wTag(LogTags.transfer, '缺少文件大小参数');
         return Response(
           400,
           body: jsonEncode({'success': false, 'message': '缺少文件大小参数'}),
@@ -409,6 +422,7 @@ class FileTransferHandler {
 
       final fileSize = int.tryParse(fileSizeStr);
       if (fileSize == null) {
+        LogUtil.wTag(LogTags.transfer, '文件大小参数格式错误: $fileSizeStr');
         return Response(
           400,
           body: jsonEncode({'success': false, 'message': '文件大小参数格式错误'}),
@@ -417,6 +431,7 @@ class FileTransferHandler {
       }
 
       if (senderIP == null || senderIP.isEmpty) {
+        LogUtil.wTag(LogTags.transfer, '缺少发送者IP参数');
         return Response(
           400,
           body: jsonEncode({'success': false, 'message': '缺少发送者 IP 参数'}),
@@ -425,6 +440,7 @@ class FileTransferHandler {
       }
 
       if (transferId == null || transferId.isEmpty) {
+        LogUtil.wTag(LogTags.transfer, '缺少传输ID参数');
         return Response(
           400,
           body: jsonEncode({
@@ -437,6 +453,7 @@ class FileTransferHandler {
 
       // Check if this transfer was confirmed
       if (!_pendingConfirmations.containsKey(transferId)) {
+        LogUtil.wTag(LogTags.transfer, '未找到确认记录: $transferId');
         return Response(
           403,
           body: jsonEncode({
@@ -449,6 +466,11 @@ class FileTransferHandler {
 
       // Remove the confirmation record (one-time use)
       _pendingConfirmations.remove(transferId);
+
+      LogUtil.iTag(
+        LogTags.transfer,
+        '开始接收文件流: $fileName, 大小=${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB',
+      );
 
       // Get the request body stream (file data)
       final fileStream = request.read();
@@ -470,7 +492,11 @@ class FileTransferHandler {
       unregisterProgressCallback(transferId);
 
       // Check if file was saved successfully
-      if (!receiveResult.success) {
+      if (!receiveResult.isSuccess) {
+        LogUtil.wTag(
+          LogTags.transfer,
+          '文件接收失败: $fileName, 原因=${receiveResult.errorMessage}',
+        );
         return Response(
           500,
           body: jsonEncode({
@@ -483,21 +509,23 @@ class FileTransferHandler {
       }
 
       // Return success response
-      final result = FileTransferResult(
-        success: true,
-        message: '文件接收成功',
-        savedPath: receiveResult.savedPath,
+      final result = {
+        'success': true,
+        'message': '文件接收成功',
+        'savedPath': receiveResult.data?.savedPath,
+      };
+
+      LogUtil.iTag(
+        LogTags.transfer,
+        '文件传输完成: $fileName, 保存路径=${receiveResult.data?.savedPath}',
       );
 
-      LogUtil.i("Called [/transfer] -> handleFileTransfer() finished");
-
       return Response.ok(
-        jsonEncode(result.toJson()),
+        jsonEncode(result),
         headers: {'Content-Type': 'application/json'},
       );
     } catch (e, stackTrace) {
-      LogUtil.e('handleFileTransfer() Error in file transfer: $e');
-      LogUtil.e('handleFileTransfer() Stack trace: $stackTrace');
+      LogUtil.eTag(LogTags.transfer, '文件传输处理异常: $e', e, stackTrace);
       return Response(
         500,
         body: jsonEncode({

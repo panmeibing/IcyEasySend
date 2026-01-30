@@ -1,15 +1,17 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:shelf/shelf.dart';
+
+import '../utils/network_util.dart';
 
 /// Handler for health check endpoint
 ///
 /// Provides a RESTful endpoint to check if the device is online and ready
 /// to receive files.
 class HealthCheckHandler {
+  final String logTag = LogTags.server;
+
   /// Handle GET /health requests
   ///
   /// Returns a JSON response with:
@@ -17,62 +19,30 @@ class HealthCheckHandler {
   /// - timestamp: current timestamp in milliseconds
   /// - deviceName: name of the device
   Future<Response> handleHealthCheck(Request request) async {
-    LogUtil.i("Called [/health] -> handleHealthCheck()");
-    final deviceName = await _getDeviceName();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    LogUtil.dTag(LogTags.server, '收到健康检查请求: ${request.url}');
 
-    final response = {
-      'status': 'ok',
-      'timestamp': timestamp,
-      'deviceName': deviceName,
-    };
-
-    LogUtil.i("Called [/health] -> handleHealthCheck() finished");
-
-    return Response.ok(
-      jsonEncode(response),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// Get the device name
-  ///
-  /// Returns the device model name using device_info_plus package.
-  /// Falls back to Platform.localHostname if device info is unavailable.
-  Future<String> _getDeviceName() async {
     try {
-      final deviceInfo = DeviceInfoPlugin();
+      final deviceName = await NetworkUtil.getDeviceName();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-      if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        return '${androidInfo.manufacturer} ${androidInfo.model}';
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        return iosInfo.name;
-      } else if (Platform.isMacOS) {
-        final macInfo = await deviceInfo.macOsInfo;
-        return macInfo.computerName;
-      } else if (Platform.isWindows) {
-        final windowsInfo = await deviceInfo.windowsInfo;
-        return windowsInfo.computerName;
-      } else if (Platform.isLinux) {
-        final linuxInfo = await deviceInfo.linuxInfo;
-        return linuxInfo.name;
-      }
+      final response = {
+        'status': 'ok',
+        'timestamp': timestamp,
+        'deviceName': deviceName,
+      };
 
-      // Fallback to hostname
-      try {
-        return Platform.localHostname;
-      } catch (e) {
-        return 'Unknown Device';
-      }
-    } catch (e) {
-      // If device_info_plus fails, try hostname
-      try {
-        return Platform.localHostname;
-      } catch (e) {
-        return 'Unknown Device';
-      }
+      LogUtil.dTag(logTag, '健康检查响应: 设备名=$deviceName');
+
+      return Response.ok(
+        jsonEncode(response),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '健康检查处理异常: $e', e, stackTrace);
+      return Response.internalServerError(
+        body: jsonEncode({'status': 'error', 'message': '服务器内部错误'}),
+        headers: {'Content-Type': 'application/json'},
+      );
     }
   }
 }

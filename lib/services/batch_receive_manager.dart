@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../utils/constants.dart';
+import '../utils/format_util.dart';
+
 /// Information about a file pending receive confirmation
 class PendingFileInfo {
   final String fileName;
@@ -47,7 +50,7 @@ class BatchReceiveManager {
   final Map<String, Timer> _batchTimers = {};
 
   // Batch window duration (wait this long for more files from same sender)
-  static const Duration _batchWindow = Duration(milliseconds: 500);
+  // Using constant from AppConstants for maintainability
 
   /// Add a file to the pending queue and show batch dialog if needed
   Future<bool> requestReceiveConfirmation({
@@ -79,7 +82,7 @@ class BatchReceiveManager {
       _batchTimers[senderIP]?.cancel();
 
       // Start a timer to batch requests
-      _batchTimers[senderIP] = Timer(_batchWindow, () {
+      _batchTimers[senderIP] = Timer(AppConstants.batchRequestWindow, () {
         _showBatchDialog(context, senderIP);
       });
     }
@@ -242,7 +245,7 @@ class _BatchReceiveDialog extends StatefulWidget {
 }
 
 class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
-  int _remainingSeconds = 30;
+  int _remainingSeconds = AppConstants.receiveConfirmationCountdown;
   bool _disposed = false;
   bool _isAccepted = false;
   bool _allCompleted = false;
@@ -277,7 +280,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _startCountdown() {
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(AppConstants.countdownInterval, (timer) {
       if (!_disposed && mounted) {
         setState(() {
           _remainingSeconds--;
@@ -295,7 +298,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
   void _startProgressUpdates() {
     // Update UI periodically to show progress
-    _updateTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+    _updateTimer = Timer.periodic(AppConstants.progressUpdateInterval, (timer) {
       if (!_disposed && mounted && _isAccepted) {
         setState(() {
           // Check if all files are completed
@@ -305,7 +308,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         // Auto-close dialog when all files are completed
         if (_allCompleted) {
           timer.cancel();
-          Future.delayed(const Duration(seconds: 1), () {
+          Future.delayed(AppConstants.autoCloseDelay, () {
             if (mounted) {
               Navigator.of(context).pop();
             }
@@ -330,7 +333,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
       // Auto-close dialog when all files are completed
       if (_allCompleted) {
         _updateTimer?.cancel();
-        Future.delayed(const Duration(seconds: 1), () {
+        Future.delayed(AppConstants.autoCloseDelay, () {
           if (mounted) {
             Navigator.of(context).pop();
           }
@@ -373,18 +376,6 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
   int _getTotalSize() {
     return _displayedFiles.fold(0, (sum, file) => sum + file.fileSize);
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
   }
 
   @override
@@ -445,7 +436,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
               // Total size
               Text(
-                '总大小: ${_formatFileSize(totalSize)}',
+                '总大小: ${FormatUtil.formatBytes(totalSize)}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
@@ -489,7 +480,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _formatFileSize(file.fileSize),
+                              FormatUtil.formatBytes(file.fileSize),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],

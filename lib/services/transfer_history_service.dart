@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 
 import '../models/transfer_history.dart';
+import '../utils/constants.dart';
 
 /// Service for managing transfer history
 ///
@@ -13,11 +14,12 @@ import '../models/transfer_history.dart';
 /// - Clear transfer history
 class TransferHistoryService {
   static const String _historyFileName = 'transfer_history.json';
-  static const int _maxHistoryItems = 100; // Keep last 100 transfers
+  static const int _maxHistoryItems =
+      AppConstants.maxHistoryItems; // Keep last 100 transfers
 
   /// Get the history file path
   Future<String> _getHistoryFilePath() async {
-    final directory = await getApplicationDocumentsDirectory();
+    final directory = await path_provider.getApplicationDocumentsDirectory();
     return '${directory.path}/$_historyFileName';
   }
 

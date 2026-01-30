@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
+import '../utils/dialog_helper.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends StatefulWidget {
@@ -18,7 +19,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  final PreferencesService _preferencesService = PreferencesService();
+  late final PreferencesService _preferencesService;
   final TextEditingController _deviceNameController = TextEditingController();
 
   String _deviceName = '';
@@ -33,6 +34,10 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize services (can be overridden for testing)
+    _preferencesService = PreferencesService();
+
     _loadDeviceInfo();
     _loadServerInfo();
     _loadConcurrentTransfers();
@@ -124,76 +129,21 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.settings_suggest, color: Color(0xFF2196F3)),
-            SizedBox(width: 12),
-            Text('确认修改'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '确定要将并发传输数量从 $_concurrentTransfers 修改为 $newCount 吗？',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE3F2FD),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: Color(0xFF2196F3),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      newCount > _concurrentTransfers
-                          ? '增加并发数可能会提高传输速度，但也会增加设备负载'
-                          : '降低并发数可以减少设备负载，但可能会降低传输速度',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[800],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2196F3),
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('确认修改'),
-          ),
-        ],
-      ),
+    final additionalInfo = newCount > _concurrentTransfers
+        ? '增加并发数可能会提高传输速度，但也会增加设备负载'
+        : '降低并发数可以减少设备负载，但可能会降低传输速度';
+
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '确认修改',
+      message:
+          '确定要将并发传输数量从 $_concurrentTransfers 修改为 $newCount 吗？\n\n提示：$additionalInfo',
+      confirmText: '确认修改',
+      icon: Icons.settings_suggest,
+      iconColor: const Color(0xFF2196F3),
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await _saveConcurrentTransfers(newCount);
     } else {
       // User cancelled, revert to previous value
@@ -240,25 +190,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Reset device name to model
   Future<void> _resetDeviceName() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('重置设备名'),
-        content: Text('确定要将设备名重置为 "$_deviceModel" 吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('重置'),
-          ),
-        ],
-      ),
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '重置设备名',
+      message: '确定要将设备名重置为 "$_deviceModel" 吗？',
+      confirmText: '重置',
+      icon: Icons.refresh,
+      iconColor: Colors.orange,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       _deviceNameController.text = _deviceModel;
       await _saveDeviceName();
     }
@@ -299,9 +240,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('设置'),
-      ),
+      appBar: AppBar(title: const Text('设置')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -422,7 +361,11 @@ class _SettingsPageState extends State<SettingsPage> {
                     tooltip: '编辑',
                   ),
                   IconButton(
-                    icon: Icon(Icons.refresh, size: 20, color: Colors.grey[600]),
+                    icon: Icon(
+                      Icons.refresh,
+                      size: 20,
+                      color: Colors.grey[600],
+                    ),
                     onPressed: _resetDeviceName,
                     tooltip: '重置为设备型号',
                   ),
@@ -555,10 +498,7 @@ class _SettingsPageState extends State<SettingsPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFFFEBEE),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE53935),
-          width: 1.5,
-        ),
+        border: Border.all(color: const Color(0xFFE53935), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,11 +598,7 @@ class _SettingsPageState extends State<SettingsPage> {
               color: const Color(0xFF2196F3).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.copy,
-              size: 18,
-              color: Color(0xFF2196F3),
-            ),
+            child: const Icon(Icons.copy, size: 18, color: Color(0xFF2196F3)),
           ),
         ),
       ],
@@ -755,7 +691,9 @@ class _SettingsPageState extends State<SettingsPage> {
                     activeTrackColor: const Color(0xFF2196F3),
                     inactiveTrackColor: Colors.grey[300],
                     thumbColor: const Color(0xFF2196F3),
-                    overlayColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
+                    overlayColor: const Color(
+                      0xFF2196F3,
+                    ).withValues(alpha: 0.2),
                     trackHeight: 4,
                   ),
                   child: Slider(

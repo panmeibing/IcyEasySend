@@ -19,7 +19,8 @@ class PreferencesService {
   static const int _maxHistorySize = 10;
 
   // Default concurrent transfer count
-  static const int _defaultConcurrentTransfers = 5;
+  static const int _defaultConcurrentTransfers =
+      AppConstants.defaultConcurrentTransfers;
 
   /// Save the last used IP address
   ///

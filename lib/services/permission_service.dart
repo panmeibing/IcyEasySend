@@ -24,6 +24,8 @@ class PermissionRequestResult {
 /// - Handle permission denial scenarios
 ///
 class PermissionService {
+  String logTag = LogTags.permission;
+
   /// Request storage/file access permissions
   ///
   /// On Android 13+ (API 33+), requests READ_MEDIA_* permissions
@@ -100,7 +102,7 @@ class PermissionService {
         return PermissionRequestResult(granted: true);
       }
     } catch (e) {
-      LogUtil.e("requestStoragePermission() error: $e");
+      LogUtil.eTag(logTag, "requestStoragePermission() error: $e");
       return PermissionRequestResult(
         granted: false,
         errorMessage: '权限请求出错: ${e.toString()}',

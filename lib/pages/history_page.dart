@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/transfer_history.dart';
 import '../services/transfer_history_service.dart';
+import '../utils/dialog_helper.dart';
+import '../utils/format_util.dart';
 
 /// History page to display transfer history
 class HistoryPage extends StatefulWidget {
@@ -25,7 +27,7 @@ enum HistoryFilter {
 }
 
 class HistoryPageState extends State<HistoryPage> {
-  final TransferHistoryService _historyService = TransferHistoryService();
+  late final TransferHistoryService _historyService;
   List<TransferHistory> _history = [];
   TransferStatistics? _statistics;
   bool _isLoading = true;
@@ -35,6 +37,10 @@ class HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize services (can be overridden for testing)
+    _historyService = TransferHistoryService();
+
     _loadHistory();
   }
 
@@ -65,25 +71,16 @@ class HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _clearHistory() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('清除历史记录'),
-        content: const Text('确定要清除所有传输历史记录吗？此操作无法撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('清除'),
-          ),
-        ],
-      ),
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '清除历史记录',
+      message: '确定要清除所有传输历史记录吗？此操作无法撤销。',
+      confirmText: '清除',
+      icon: Icons.delete_sweep,
+      iconColor: Colors.red,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await _historyService.clearHistory();
       await _loadHistory();
     }
@@ -169,7 +166,9 @@ class HistoryPageState extends State<HistoryPage> {
             color: isSelected ? const Color(0xFF2196F3) : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? const Color(0xFF2196F3) : Colors.grey.shade300,
+              color: isSelected
+                  ? const Color(0xFF2196F3)
+                  : Colors.grey.shade300,
               width: 1,
             ),
           ),
@@ -214,12 +213,7 @@ class HistoryPageState extends State<HistoryPage> {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE0E0E0),
-            width: 1,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
       ),
       child: SafeArea(
         bottom: false,
@@ -335,10 +329,7 @@ class HistoryPageState extends State<HistoryPage> {
             ),
           ),
           if (_isStatisticsExpanded) ...[
-            Container(
-              height: 1,
-              color: Colors.grey.shade200,
-            ),
+            Container(height: 1, color: Colors.grey.shade200),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -388,7 +379,7 @@ class HistoryPageState extends State<HistoryPage> {
                       Expanded(
                         child: _buildStatItem(
                           '总大小',
-                          _formatBytes(stats.totalBytes),
+                          FormatUtil.formatBytes(stats.totalBytes),
                           const Color(0xFF009688),
                         ),
                       ),
@@ -459,9 +450,13 @@ class HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHistoryItem(TransferHistory item) {
     final icon = item.isReceived ? Icons.download : Icons.upload;
-    final iconColor = item.isReceived ? const Color(0xFF4CAF50) : const Color(0xFF2196F3);
+    final iconColor = item.isReceived
+        ? const Color(0xFF4CAF50)
+        : const Color(0xFF2196F3);
     final statusIcon = item.success ? Icons.check_circle : Icons.error;
-    final statusColor = item.success ? const Color(0xFF4CAF50) : const Color(0xFFE53935);
+    final statusColor = item.success
+        ? const Color(0xFF4CAF50)
+        : const Color(0xFFE53935);
 
     // Display device name if available, otherwise show IP
     final peerDisplay = item.peerDeviceName ?? item.peerIP;
@@ -488,10 +483,7 @@ class HistoryPageState extends State<HistoryPage> {
           item.fileName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
@@ -635,24 +627,24 @@ class HistoryPageState extends State<HistoryPage> {
       if (Platform.isAndroid) {
         // On Android, use open_file_manager to open the folder
         final path = directory.path;
-        
+
         // Try to extract the relative path from common Android storage paths
         String? relativePath;
-        
+
         // Common Android storage paths
         final storagePrefixes = [
           '/storage/emulated/0/',
           '/sdcard/',
           '/mnt/sdcard/',
         ];
-        
+
         for (final prefix in storagePrefixes) {
           if (path.startsWith(prefix)) {
             relativePath = path.substring(prefix.length);
             break;
           }
         }
-        
+
         if (relativePath != null && relativePath.isNotEmpty) {
           // Open the specific folder
           await openFileManager(
@@ -698,28 +690,16 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Delete a single record
   Future<void> _deleteRecord(TransferHistory item) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除记录'),
-        content: Text(
-          '确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '删除记录',
+      message: '确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。',
+      confirmText: '删除',
+      icon: Icons.delete_outline,
+      iconColor: Colors.red,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       await _historyService.deleteTransfer(item);
       await _loadHistory();
 
@@ -780,7 +760,7 @@ class HistoryPageState extends State<HistoryPage> {
             children: [
               _buildDetailRow('文件名', item.fileName),
               const Divider(height: 20),
-              _buildDetailRow('文件大小', _formatBytes(item.fileSize)),
+              _buildDetailRow('文件大小', FormatUtil.formatBytes(item.fileSize)),
               const Divider(height: 20),
               if (item.peerDeviceName != null) ...[
                 _buildDetailRow(
@@ -796,7 +776,10 @@ class HistoryPageState extends State<HistoryPage> {
                 ),
               ],
               const Divider(height: 20),
-              _buildDetailRow('传输时间', _formatFullDateTime(item.timestamp)),
+              _buildDetailRow(
+                '传输时间',
+                FormatUtil.formatFullDateTime(item.timestamp),
+              ),
               const Divider(height: 20),
               _buildDetailRow(
                 '传输状态',
@@ -866,12 +849,6 @@ class HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  /// Format full date time for detail view
-  String _formatFullDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} '
-        '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
-  }
-
   /// Copy file path to clipboard
   Future<void> _copyPathToClipboard(String path) async {
     await Clipboard.setData(ClipboardData(text: path));
@@ -883,18 +860,6 @@ class HistoryPageState extends State<HistoryPage> {
           duration: Duration(seconds: 2),
         ),
       );
-    }
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
     }
   }
 }

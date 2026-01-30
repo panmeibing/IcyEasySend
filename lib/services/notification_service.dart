@@ -1,17 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:icy_easy_send/utils/constants.dart';
 
-/// Result of a receive confirmation dialog
-class ReceiveConfirmationResult {
-  final bool accepted;
-  final bool timedOut;
-  final bool autoAcceptRemaining; // 是否自动接收后续文件
-
-  ReceiveConfirmationResult({
-    required this.accepted,
-    this.timedOut = false,
-    this.autoAcceptRemaining = false,
-  });
-}
+import '../utils/format_util.dart';
 
 /// NotificationService provides user notification and dialog functionality
 class NotificationService {
@@ -63,118 +53,6 @@ class NotificationService {
         );
       },
     );
-  }
-
-  /// Show a file receive confirmation dialog with 30-second timeout
-  ///
-  /// `context` - BuildContext for showing the dialog
-  /// `senderIP` - IP address of the sender device
-  /// `fileName` - Name of the file being received
-  /// `fileSize` - Size of the file in bytes
-  /// `remainingFiles` - Number of remaining files in the batch (optional)
-  ///
-  /// Returns a Future of ReceiveConfirmationResult indicating whether the user
-  /// accepted or rejected the file, or if the dialog timed out
-  Future<ReceiveConfirmationResult> showReceiveConfirmation({
-    required BuildContext context,
-    required String senderIP,
-    String? senderDeviceName,
-    required String fileName,
-    required int fileSize,
-    int? remainingFiles,
-  }) async {
-    Map<String, dynamic>? result;
-    bool timedOut = false;
-
-    // Create a completer to handle the timeout
-    final dialogFuture = showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return _ReceiveConfirmationDialog(
-          senderIP: senderIP,
-          senderDeviceName: senderDeviceName,
-          fileName: fileName,
-          fileSize: fileSize,
-          remainingFiles: remainingFiles,
-        );
-      },
-    );
-
-    // Wait for either the dialog result or timeout (30 seconds)
-    try {
-      result = await dialogFuture.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          // Timeout occurred, close the dialog and return null
-          timedOut = true;
-          // Use a post-frame callback to safely close the dialog
-          if (context.mounted) {
-            Navigator.of(
-              context,
-              rootNavigator: true,
-            ).pop({'accepted': false, 'autoAccept': false});
-          }
-          return {'accepted': false, 'autoAccept': false};
-        },
-      );
-    } catch (e) {
-      // Handle any errors during dialog display
-      result = {'accepted': false, 'autoAccept': false};
-    }
-
-    return ReceiveConfirmationResult(
-      accepted: result?['accepted'] ?? false,
-      timedOut: timedOut,
-      autoAcceptRemaining: result?['autoAccept'] ?? false,
-    );
-  }
-
-  /// Format file size in human-readable format
-  static String _formatFileSize(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(2)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
-    } else {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-  }
-
-  /// Show a receiving progress dialog
-  ///
-  /// Returns a function to update the progress and a function to close the dialog
-  Future<ReceiveProgressController> showReceiveProgress({
-    required BuildContext context,
-    required String fileName,
-    required int fileSize,
-    required String senderIP,
-    String? senderDeviceName,
-    bool isAutoAccept = false,
-  }) async {
-    final controller = ReceiveProgressController();
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return _ReceiveProgressDialog(
-          fileName: fileName,
-          fileSize: fileSize,
-          senderIP: senderIP,
-          senderDeviceName: senderDeviceName,
-          controller: controller,
-          isAutoAccept: isAutoAccept,
-        );
-      },
-    ).then((_) {
-      // Dialog closed
-      controller._dialogClosed = true;
-    });
-
-    return controller;
   }
 }
 
@@ -232,7 +110,7 @@ class _ReceiveConfirmationDialog extends StatefulWidget {
 
 class _ReceiveConfirmationDialogState
     extends State<_ReceiveConfirmationDialog> {
-  int _remainingSeconds = 30;
+  int _remainingSeconds = AppConstants.receiveConfirmationCountdown;
   bool _disposed = false;
   bool _autoAcceptRemaining = false;
 
@@ -243,7 +121,7 @@ class _ReceiveConfirmationDialogState
   }
 
   void _startCountdown() {
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(AppConstants.countdownInterval, () {
       if (!_disposed && mounted) {
         setState(() {
           _remainingSeconds--;
@@ -263,7 +141,7 @@ class _ReceiveConfirmationDialogState
 
   @override
   Widget build(BuildContext context) {
-    final formattedSize = NotificationService._formatFileSize(widget.fileSize);
+    final formattedSize = FormatUtil.formatBytes(widget.fileSize);
     final hasRemainingFiles =
         widget.remainingFiles != null && widget.remainingFiles! > 0;
 
@@ -381,18 +259,6 @@ class _ReceiveProgressDialogState extends State<_ReceiveProgressDialog> {
     });
   }
 
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) {
-      return '$bytes B';
-    } else if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    } else if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    } else {
-      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final progress = widget.controller._progress;
@@ -457,7 +323,7 @@ class _ReceiveProgressDialogState extends State<_ReceiveProgressDialog> {
           if (totalBytes > 0) ...[
             const SizedBox(height: 8),
             Text(
-              '已接收: ${_formatBytes(bytesReceived)} / ${_formatBytes(totalBytes)}',
+              '已接收: ${FormatUtil.formatBytes(bytesReceived)} / ${FormatUtil.formatBytes(totalBytes)}',
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             ),
           ],

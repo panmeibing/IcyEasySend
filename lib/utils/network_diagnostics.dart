@@ -1,11 +1,15 @@
 import 'dart:io';
 
-import 'package:http/http.dart' as http;
+import 'package:icy_easy_send/utils/constants.dart';
 
+import 'http_helper.dart';
 import 'log_util.dart';
+import 'network_util.dart';
 
 /// Network diagnostics utility to help troubleshoot connection issues
 class NetworkDiagnostics {
+  static final String logTag = LogTags.network;
+
   /// Perform comprehensive network diagnostics
   ///
   /// Returns a detailed report of network status
@@ -13,10 +17,13 @@ class NetworkDiagnostics {
     String? targetIP,
     int? targetPort,
   }) async {
+    LogUtil.iTag(logTag, '开始网络诊断: 目标=$targetIP:$targetPort');
+
     final report = DiagnosticsReport();
 
     // 1. Check local network interfaces
     report.localInterfaces = await _checkLocalInterfaces();
+    LogUtil.dTag(logTag, '本地网络接口: ${report.localInterfaces.length}个');
 
     // 2. Check if we can reach the target (if provided)
     if (targetIP != null && targetPort != null) {
@@ -24,15 +31,26 @@ class NetworkDiagnostics {
         targetIP,
         targetPort,
       );
+      LogUtil.iTag(
+        logTag,
+        '目标可达性: ${report.targetReachable == true ? "可达" : "不可达"}',
+      );
+
       report.healthCheckResult = await _testHealthEndpoint(
         targetIP,
         targetPort,
+      );
+      LogUtil.iTag(
+        logTag,
+        '健康检查: ${report.healthCheckResult?.success == true ? "成功" : "失败"}',
       );
     }
 
     // 3. Check internet connectivity
     report.hasInternetConnection = await _checkInternetConnection();
+    LogUtil.dTag(logTag, '互联网连接: ${report.hasInternetConnection ? "有" : "无"}');
 
+    LogUtil.iTag(logTag, '网络诊断完成');
     return report;
   }
 
@@ -53,14 +71,19 @@ class NetworkDiagnostics {
               NetworkInterfaceInfo(
                 name: interface.name,
                 address: addr.address,
-                isPrivateNetwork: _isPrivateNetwork(addr.address),
+                isPrivateNetwork: NetworkUtil.isPrivateNetwork(addr.address),
               ),
             );
+            LogUtil.dTag(logTag, '发现网络接口: ${interface.name} - ${addr.address}');
           }
         }
       }
-    } catch (e) {
-      LogUtil.i('[Diagnostics] 获取网络接口失败: $e');
+
+      if (interfaces.isEmpty) {
+        LogUtil.wTag(logTag, '未找到有效的网络接口');
+      }
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '获取网络接口失败: $e', e, stackTrace);
     }
 
     return interfaces;
@@ -68,6 +91,8 @@ class NetworkDiagnostics {
 
   /// Check if target is reachable via socket connection
   static Future<bool> _checkTargetReachability(String ip, int port) async {
+    LogUtil.dTag(logTag, '检查目标可达性: $ip:$port');
+
     try {
       final socket = await Socket.connect(
         ip,
@@ -75,9 +100,10 @@ class NetworkDiagnostics {
         timeout: const Duration(seconds: 3),
       );
       await socket.close();
+      LogUtil.dTag(logTag, '目标可达: $ip:$port');
       return true;
-    } catch (e) {
-      LogUtil.i('[Diagnostics] 目标不可达: $e');
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '目标不可达: $ip:$port, 错误=$e', e, stackTrace);
       return false;
     }
   }
@@ -87,58 +113,48 @@ class NetworkDiagnostics {
     String ip,
     int port,
   ) async {
-    try {
-      final url = 'http://$ip:$port/health';
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 5));
+    final url = NetworkUtil.buildHttpUrl(ip, '/health', targetPort: port);
+    LogUtil.dTag(logTag, '测试健康检查端点: $url');
 
-      return HealthCheckTestResult(
-        success: response.statusCode == 200,
-        statusCode: response.statusCode,
-        responseBody: response.body,
-      );
-    } catch (e) {
-      return HealthCheckTestResult(success: false, error: e.toString());
+    // Use HttpHelper for GET request
+    final result = await HttpHelper.get(
+      url,
+      timeout: const Duration(seconds: 5),
+    );
+
+    if (!result.isSuccess) {
+      LogUtil.wTag(logTag, '健康检查失败: ${result.errorMessage}');
+      return HealthCheckTestResult(success: false, error: result.errorMessage);
     }
+
+    final response = result.data!;
+    final success = HttpHelper.isSuccessResponse(response);
+
+    if (success) {
+      LogUtil.dTag(logTag, '健康检查成功: 状态码=${response.statusCode}');
+    } else {
+      LogUtil.wTag(logTag, '健康检查返回错误状态码: ${response.statusCode}');
+    }
+
+    return HealthCheckTestResult(
+      success: success,
+      statusCode: response.statusCode,
+      responseBody: response.body,
+    );
   }
 
   /// Check internet connectivity
   static Future<bool> _checkInternetConnection() async {
-    try {
-      final result = await InternetAddress.lookup('www.google.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Check if an IP address is in a private network range
-  static bool _isPrivateNetwork(String ip) {
-    final parts = ip.split('.');
-    if (parts.length != 4) return false;
+    LogUtil.dTag(logTag, '检查互联网连接');
 
     try {
-      final first = int.parse(parts[0]);
-      final second = int.parse(parts[1]);
-
-      // 192.168.x.x
-      if (first == 192 && second == 168) {
-        return true;
-      }
-
-      // 172.16.x.x - 172.31.x.x
-      if (first == 172 && second >= 16 && second <= 31) {
-        return true;
-      }
-
-      // 10.x.x.x
-      if (first == 10) {
-        return true;
-      }
-
-      return false;
-    } catch (e) {
+      final result = await InternetAddress.lookup('www.baidu.com');
+      final hasConnection =
+          result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      LogUtil.dTag(logTag, '互联网连接: ${hasConnection ? "有" : "无"}');
+      return hasConnection;
+    } catch (e, stackTrace) {
+      LogUtil.dTag(logTag, '互联网连接检查失败: $e', e, stackTrace);
       return false;
     }
   }
@@ -153,8 +169,9 @@ class DiagnosticsReport {
 
   @override
   String toString() {
+    String separator = AppConstants.diagInfoSeparator;
     final buffer = StringBuffer();
-    buffer.writeln('========== 网络诊断报告 ==========');
+    buffer.writeln('$separator 网络诊断报告 $separator');
     buffer.writeln();
 
     buffer.writeln('本地网络接口:');
@@ -198,7 +215,7 @@ class DiagnosticsReport {
     buffer.writeln(hasInternetConnection ? '  ✅ 有互联网连接' : '  ❌ 无互联网连接');
     buffer.writeln();
 
-    buffer.writeln('==================================');
+    buffer.writeln(separator * 3);
 
     return buffer.toString();
   }

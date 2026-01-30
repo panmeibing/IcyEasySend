@@ -8,6 +8,7 @@ import 'package:shelf_router/shelf_router.dart' as shelf_router;
 import '../utils/constants.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
+import '../utils/network_util.dart';
 import 'file_transfer_handler.dart';
 import 'health_check_handler.dart';
 
@@ -31,13 +32,20 @@ class HTTPServerManager {
   int? _currentPort;
   BuildContext? _context;
 
+  final String logTag = LogTags.server;
+
   // API handlers
-  final HealthCheckHandler _healthCheckHandler = HealthCheckHandler();
+  final HealthCheckHandler _healthCheckHandler;
   late final FileTransferHandler _fileTransferHandler;
 
-  HTTPServerManager() {
-    // Create file transfer handler with a context getter
-    _fileTransferHandler = FileTransferHandler(contextGetter: () => _context);
+  HTTPServerManager({
+    HealthCheckHandler? healthCheckHandler,
+    FileTransferHandler? fileTransferHandler,
+  }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler() {
+    // Create file transfer handler with a context getter if not provided
+    _fileTransferHandler =
+        fileTransferHandler ??
+        FileTransferHandler(contextGetter: () => _context);
   }
 
   /// Set the BuildContext for showing dialogs
@@ -63,14 +71,15 @@ class HTTPServerManager {
 
     // If server is already running, return success
     if (isRunning()) {
-      LogUtil.i('[Server] 服务器已在运行: $_serverAddress');
+      LogUtil.iTag(logTag, '服务器已在运行: $_serverAddress');
       return ServerStartResult(success: true, serverAddress: _serverAddress);
     }
 
-    LogUtil.i('[Server] ========================================');
-    LogUtil.i('[Server] 开始启动HTTP服务器');
-    LogUtil.i('[Server] 尝试端口范围: $startPort-${AppConstants.maxServerPort}');
-    LogUtil.i('[Server] ========================================');
+    String separator = AppConstants.diagInfoSeparator;
+    LogUtil.iTag(logTag, separator * 3);
+    LogUtil.iTag(logTag, '开始启动HTTP服务器');
+    LogUtil.iTag(logTag, '尝试端口范围: $startPort-${AppConstants.maxServerPort}');
+    LogUtil.iTag(logTag, separator * 3);
 
     // Try to start server on the specified port or find an available port
     for (
@@ -79,7 +88,7 @@ class HTTPServerManager {
       tryPort++
     ) {
       try {
-        LogUtil.i('[Server] 尝试绑定端口: $tryPort');
+        LogUtil.dTag(logTag, '尝试绑定端口: $tryPort');
 
         // Create router and configure routes
         final router = shelf_router.Router();
@@ -117,26 +126,27 @@ class HTTPServerManager {
         _currentPort = tryPort;
 
         // Get the local IP address
-        final localIP = await _getLocalIPAddress();
+        final localIP = await NetworkUtil.getLocalIPAddress();
         _serverAddress = '$localIP:$tryPort';
 
-        LogUtil.i('[Server] ✅ 服务器启动成功！');
-        LogUtil.i('[Server] 监听地址: 0.0.0.0:$tryPort');
-        LogUtil.i('[Server] 本机IP: $localIP');
-        LogUtil.i('[Server] 完整地址: $_serverAddress');
-        LogUtil.i('[Server] ========================================');
+        LogUtil.iTag(logTag, '✅ 服务器启动成功！');
+        LogUtil.iTag(logTag, '监听地址: 0.0.0.0:$tryPort');
+        LogUtil.iTag(logTag, '本机IP: $localIP');
+        LogUtil.iTag(logTag, '完整地址: $_serverAddress');
+        LogUtil.iTag(logTag, separator * 3);
 
         // 测试健康检查端点
         _testHealthEndpoint(localIP, tryPort);
 
         return ServerStartResult(success: true, serverAddress: _serverAddress);
-      } on SocketException {
+      } on SocketException catch (e) {
         // Port is in use or other socket error, try next port
-        LogUtil.e('[Server] ❌ 端口 $tryPort 不可用（可能被占用）');
+        LogUtil.wTag(logTag, '端口 $tryPort 不可用: ${e.message}');
         if (tryPort == AppConstants.maxServerPort) {
           // Last port in range, return error
-          LogUtil.w(
-            '[Server] ❌ 所有端口(${AppConstants.defaultPort}-${AppConstants.maxServerPort})都不可用',
+          LogUtil.eTag(
+            logTag,
+            '所有端口(${AppConstants.defaultPort}-${AppConstants.maxServerPort})都不可用',
           );
           return ServerStartResult(
             success: false,
@@ -145,9 +155,9 @@ class HTTPServerManager {
         }
         // Continue to next port
         continue;
-      } catch (e) {
+      } catch (e, stackTrace) {
         // Other errors
-        LogUtil.e('[Server] ❌ 启动失败: $e');
+        LogUtil.eTag(logTag, '服务器启动失败: $e', e, stackTrace);
         return ServerStartResult(
           success: false,
           errorMessage: ErrorMessages.serverStartFailed(e.toString()),
@@ -156,6 +166,7 @@ class HTTPServerManager {
     }
 
     // Should not reach here, but just in case
+    LogUtil.eTag(logTag, '未知错误：无法启动服务器');
     return ServerStartResult(
       success: false,
       errorMessage: ErrorMessages.serverUnknownError,
@@ -165,9 +176,9 @@ class HTTPServerManager {
   /// Test health endpoint after server starts
   void _testHealthEndpoint(String ip, int port) async {
     try {
-      LogUtil.i('[Server] 测试健康检查端点...');
-      final testUrl = 'http://$ip:$port/health';
-      LogUtil.i('[Server] 测试URL: $testUrl');
+      LogUtil.dTag(logTag, '测试健康检查端点...');
+      final testUrl = NetworkUtil.buildHttpUrl(ip, '/health', targetPort: port);
+      LogUtil.dTag(logTag, '测试URL: $testUrl');
 
       // Wait a bit for server to be fully ready
       await Future.delayed(const Duration(milliseconds: 500));
@@ -179,131 +190,34 @@ class HTTPServerManager {
           .then((response) => response);
 
       if (response.statusCode == 200) {
-        LogUtil.i('[Server] ✅ 健康检查端点测试成功！');
+        LogUtil.iTag(logTag, '✅ 健康检查端点测试成功！');
       } else {
-        LogUtil.i('[Server] ⚠️ 健康检查端点返回状态码: ${response.statusCode}');
+        LogUtil.wTag(logTag, '健康检查端点返回状态码: ${response.statusCode}');
       }
-    } catch (e) {
-      LogUtil.e('[Server] ⚠️ 健康检查端点测试失败: $e');
-      LogUtil.e('[Server] 这可能表示存在网络配置问题');
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '健康检查端点测试失败: $e (这可能表示存在网络配置问题)', e, stackTrace);
     }
   }
 
   /// Stop the HTTP server
   Future<void> stopServer() async {
     if (_server != null) {
-      await _server!.close(force: true);
-      _server = null;
-      _serverAddress = null;
-      _currentPort = null;
-    }
-  }
-
-  /// Get the local IP address of the device
-  ///
-  /// Priority order:
-  /// 1. Private network addresses (192.168.x.x, 172.16-31.x.x, 10.x.x.x)
-  /// 2. Other non-loopback IPv4 addresses
-  /// 3. Fallback to 127.0.0.1
-  Future<String> _getLocalIPAddress() async {
-    try {
-      LogUtil.i('[Server] 获取本地IP地址...');
-
-      // Get all network interfaces
-      final interfaces = await NetworkInterface.list(
-        type: InternetAddressType.IPv4,
-        includeLinkLocal: false,
-      );
-
-      LogUtil.i('[Server] 找到 ${interfaces.length} 个网络接口');
-
-      List<String> privateAddresses = [];
-      List<String> otherAddresses = [];
-
-      // Categorize addresses
-      for (var interface in interfaces) {
-        LogUtil.i('[Server] 接口: ${interface.name}');
-        for (var addr in interface.addresses) {
-          LogUtil.i(
-            '[Server]   - 地址: ${addr.address} (loopback: ${addr.isLoopback})',
-          );
-          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            final ip = addr.address;
-
-            // Check if it's a private network address
-            if (_isPrivateNetwork(ip)) {
-              LogUtil.i('[Server]   ✅ 私有网络地址: $ip');
-              privateAddresses.add(ip);
-            } else {
-              LogUtil.i('[Server]   ℹ️ 其他地址: $ip');
-              otherAddresses.add(ip);
-            }
-          }
-        }
+      LogUtil.iTag(logTag, '正在停止HTTP服务器...');
+      try {
+        await _server!.close(force: true);
+        LogUtil.iTag(logTag, '服务器已停止: $_serverAddress');
+        _server = null;
+        _serverAddress = null;
+        _currentPort = null;
+      } catch (e, stackTrace) {
+        LogUtil.eTag(logTag, '停止服务器时出错: $e', e, stackTrace);
+        // Still clean up the references
+        _server = null;
+        _serverAddress = null;
+        _currentPort = null;
       }
-
-      // Prefer private network addresses (typical LAN)
-      if (privateAddresses.isNotEmpty) {
-        // Sort to prefer 192.168.x.x over 10.x.x.x
-        privateAddresses.sort((a, b) {
-          if (a.startsWith('192.168.')) return -1;
-          if (b.startsWith('192.168.')) return 1;
-          if (a.startsWith('172.')) return -1;
-          if (b.startsWith('172.')) return 1;
-          return 0;
-        });
-        LogUtil.i('[Server] 选择的IP地址: ${privateAddresses.first}');
-        return privateAddresses.first;
-      }
-
-      // Use other addresses if no private network found
-      if (otherAddresses.isNotEmpty) {
-        LogUtil.i('[Server] 选择的IP地址: ${otherAddresses.first}');
-        return otherAddresses.first;
-      }
-
-      // Fallback to localhost if no network interface found
-      LogUtil.w('[Server] ⚠️ 未找到有效网络接口，使用回环地址');
-      return '127.0.0.1';
-    } catch (e) {
-      // If error, return localhost
-      LogUtil.e('[Server] ❌ 获取IP地址失败: $e');
-      return '127.0.0.1';
-    }
-  }
-
-  /// Check if an IP address is in a private network range
-  ///
-  /// Private network ranges:
-  /// - 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
-  /// - 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
-  /// - 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
-  bool _isPrivateNetwork(String ip) {
-    final parts = ip.split('.');
-    if (parts.length != 4) return false;
-
-    try {
-      final first = int.parse(parts[0]);
-      final second = int.parse(parts[1]);
-
-      // 192.168.x.x
-      if (first == 192 && second == 168) {
-        return true;
-      }
-
-      // 172.16.x.x - 172.31.x.x
-      if (first == 172 && second >= 16 && second <= 31) {
-        return true;
-      }
-
-      // 10.x.x.x
-      if (first == 10) {
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      return false;
+    } else {
+      LogUtil.dTag(logTag, '服务器未运行，无需停止');
     }
   }
 

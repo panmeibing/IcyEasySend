@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+
+import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
 import 'services/permission_service.dart';
-import 'pages/main_container.dart';
 import 'utils/error_messages.dart';
 
 void main() {
@@ -16,13 +17,18 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final HTTPServerManager _serverManager = HTTPServerManager();
-  final PermissionService _permissionService = PermissionService();
+  late final HTTPServerManager _serverManager;
+  late final PermissionService _permissionService;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize services
+    _serverManager = HTTPServerManager();
+    _permissionService = PermissionService();
+
     _initializeApp();
   }
 
@@ -119,7 +125,7 @@ class _MyAppState extends State<MyApp> {
   ThemeData _buildModernTheme() {
     const primaryColor = Color(0xFF2196F3); // Modern blue
     const surfaceColor = Color(0xFFFAFAFA); // Light gray background
-    
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -127,7 +133,7 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.light,
         surface: surfaceColor,
       ),
-      
+
       // AppBar theme - flat and minimal
       appBarTheme: const AppBarTheme(
         elevation: 0,
@@ -141,7 +147,7 @@ class _MyAppState extends State<MyApp> {
           letterSpacing: 0.15,
         ),
       ),
-      
+
       // Card theme - minimal elevation and rounded corners
       cardTheme: CardThemeData(
         elevation: 0,
@@ -152,7 +158,7 @@ class _MyAppState extends State<MyApp> {
         color: Colors.white,
         margin: EdgeInsets.zero,
       ),
-      
+
       // Input decoration theme - clean and modern
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -177,17 +183,18 @@ class _MyAppState extends State<MyApp> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFE53935), width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
-      
+
       // Elevated button theme - flat and modern
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -195,18 +202,16 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
       ),
-      
+
       // Outlined button theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           side: BorderSide(color: Colors.grey.shade400),
         ),
       ),
-      
+
       // Bottom navigation bar theme - clean and flat
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         elevation: 0,
@@ -223,37 +228,33 @@ class _MyAppState extends State<MyApp> {
         ),
         type: BottomNavigationBarType.fixed,
       ),
-      
+
       // Divider theme
       dividerTheme: DividerThemeData(
         color: Colors.grey.shade200,
         thickness: 1,
         space: 1,
       ),
-      
+
       // Snackbar theme
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         elevation: 0,
       ),
-      
+
       // Dialog theme
       dialogTheme: DialogThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      
+
       // Progress indicator theme
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: primaryColor,
         linearTrackColor: Color(0xFFE0E0E0),
       ),
-      
+
       // Scaffold background
       scaffoldBackgroundColor: surfaceColor,
     );

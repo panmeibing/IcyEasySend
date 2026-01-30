@@ -1,14 +1,14 @@
-/// 设备信息模型
+/// Equipment Information Model
 ///
-/// 包含设备的基本信息
+/// Contains basic information about the device
 class DeviceInfo {
-  /// 设备名称
+  /// Device Name
   final String deviceName;
 
-  /// IP 地址
+  /// IP address
   final String ipAddress;
 
-  /// 平台（Android, iOS, Windows, macOS, Linux）
+  /// Platform（Android, iOS, Windows, macOS, Linux）
   final String platform;
 
   DeviceInfo({
@@ -17,7 +17,7 @@ class DeviceInfo {
     required this.platform,
   });
 
-  /// 将对象转换为 JSON 格式
+  /// Convert objects to JSON format
   Map<String, dynamic> toJson() {
     return {
       'deviceName': deviceName,
@@ -26,7 +26,7 @@ class DeviceInfo {
     };
   }
 
-  /// 从 JSON 创建对象
+  /// Create objects from JSON
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
     return DeviceInfo(
       deviceName: json['deviceName'] as String,
