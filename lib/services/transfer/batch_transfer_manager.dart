@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/http_helper.dart';
 import '../../utils/log_util.dart';
@@ -12,6 +13,7 @@ import '../preferences_service.dart';
 import '../validation_service.dart';
 import 'file_sender.dart' as sender;
 import 'health_checker.dart';
+import 'transfer_history_manager.dart';
 import 'transfer_request_builder.dart';
 
 /// Manager for handling batch file transfers
@@ -21,6 +23,9 @@ class BatchTransferManager {
   final ValidationService _validationService;
   final PreferencesService _preferencesService;
   final TransferRequestBuilder _requestBuilder;
+  final TransferHistoryManager _historyManager;
+
+  final String logTag = LogTags.transfer;
 
   BatchTransferManager({
     HealthChecker? healthChecker,
@@ -28,26 +33,28 @@ class BatchTransferManager {
     ValidationService? validationService,
     PreferencesService? preferencesService,
     TransferRequestBuilder? requestBuilder,
-  })  : _healthChecker = healthChecker ?? HealthChecker(),
-        _fileSender = fileSender ?? sender.FileSender(),
-        _validationService = validationService ?? ValidationService(),
-        _preferencesService = preferencesService ?? PreferencesService(),
-        _requestBuilder = requestBuilder ?? TransferRequestBuilder();
+    TransferHistoryManager? historyManager,
+  }) : _healthChecker = healthChecker ?? HealthChecker(),
+       _fileSender = fileSender ?? sender.FileSender(),
+       _validationService = validationService ?? ValidationService(),
+       _preferencesService = preferencesService ?? PreferencesService(),
+       _requestBuilder = requestBuilder ?? TransferRequestBuilder(),
+       _historyManager = historyManager ?? TransferHistoryManager();
 
   /// Send multiple files with batch confirmation
   Future<Map<String, OperationResult<sender.TransferData>>>
-      sendFilesWithBatchConfirm({
+  sendFilesWithBatchConfirm({
     required String targetIP,
     required List<File> files,
     void Function(double progress, int bytesTransferred, int totalBytes)?
-        onProgress,
+    onProgress,
     void Function(
       int fileIndex,
       double progress,
       int bytesTransferred,
       int totalBytes,
     )?
-        onFileProgress,
+    onFileProgress,
     void Function(String status)? onStatusChange,
   }) async {
     final results = <String, OperationResult<sender.TransferData>>{};
@@ -82,8 +89,8 @@ class BatchTransferManager {
       final fileList = <Map<String, dynamic>>[];
       int totalBytes = 0;
 
-      final validationResults =
-          await _validationService.validateFilesForSending(files);
+      final validationResults = await _validationService
+          .validateFilesForSending(files);
 
       for (final entry in validationResults.entries) {
         final fileName = entry.key;
@@ -118,7 +125,8 @@ class BatchTransferManager {
         'senderDeviceName': deviceName,
       });
 
-      LogUtil.i(
+      LogUtil.iTag(
+        logTag,
         "sendFilesWithBatchConfirm() confirmUrl: [$confirmUrl], confirmBody: [$confirmBody]",
       );
 
@@ -131,7 +139,7 @@ class BatchTransferManager {
 
       if (!confirmResult.isSuccess) {
         final errorMsg = confirmResult.errorMessage!;
-        LogUtil.e(errorMsg);
+        LogUtil.eTag(logTag, errorMsg);
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = OperationResult.failure(
             errorMsg,
@@ -142,7 +150,8 @@ class BatchTransferManager {
 
       final confirmResponse = confirmResult.data!;
 
-      LogUtil.d(
+      LogUtil.dTag(
+        logTag,
         "sendFilesWithBatchConfirm() confirmResponse statusCode: ${confirmResponse.statusCode}, Body: ${confirmResponse.body}",
       );
 
@@ -151,7 +160,7 @@ class BatchTransferManager {
           confirmResponse,
           '接收方拒绝接收\n状态码: ${confirmResponse.statusCode}',
         );
-        LogUtil.e(errorMsg);
+        LogUtil.eTag(logTag, errorMsg);
 
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = OperationResult.failure(
@@ -165,7 +174,7 @@ class BatchTransferManager {
       final parseResult = HttpHelper.parseJsonResponse(confirmResponse);
       if (!parseResult.isSuccess) {
         final errorMsg = parseResult.errorMessage!;
-        LogUtil.e(errorMsg);
+        LogUtil.eTag(logTag, errorMsg);
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = OperationResult.failure(
             errorMsg,
@@ -186,8 +195,9 @@ class BatchTransferManager {
         return results;
       }
 
-      final transferIds =
-          Map<String, String>.from(confirmData['transferIds'] as Map);
+      final transferIds = Map<String, String>.from(
+        confirmData['transferIds'] as Map,
+      );
 
       // Step 5: Send files with concurrent control
       await _sendFilesWithConcurrency(
@@ -203,9 +213,17 @@ class BatchTransferManager {
         onStatusChange: onStatusChange,
       );
 
+      // Step 6: Save all transfer histories in batch after all transfers complete
+      await _saveBatchTransferHistories(
+        files: files,
+        results: results,
+        targetIP: targetIP,
+        deviceName: deviceName,
+      );
+
       return results;
     } catch (e) {
-      LogUtil.e("sendFilesWithBatchConfirm() ${e.toString()}");
+      LogUtil.eTag(logTag, "sendFilesWithBatchConfirm() ${e.toString()}");
       for (final file in files) {
         final fileName = path.basename(file.path);
         if (!results.containsKey(fileName)) {
@@ -228,14 +246,14 @@ class BatchTransferManager {
     required int totalBytes,
     required Map<String, OperationResult<sender.TransferData>> results,
     void Function(double progress, int bytesTransferred, int totalBytes)?
-        onProgress,
+    onProgress,
     void Function(
       int fileIndex,
       double progress,
       int bytesTransferred,
       int totalBytes,
     )?
-        onFileProgress,
+    onFileProgress,
     void Function(String status)? onStatusChange,
   }) async {
     final concurrentCount = await _preferencesService.getConcurrentTransfers();
@@ -284,6 +302,8 @@ class BatchTransferManager {
         transferId: transferId,
         senderIP: senderIP,
         deviceName: deviceName,
+        saveHistory: false,
+        // Don't save history here, will be saved in batch later
         onProgress: (progress, bytes, total) {
           fileProgress[fileIndex] = progress;
           fileBytes[fileIndex] = bytes;
@@ -293,8 +313,9 @@ class BatchTransferManager {
           for (final entry in fileBytes.entries) {
             overallBytes += entry.value;
           }
-          final overallProgress =
-              totalBytes > 0 ? overallBytes / totalBytes : 0.0;
+          final overallProgress = totalBytes > 0
+              ? overallBytes / totalBytes
+              : 0.0;
           onProgress?.call(overallProgress, overallBytes, totalBytes);
         },
       );
@@ -320,6 +341,46 @@ class BatchTransferManager {
       }
 
       await Future.wait(batch, eagerError: false);
+    }
+  }
+
+  /// Save all transfer histories in batch after transfers complete
+  /// This prevents concurrent write conflicts to the history file
+  Future<void> _saveBatchTransferHistories({
+    required List<File> files,
+    required Map<String, OperationResult<sender.TransferData>> results,
+    required String targetIP,
+    String? deviceName,
+  }) async {
+    try {
+      final histories = <TransferHistory>[];
+
+      for (final file in files) {
+        final fileName = path.basename(file.path);
+        final result = results[fileName];
+
+        if (result != null) {
+          final fileSize = await file.length();
+          final history = _historyManager.createTransferHistory(
+            fileName: fileName,
+            fileSize: fileSize,
+            targetIP: targetIP,
+            success: result.isSuccess,
+            isReceived: false,
+            deviceName: deviceName,
+            savedPath: result.isSuccess ? result.data?.savedPath : null,
+          );
+          histories.add(history);
+        }
+      }
+
+      // Save all histories in one batch operation
+      if (histories.isNotEmpty) {
+        await _historyManager.saveTransferHistoryBatch(histories);
+        LogUtil.iTag(logTag, '批量保存了 ${histories.length} 条传输历史记录');
+      }
+    } catch (e) {
+      LogUtil.eTag(logTag, '批量保存传输历史失败: $e');
     }
   }
 }

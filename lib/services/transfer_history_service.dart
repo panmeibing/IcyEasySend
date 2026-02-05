@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart' as path_provider;
 
 import '../models/transfer_history.dart';
 import '../utils/constants.dart';
+import '../utils/log_util.dart';
 
 /// Service for managing transfer history
 ///
@@ -16,6 +17,7 @@ class TransferHistoryService {
   static const String _historyFileName = 'transfer_history.json';
   static const int _maxHistoryItems =
       AppConstants.maxHistoryItems; // Keep last 100 transfers
+  final String logTag = LogTags.history;
 
   /// Get the history file path
   Future<String> _getHistoryFilePath() async {
@@ -48,6 +50,7 @@ class TransferHistoryService {
       return history;
     } catch (e) {
       // If error loading history, return empty list
+      LogUtil.eTag(logTag, e);
       return [];
     }
   }
@@ -74,6 +77,38 @@ class TransferHistoryService {
     } catch (e) {
       // Silently fail if we can't save history
       // This is not critical functionality
+      LogUtil.eTag(logTag, e);
+    }
+  }
+
+  /// Save multiple transfer records to history in batch
+  ///
+  /// Adds multiple records to the history and saves to local storage once.
+  /// This is more efficient and safer than calling saveTransfer multiple times
+  /// in concurrent scenarios. Keeps only the most recent [_maxHistoryItems] records.
+  Future<void> saveTransferBatch(List<TransferHistory> transfers) async {
+    if (transfers.isEmpty) return;
+
+    try {
+      // Load existing history
+      final history = await loadHistory();
+
+      // Add new transfers at the beginning (in reverse order to maintain chronological order)
+      for (final transfer in transfers.reversed) {
+        history.insert(0, transfer);
+      }
+
+      // Keep only the most recent items
+      if (history.length > _maxHistoryItems) {
+        history.removeRange(_maxHistoryItems, history.length);
+      }
+
+      // Save to file once
+      await _saveHistory(history);
+    } catch (e) {
+      // Silently fail if we can't save history
+      // This is not critical functionality
+      LogUtil.eTag(logTag, e);
     }
   }
 
@@ -89,6 +124,7 @@ class TransferHistoryService {
       await file.writeAsString(contents);
     } catch (e) {
       // Silently fail
+      LogUtil.eTag(logTag, e);
     }
   }
 
@@ -103,6 +139,7 @@ class TransferHistoryService {
       }
     } catch (e) {
       // Silently fail
+      LogUtil.eTag(logTag, e);
     }
   }
 
@@ -125,6 +162,7 @@ class TransferHistoryService {
       await _saveHistory(history);
     } catch (e) {
       // Silently fail
+      LogUtil.eTag(logTag, e);
     }
   }
 

@@ -206,7 +206,7 @@ class ValidationService {
       fileSize = await file.length();
       LogUtil.dTag(
         logTag,
-        '文件大小: $fileName = ${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB',
+        '文件大小: $fileName = ${(fileSize / AppConstants.bytesPerMB).toStringAsFixed(2)}MB',
       );
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '无法获取文件大小: $fileName, 错误=$e', e, stackTrace);
@@ -287,7 +287,7 @@ class ValidationService {
   Future<OperationResult<void>> validateStorageSpace(int requiredBytes) async {
     LogUtil.dTag(
       logTag,
-      '验证存储空间: 需要${(requiredBytes / 1024 / 1024).toStringAsFixed(2)}MB',
+      '验证存储空间: 需要${(requiredBytes / AppConstants.bytesPerMB).toStringAsFixed(2)}MB',
     );
 
     try {

@@ -98,7 +98,8 @@ class LogUtil {
     // 如果不是调试模式，则额外添加文件输出（可选，用于持久化重要日志）
     if (!kDebugMode) {
       try {
-        final directory = await path_provider.getApplicationDocumentsDirectory();
+        final directory = await path_provider
+            .getApplicationDocumentsDirectory();
         final logFile = File('${directory.path}/app_log.txt');
         if (!await logFile.exists()) {
           await logFile.create(recursive: true);
@@ -138,35 +139,35 @@ class LogUtil {
 
   // ==================== 基础日志方法 ====================
 
-  /// Trace级别日志（最详细）
-  static void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.t(message, error: error, stackTrace: stackTrace);
-  }
-
-  /// Debug级别日志
-  static void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.d(message, error: error, stackTrace: stackTrace);
-  }
-
-  /// Info级别日志
-  static void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.i(message, error: error, stackTrace: stackTrace);
-  }
-
-  /// Warning级别日志
-  static void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.w(message, error: error, stackTrace: stackTrace);
-  }
-
-  /// Error级别日志
-  static void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.e(message, error: error, stackTrace: stackTrace);
-  }
-
-  /// Fatal级别日志（最严重）
-  static void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-    _instance._logger.f(message, error: error, stackTrace: stackTrace);
-  }
+  // /// Trace级别日志（最详细）
+  // static void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.t(message, error: error, stackTrace: stackTrace);
+  // }
+  //
+  // /// Debug级别日志
+  // static void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.d(message, error: error, stackTrace: stackTrace);
+  // }
+  //
+  // /// Info级别日志
+  // static void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.i(message, error: error, stackTrace: stackTrace);
+  // }
+  //
+  // /// Warning级别日志
+  // static void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.w(message, error: error, stackTrace: stackTrace);
+  // }
+  //
+  // /// Error级别日志
+  // static void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.e(message, error: error, stackTrace: stackTrace);
+  // }
+  //
+  // /// Fatal级别日志（最严重）
+  // static void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
+  //   _instance._logger.f(message, error: error, stackTrace: stackTrace);
+  // }
 
   // ==================== 带标签的日志方法 ====================
 

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:icy_easy_send/utils/constants.dart';
+
 import '../utils/log_util.dart';
 import '../utils/operation_result.dart';
 import 'preferences_service.dart';
@@ -116,10 +118,11 @@ class FileTransferService {
     String? senderDeviceName,
     void Function(double progress, int bytesReceived, int totalBytes)?
     onProgress,
+    bool saveHistory = true,
   }) async {
     LogUtil.iTag(
       logTag,
-      '开始接收文件: $fileName, 大小=${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB, 来自=$senderIP',
+      '开始接收文件: $fileName, 大小=${(fileSize / AppConstants.bytesPerMB).toStringAsFixed(2)}MB, 来自=$senderIP, saveHistory=$saveHistory',
     );
 
     try {
@@ -130,6 +133,7 @@ class FileTransferService {
         senderIP: senderIP,
         senderDeviceName: senderDeviceName,
         onProgress: onProgress,
+        saveHistory: saveHistory,
       );
 
       if (result.isSuccess) {
