@@ -6,24 +6,21 @@ import '../../utils/operation_result.dart';
 import '../../utils/platform_util.dart';
 import '../transfer_history_service.dart';
 import '../validation_service.dart';
-import 'transfer_history_manager.dart';
 
 /// Service for receiving files from sender devices
 class FileReceiver {
   final ValidationService _validationService;
-  final TransferHistoryManager _historyManager;
   final String logTag = LogTags.transfer;
 
   FileReceiver({
     ValidationService? validationService,
     TransferHistoryService? historyService,
-  }) : _validationService = validationService ?? ValidationService(),
-       _historyManager = TransferHistoryManager(historyService: historyService);
+  }) : _validationService = validationService ?? ValidationService();
 
   /// Receive a file directly without user confirmation
   ///
-  /// When saveHistory is false, the caller is responsible for saving history
-  /// (useful for batch transfers to avoid concurrent writes)
+  /// Note: This method does NOT save transfer history.
+  /// The caller is responsible for collecting results and saving history in batch.
   Future<OperationResult<FileReceivedData>> receiveFileDirectly({
     required Stream<List<int>> fileStream,
     required String fileName,
@@ -32,7 +29,6 @@ class FileReceiver {
     String? senderDeviceName,
     void Function(double progress, int bytesReceived, int totalBytes)?
     onProgress,
-    bool saveHistory = true,
   }) async {
     IOSink? sink;
     File? file;
@@ -47,17 +43,6 @@ class FileReceiver {
           LogUtil.eTag(logTag, 'Error draining stream: $e');
         }
 
-        if (saveHistory) {
-          await _historyManager.saveTransferHistory(
-            fileName: fileName,
-            fileSize: fileSize,
-            targetIP: senderIP,
-            success: false,
-            isReceived: true,
-            deviceName: senderDeviceName,
-          );
-        }
-
         return OperationResult.failure(ErrorMessages.storageInsufficient);
       }
 
@@ -68,17 +53,6 @@ class FileReceiver {
           await fileStream.drain();
         } catch (e) {
           LogUtil.eTag(logTag, 'Error draining stream: $e');
-        }
-
-        if (saveHistory) {
-          await _historyManager.saveTransferHistory(
-            fileName: fileName,
-            fileSize: fileSize,
-            targetIP: senderIP,
-            success: false,
-            isReceived: true,
-            deviceName: senderDeviceName,
-          );
         }
 
         return OperationResult.failure(
@@ -133,17 +107,6 @@ class FileReceiver {
           LogUtil.eTag(logTag, 'Error deleting file: $deleteError');
         }
 
-        if (saveHistory) {
-          await _historyManager.saveTransferHistory(
-            fileName: fileName,
-            fileSize: fileSize,
-            targetIP: senderIP,
-            success: false,
-            isReceived: true,
-            deviceName: senderDeviceName,
-          );
-        }
-
         return OperationResult.failure('文件保存失败\n错误: $e');
       }
 
@@ -159,31 +122,7 @@ class FileReceiver {
           LogUtil.eTag(logTag, 'Error deleting invalid file: $deleteError');
         }
 
-        if (saveHistory) {
-          await _historyManager.saveTransferHistory(
-            fileName: fileName,
-            fileSize: fileSize,
-            targetIP: senderIP,
-            success: false,
-            isReceived: true,
-            deviceName: senderDeviceName,
-          );
-        }
-
         return OperationResult.failure(verifyResult.errorMessage!);
-      }
-
-      // Save to history
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: senderIP,
-          success: true,
-          isReceived: true,
-          deviceName: senderDeviceName,
-          savedPath: filePath,
-        );
       }
 
       return OperationResult.success(
@@ -209,17 +148,6 @@ class FileReceiver {
         } catch (deleteError) {
           LogUtil.eTag(logTag, 'Error deleting file: $deleteError');
         }
-      }
-
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: senderIP,
-          success: false,
-          isReceived: true,
-          deviceName: senderDeviceName,
-        );
       }
 
       return OperationResult.failure(

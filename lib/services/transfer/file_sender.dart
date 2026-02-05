@@ -13,12 +13,10 @@ import '../preferences_service.dart';
 import '../validation_service.dart';
 import '../transfer_history_service.dart';
 import 'health_checker.dart';
-import 'transfer_history_manager.dart';
 import 'transfer_request_builder.dart';
 
 /// Service for sending files to target devices
 class FileSender {
-  final TransferHistoryManager _historyManager;
   final TransferRequestBuilder _requestBuilder;
   final String logTag = LogTags.transfer;
 
@@ -29,13 +27,12 @@ class FileSender {
     HealthChecker? healthChecker,
     ValidationService? validationService,
     PreferencesService? preferencesService,
-  }) : _historyManager = TransferHistoryManager(historyService: historyService),
-       _requestBuilder = requestBuilder ?? TransferRequestBuilder();
+  }) : _requestBuilder = requestBuilder ?? TransferRequestBuilder();
 
   /// Send a file with a pre-obtained transfer ID
   ///
-  /// When saveHistory is false, the caller is responsible for saving history
-  /// (useful for batch transfers to avoid concurrent writes)
+  /// Note: This method does NOT save transfer history.
+  /// The caller is responsible for collecting results and saving history in batch.
   Future<OperationResult<TransferData>> sendFileWithTransferId({
     required String targetIP,
     required File file,
@@ -44,14 +41,13 @@ class FileSender {
     String? deviceName,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
-    bool saveHistory = true,
   }) async {
     final fileName = path.basename(file.path);
     final fileSize = await file.length();
 
     LogUtil.iTag(
       logTag,
-      "sendFileWithTransferId() transferId: [$transferId], targetIP: [$targetIP], fileSize: [$fileSize], fileName: [$fileName], saveHistory: [$saveHistory]",
+      "sendFileWithTransferId() transferId: [$transferId], targetIP: [$targetIP], fileSize: [$fileSize], fileName: [$fileName]",
     );
 
     try {
@@ -86,45 +82,14 @@ class FileSender {
         fileSize: fileSize,
         targetIP: targetIP,
         deviceName: deviceName,
-        saveHistory: saveHistory,
       );
     } on TimeoutException {
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: false,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
       return OperationResult.failure('文件传输超时');
     } on SocketException catch (e) {
       LogUtil.eTag(logTag, e.toString());
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: false,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
       return OperationResult.failure('网络连接失败\n错误: ${e.message}');
     } catch (e) {
       LogUtil.eTag(logTag, e.toString());
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: false,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
       return OperationResult.failure(
         ErrorMessages.unexpectedError(e.toString()),
       );
@@ -174,7 +139,7 @@ class FileSender {
     return await responseFuture.timeout(timeout);
   }
 
-  /// Handle server response and save to history
+  /// Handle server response
   Future<OperationResult<TransferData>> _handleTransferResponse({
     required int statusCode,
     required String responseBody,
@@ -182,20 +147,8 @@ class FileSender {
     required int fileSize,
     required String targetIP,
     String? deviceName,
-    bool saveHistory = true,
   }) async {
     if (statusCode != 200) {
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: false,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
-
       try {
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         return OperationResult.failure(data['message'] as String? ?? '文件传输失败');
@@ -209,32 +162,11 @@ class FileSender {
       final data = jsonDecode(responseBody) as Map<String, dynamic>;
       final savedPath = data['savedPath'] as String?;
 
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: true,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
-
       return OperationResult.success(
         data: TransferData(savedPath: savedPath, bytesTransferred: fileSize),
       );
     } catch (e) {
       LogUtil.eTag(logTag, e.toString());
-      if (saveHistory) {
-        await _historyManager.saveTransferHistory(
-          fileName: fileName,
-          fileSize: fileSize,
-          targetIP: targetIP,
-          success: false,
-          isReceived: false,
-          deviceName: deviceName,
-        );
-      }
       return OperationResult.failure('无法解析响应\n错误: $e');
     }
   }

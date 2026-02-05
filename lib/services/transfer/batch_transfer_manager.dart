@@ -302,8 +302,6 @@ class BatchTransferManager {
         transferId: transferId,
         senderIP: senderIP,
         deviceName: deviceName,
-        saveHistory: false,
-        // Don't save history here, will be saved in batch later
         onProgress: (progress, bytes, total) {
           fileProgress[fileIndex] = progress;
           fileBytes[fileIndex] = bytes;

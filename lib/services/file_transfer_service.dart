@@ -13,8 +13,6 @@ import 'transfer_history_service.dart';
 import 'validation_service.dart';
 
 class FileTransferService {
-  final checker.HealthChecker _healthChecker;
-  final sender.FileSender _fileSender;
   final FileReceiver _fileReceiver;
   final BatchTransferManager _batchTransferManager;
   final String logTag = LogTags.transfer;
@@ -27,15 +25,7 @@ class FileTransferService {
     sender.FileSender? fileSender,
     FileReceiver? fileReceiver,
     BatchTransferManager? batchTransferManager,
-  }) : _healthChecker = healthChecker ?? checker.HealthChecker(),
-       _fileSender =
-           fileSender ??
-           sender.FileSender(
-             historyService: historyService,
-             preferencesService: preferencesService,
-             validationService: validationService,
-           ),
-       _fileReceiver =
+  }) : _fileReceiver =
            fileReceiver ??
            FileReceiver(
              historyService: historyService,
@@ -118,11 +108,10 @@ class FileTransferService {
     String? senderDeviceName,
     void Function(double progress, int bytesReceived, int totalBytes)?
     onProgress,
-    bool saveHistory = true,
   }) async {
     LogUtil.iTag(
       logTag,
-      '开始接收文件: $fileName, 大小=${(fileSize / AppConstants.bytesPerMB).toStringAsFixed(2)}MB, 来自=$senderIP, saveHistory=$saveHistory',
+      '开始接收文件: $fileName, 大小=${(fileSize / AppConstants.bytesPerMB).toStringAsFixed(2)}MB, 来自=$senderIP',
     );
 
     try {
@@ -133,7 +122,6 @@ class FileTransferService {
         senderIP: senderIP,
         senderDeviceName: senderDeviceName,
         onProgress: onProgress,
-        saveHistory: saveHistory,
       );
 
       if (result.isSuccess) {

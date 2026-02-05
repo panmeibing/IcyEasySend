@@ -51,11 +51,14 @@ class BatchReceiveManager {
 
   /// Request batch receive confirmation for multiple files at once
   /// This is the preferred method when sending multiple files
+  ///
+  /// The onComplete callback is called after the dialog closes (all files received or rejected)
   Future<bool> requestBatchReceiveConfirmation({
     required BuildContext context,
     required List<PendingFileInfo> files,
     required String senderIP,
     String? senderDeviceName,
+    Future<void> Function()? onComplete,
   }) async {
     if (files.isEmpty) return false;
 
@@ -67,7 +70,7 @@ class BatchReceiveManager {
 
     // Show dialog immediately with all files
     // Don't await here, let it run in background
-    _showBatchDialog(context, senderIP);
+    _showBatchDialog(context, senderIP, onComplete);
 
     // Wait for all files to be confirmed or rejected
     // This will block until user clicks accept or reject
@@ -80,7 +83,11 @@ class BatchReceiveManager {
   }
 
   /// Show batch receive dialog for all pending files from a sender
-  Future<void> _showBatchDialog(BuildContext context, String senderIP) async {
+  Future<void> _showBatchDialog(
+    BuildContext context,
+    String senderIP,
+    Future<void> Function()? onComplete,
+  ) async {
     if (!context.mounted) return;
 
     final pendingFiles = _pendingFilesBySender[senderIP];
@@ -131,6 +138,11 @@ class BatchReceiveManager {
     // Clear pending files for this sender
     _pendingFilesBySender.remove(senderIP);
     _batchTimers.remove(senderIP);
+
+    // Call completion callback if provided
+    if (onComplete != null) {
+      await onComplete();
+    }
   }
 
   /// Update progress for a specific transfer

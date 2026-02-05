@@ -28,11 +28,8 @@ class FileTransferHandler {
   // Store progress callbacks for active transfers: transferId -> callback
   final Map<String, void Function(double, int, int)> _progressCallbacks = {};
 
-  // Store transfer histories by sender IP for batch saving
-  final Map<String, List<TransferHistory>> _pendingHistories = {};
-
-  // Timer to batch save histories
-  final Map<String, Timer> _historySaveTimers = {};
+  // Store transfer metadata for batch history saving: transferId -> metadata
+  final Map<String, _TransferMetadata> _transferMetadata = {};
 
   FileTransferHandler({
     this.contextGetter,
@@ -56,35 +53,26 @@ class FileTransferHandler {
     _progressCallbacks.remove(transferId);
   }
 
-  /// Add a transfer history to pending list for batch saving
-  /// Histories from the same sender will be saved together after a short delay
-  void _addPendingHistory(String senderIP, TransferHistory history) {
-    _pendingHistories.putIfAbsent(senderIP, () => []).add(history);
+  /// Save batch transfer histories for a specific sender
+  /// This should be called after all files from a sender have been received
+  Future<void> saveBatchHistories(String senderIP) async {
+    final histories = <TransferHistory>[];
 
-    // Cancel existing timer
-    _historySaveTimers[senderIP]?.cancel();
+    // Collect all histories for this sender
+    final transferIds = _transferMetadata.keys
+        .where((id) => _transferMetadata[id]!.senderIP == senderIP)
+        .toList();
 
-    // Start a new timer to batch save after 2 seconds
-    _historySaveTimers[senderIP] = Timer(const Duration(seconds: 2), () {
-      _savePendingHistories(senderIP);
-    });
-  }
+    for (final transferId in transferIds) {
+      final metadata = _transferMetadata.remove(transferId);
+      if (metadata != null) {
+        histories.add(metadata.toTransferHistory());
+      }
+    }
 
-  /// Save all pending histories for a sender
-  Future<void> _savePendingHistories(String senderIP) async {
-    final histories = _pendingHistories.remove(senderIP);
-    _historySaveTimers.remove(senderIP);
-
-    if (histories != null && histories.isNotEmpty) {
+    if (histories.isNotEmpty) {
       await _historyManager.saveTransferHistoryBatch(histories);
       LogUtil.dTag(logTag, '批量保存了 ${histories.length} 条接收历史记录 (来自 $senderIP)');
-    }
-  }
-
-  /// Force save all pending histories immediately
-  Future<void> flushPendingHistories() async {
-    for (final senderIP in _pendingHistories.keys.toList()) {
-      await _savePendingHistories(senderIP);
     }
   }
 
@@ -204,12 +192,17 @@ class FileTransferHandler {
       LogUtil.iTag(logTag, '显示批量接收确认对话框: ${pendingFiles.length}个文件');
 
       // Show batch dialog with all files at once
+      // When dialog closes (all files received), save histories in batch
       final accepted = await _batchReceiveManager
           .requestBatchReceiveConfirmation(
             context: ctx,
             files: pendingFiles,
             senderIP: senderIP,
             senderDeviceName: senderDeviceName,
+            onComplete: () async {
+              // Save all transfer histories for this sender in batch
+              await saveBatchHistories(senderIP);
+            },
           );
 
       if (!accepted) {
@@ -373,7 +366,6 @@ class FileTransferHandler {
       final progressCallback = _progressCallbacks[transferId];
 
       // Call FileTransferService to save the file directly (no confirmation needed)
-      // Don't save history immediately to avoid concurrent writes
       final receiveResult = await _fileTransferService.receiveFileDirectly(
         fileStream: fileStream,
         fileName: fileName,
@@ -381,25 +373,22 @@ class FileTransferHandler {
         senderIP: senderIP,
         senderDeviceName: senderDeviceName,
         onProgress: progressCallback,
-        saveHistory: false, // Don't save immediately, will batch save later
       );
 
       // Clean up progress callback
       unregisterProgressCallback(transferId);
 
-      // Add to pending histories for batch saving
-      final history = _historyManager.createTransferHistory(
+      // Store transfer metadata for batch history saving
+      _transferMetadata[transferId] = _TransferMetadata(
         fileName: fileName,
         fileSize: fileSize,
-        targetIP: senderIP,
+        senderIP: senderIP,
+        senderDeviceName: senderDeviceName,
         success: receiveResult.isSuccess,
-        isReceived: true,
-        deviceName: senderDeviceName,
         savedPath: receiveResult.isSuccess
             ? receiveResult.data?.savedPath
             : null,
       );
-      _addPendingHistory(senderIP, history);
 
       // Check if file was saved successfully
       if (!receiveResult.isSuccess) {
@@ -445,5 +434,37 @@ class FileTransferHandler {
         headers: {'Content-Type': 'application/json'},
       );
     }
+  }
+}
+
+/// Internal class to store transfer metadata for batch history saving
+class _TransferMetadata {
+  final String fileName;
+  final int fileSize;
+  final String senderIP;
+  final String? senderDeviceName;
+  final bool success;
+  final String? savedPath;
+
+  _TransferMetadata({
+    required this.fileName,
+    required this.fileSize,
+    required this.senderIP,
+    this.senderDeviceName,
+    required this.success,
+    this.savedPath,
+  });
+
+  TransferHistory toTransferHistory() {
+    return TransferHistory(
+      fileName: fileName,
+      fileSize: fileSize,
+      peerIP: senderIP.split(':').first,
+      peerDeviceName: senderDeviceName,
+      timestamp: DateTime.now(),
+      isReceived: true,
+      success: success,
+      savedPath: savedPath,
+    );
   }
 }
