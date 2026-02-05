@@ -102,12 +102,6 @@ class HTTPServerManager {
           _fileTransferHandler.handleBatchConfirmReceive,
         );
 
-        // Configure confirm receive endpoint (legacy single file, called before file transfer)
-        router.get(
-          '/confirm-receive',
-          _fileTransferHandler.handleConfirmReceive,
-        );
-
         // Configure file transfer endpoint
         router.post('/transfer', _fileTransferHandler.handleFileTransfer);
 

@@ -49,48 +49,6 @@ class BatchReceiveManager {
   // Timer to batch requests within a short time window
   final Map<String, Timer> _batchTimers = {};
 
-  // Batch window duration (wait this long for more files from same sender)
-  // Using constant from AppConstants for maintainability
-
-  /// Add a file to the pending queue and show batch dialog if needed
-  Future<bool> requestReceiveConfirmation({
-    required BuildContext context,
-    required String fileName,
-    required int fileSize,
-    required String senderIP,
-    String? senderDeviceName,
-    required String transferId,
-  }) async {
-    final fileInfo = PendingFileInfo(
-      fileName: fileName,
-      fileSize: fileSize,
-      senderIP: senderIP,
-      senderDeviceName: senderDeviceName,
-      completer: Completer<bool>(),
-      transferId: transferId,
-    );
-
-    // Add to pending list
-    _pendingFilesBySender.putIfAbsent(senderIP, () => []).add(fileInfo);
-
-    // If dialog is already showing, notify it to update
-    if (_activeDialogKeys.containsKey(senderIP)) {
-      final dialogKey = _activeDialogKeys[senderIP];
-      dialogKey?.currentState?.addNewFile(fileInfo);
-    } else {
-      // Cancel existing timer for this sender
-      _batchTimers[senderIP]?.cancel();
-
-      // Start a timer to batch requests
-      _batchTimers[senderIP] = Timer(AppConstants.batchRequestWindow, () {
-        _showBatchDialog(context, senderIP);
-      });
-    }
-
-    // Wait for user decision
-    return await fileInfo.completer.future;
-  }
-
   /// Request batch receive confirmation for multiple files at once
   /// This is the preferred method when sending multiple files
   Future<bool> requestBatchReceiveConfirmation({
