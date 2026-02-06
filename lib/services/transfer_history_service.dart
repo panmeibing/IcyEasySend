@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import '../models/transfer_history.dart';
-import '../utils/constants.dart';
 import '../utils/log_util.dart';
+import 'preferences_service.dart';
 
 /// Service for managing transfer history
 ///
@@ -15,9 +15,11 @@ import '../utils/log_util.dart';
 /// - Clear transfer history
 class TransferHistoryService {
   static const String _historyFileName = 'transfer_history.json';
-  static const int _maxHistoryItems =
-      AppConstants.maxHistoryItems; // Keep last 100 transfers
   final String logTag = LogTags.history;
+  final PreferencesService _preferencesService;
+
+  TransferHistoryService({PreferencesService? preferencesService})
+    : _preferencesService = preferencesService ?? PreferencesService();
 
   /// Get the history file path
   Future<String> _getHistoryFilePath() async {
@@ -58,7 +60,7 @@ class TransferHistoryService {
   /// Save a transfer record to history
   ///
   /// Adds the new record to the history and saves to local storage.
-  /// Keeps only the most recent [_maxHistoryItems] records.
+  /// Keeps only the most recent records based on user settings.
   Future<void> saveTransfer(TransferHistory transfer) async {
     try {
       // Load existing history
@@ -67,9 +69,12 @@ class TransferHistoryService {
       // Add new transfer at the beginning
       history.insert(0, transfer);
 
+      // Get max history items from preferences
+      final maxHistoryItems = await _preferencesService.getMaxHistoryItems();
+
       // Keep only the most recent items
-      if (history.length > _maxHistoryItems) {
-        history.removeRange(_maxHistoryItems, history.length);
+      if (history.length > maxHistoryItems) {
+        history.removeRange(maxHistoryItems, history.length);
       }
 
       // Save to file
@@ -85,7 +90,7 @@ class TransferHistoryService {
   ///
   /// Adds multiple records to the history and saves to local storage once.
   /// This is more efficient and safer than calling saveTransfer multiple times
-  /// in concurrent scenarios. Keeps only the most recent [_maxHistoryItems] records.
+  /// in concurrent scenarios. Keeps only the most recent records based on user settings.
   Future<void> saveTransferBatch(List<TransferHistory> transfers) async {
     if (transfers.isEmpty) return;
 
@@ -98,9 +103,12 @@ class TransferHistoryService {
         history.insert(0, transfer);
       }
 
+      // Get max history items from preferences
+      final maxHistoryItems = await _preferencesService.getMaxHistoryItems();
+
       // Keep only the most recent items
-      if (history.length > _maxHistoryItems) {
-        history.removeRange(_maxHistoryItems, history.length);
+      if (history.length > maxHistoryItems) {
+        history.removeRange(maxHistoryItems, history.length);
       }
 
       // Save to file once
@@ -185,6 +193,37 @@ class TransferHistoryService {
       receivedFiles: receivedFiles,
       totalBytes: totalBytes,
     );
+  }
+
+  /// Trim history to keep only the most recent N items
+  ///
+  /// Parameters:
+  /// - [maxItems]: Maximum number of items to keep
+  ///
+  /// Returns the number of items deleted
+  Future<int> trimHistory(int maxItems) async {
+    try {
+      final history = await loadHistory();
+      final currentCount = history.length;
+
+      if (currentCount <= maxItems) {
+        return 0; // No need to trim
+      }
+
+      // Keep only the most recent items
+      final trimmedHistory = history.sublist(0, maxItems);
+
+      // Save trimmed history
+      await _saveHistory(trimmedHistory);
+
+      final deletedCount = currentCount - maxItems;
+      LogUtil.iTag(logTag, '修剪历史记录: 删除了 $deletedCount 条旧记录');
+
+      return deletedCount;
+    } catch (e) {
+      LogUtil.eTag(logTag, '修剪历史记录失败: $e');
+      return 0;
+    }
   }
 }
 

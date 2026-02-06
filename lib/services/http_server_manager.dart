@@ -31,6 +31,7 @@ class HTTPServerManager {
   String? _serverAddress;
   int? _currentPort;
   BuildContext? _context;
+  VoidCallback? _historyRefreshCallback;
 
   final String logTag = LogTags.server;
 
@@ -45,12 +46,25 @@ class HTTPServerManager {
     // Create file transfer handler with a context getter if not provided
     _fileTransferHandler =
         fileTransferHandler ??
-        FileTransferHandler(contextGetter: () => _context);
+        FileTransferHandler(
+          contextGetter: () => _context,
+          historyRefreshCallbackGetter: () => _historyRefreshCallback,
+        );
   }
 
   /// Set the BuildContext for showing dialogs
   void setContext(BuildContext context) {
     _context = context;
+  }
+
+  /// Set the callback to refresh history page
+  void setHistoryRefreshCallback(VoidCallback callback) {
+    _historyRefreshCallback = callback;
+  }
+
+  /// Trigger history refresh (called after file transfer completes)
+  void refreshHistory() {
+    _historyRefreshCallback?.call();
   }
 
   /// Check if server is currently running

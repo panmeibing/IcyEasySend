@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
 import '../utils/log_util.dart';
@@ -51,6 +52,7 @@ class FileTransferService {
     )?
     onFileProgress,
     void Function(String status)? onStatusChange,
+    VoidCallback? onHistoryUpdated,
   }) async {
     LogUtil.iTag(logTag, '开始批量文件传输: 目标IP=$targetIP, 文件数=${files.length}');
 
@@ -61,6 +63,7 @@ class FileTransferService {
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,
+        onHistoryUpdated: onHistoryUpdated,
       );
 
       final convertedResults = <String, OperationResult<TransferData>>{};

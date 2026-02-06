@@ -21,6 +21,18 @@ class _MainContainerState extends State<MainContainer> {
       GlobalKey<HistoryPageState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Register the refresh callback with the server manager
+    widget.serverManager.setHistoryRefreshCallback(_refreshHistory);
+  }
+
+  /// Public method to refresh history from external calls
+  void _refreshHistory() {
+    _historyPageKey.currentState?.refreshHistory();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
@@ -34,10 +46,7 @@ class _MainContainerState extends State<MainContainer> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
+            top: BorderSide(color: Colors.grey.shade200, width: 1),
           ),
         ),
         child: BottomNavigationBar(
@@ -48,7 +57,7 @@ class _MainContainerState extends State<MainContainer> {
             });
             // Refresh history page when switching to it
             if (index == 1) {
-              _historyPageKey.currentState?.refreshHistory();
+              _refreshHistory();
             }
           },
           items: const [

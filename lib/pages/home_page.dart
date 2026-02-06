@@ -462,6 +462,10 @@ class _HomePageState extends State<HomePage> {
           });
         }
       },
+      onHistoryUpdated: () {
+        // Trigger history refresh after file transfer completes
+        widget.serverManager.refreshHistory();
+      },
     );
   }
 

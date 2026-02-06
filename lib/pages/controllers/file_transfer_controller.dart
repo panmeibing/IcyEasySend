@@ -127,6 +127,7 @@ class FileTransferController {
     required Function(String) onStatusChange,
     required Function() onTransferStart,
     required Function() onTransferEnd,
+    VoidCallback? onHistoryUpdated,
   }) async {
     if (files.isEmpty || targetIP.isEmpty) {
       return;
@@ -149,6 +150,7 @@ class FileTransferController {
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,
+        onHistoryUpdated: onHistoryUpdated,
       );
 
       // Count successes and failures

@@ -20,6 +20,7 @@ class FileTransferHandler {
   final FileTransferService _fileTransferService;
   final BatchReceiveManager _batchReceiveManager;
   final TransferHistoryManager _historyManager;
+  final VoidCallback? Function()? historyRefreshCallbackGetter;
   final String logTag = LogTags.server;
 
   // Store pending transfer confirmations with transfer ID as key
@@ -33,6 +34,7 @@ class FileTransferHandler {
 
   FileTransferHandler({
     this.contextGetter,
+    this.historyRefreshCallbackGetter,
     FileTransferService? fileTransferService,
     BatchReceiveManager? batchReceiveManager,
     TransferHistoryManager? historyManager,
@@ -73,6 +75,9 @@ class FileTransferHandler {
     if (histories.isNotEmpty) {
       await _historyManager.saveTransferHistoryBatch(histories);
       LogUtil.dTag(logTag, '批量保存了 ${histories.length} 条接收历史记录 (来自 $senderIP)');
+      
+      // Trigger history refresh after saving
+      historyRefreshCallbackGetter?.call()?.call();
     }
   }
 

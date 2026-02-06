@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
+import '../services/transfer_history_service.dart';
+import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/toast_helper.dart';
 
@@ -21,7 +23,9 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   late final PreferencesService _preferencesService;
+  late final TransferHistoryService _historyService;
   final TextEditingController _deviceNameController = TextEditingController();
+  final TextEditingController _maxHistoryController = TextEditingController();
 
   String _deviceName = '';
   String _deviceModel = '';
@@ -31,6 +35,12 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isEditingName = false;
   int _concurrentTransfers = 5;
   int _tempConcurrentTransfers = 5; // Temporary value for slider
+  int _maxHistoryItems = AppConstants.defaultMaxHistoryItems;
+  bool _isEditingMaxHistory = false;
+
+  final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
+  final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
+  final int _maxConcurrentTransfers = AppConstants.maxConcurrentTransfers;
 
   @override
   void initState() {
@@ -38,15 +48,18 @@ class _SettingsPageState extends State<SettingsPage> {
 
     // Initialize services (can be overridden for testing)
     _preferencesService = PreferencesService();
+    _historyService = TransferHistoryService();
 
     _loadDeviceInfo();
     _loadServerInfo();
     _loadConcurrentTransfers();
+    _loadMaxHistoryItems();
   }
 
   @override
   void dispose() {
     _deviceNameController.dispose();
+    _maxHistoryController.dispose();
     super.dispose();
   }
 
@@ -123,6 +136,17 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// Load max history items setting
+  Future<void> _loadMaxHistoryItems() async {
+    final count = await _preferencesService.getMaxHistoryItems();
+    if (mounted) {
+      setState(() {
+        _maxHistoryItems = count;
+        _maxHistoryController.text = count.toString();
+      });
+    }
+  }
+
   /// Show confirmation dialog for concurrent transfers change
   Future<void> _confirmAndSaveConcurrentTransfers(int newCount) async {
     // If value hasn't changed, no need to confirm
@@ -164,6 +188,100 @@ class _SettingsPageState extends State<SettingsPage> {
         _concurrentTransfers = count;
       });
       _showSuccessSnackBar('并发传输数量已保存');
+    } else {
+      _showErrorSnackBar('保存失败');
+    }
+  }
+
+  /// Confirm and save max history items
+  Future<void> _confirmAndSaveMaxHistoryItems() async {
+    final newCountText = _maxHistoryController.text.trim();
+    if (newCountText.isEmpty) {
+      _showErrorSnackBar('请输入有效的数字');
+      return;
+    }
+
+    final newCount = int.tryParse(newCountText);
+    if (newCount == null) {
+      _showErrorSnackBar('请输入有效的数字');
+      return;
+    }
+
+    if (newCount < _allowMinHisCount || newCount > _allowMaxHisCount) {
+      _showErrorSnackBar('历史记录数量范围: $_allowMinHisCount-$_allowMaxHisCount');
+      return;
+    }
+
+    // If value hasn't changed, no need to confirm
+    if (newCount == _maxHistoryItems) {
+      setState(() {
+        _isEditingMaxHistory = false;
+      });
+      return;
+    }
+
+    // Get current history count
+    final history = await _historyService.loadHistory();
+    final currentCount = history.length;
+
+    // Build confirmation message
+    String message = '确定要将最大历史记录数从 $_maxHistoryItems 修改为 $newCount 吗？\n\n';
+    message += '当前历史记录数: $currentCount 条\n\n';
+
+    if (currentCount > newCount) {
+      final deleteCount = currentCount - newCount;
+      message += '⚠️ 警告：当前保存的历史记录数 ($currentCount) 大于设置的数量 ($newCount)。\n\n';
+      message += '只会保留最新的 $newCount 条记录，超过的 $deleteCount 条旧记录将被删除。';
+    } else {
+      message += '提示：新的设置将在下次保存历史记录时生效。';
+    }
+
+    if (!mounted) return;
+
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '确认修改',
+      message: message,
+      confirmText: '确认修改',
+      icon: Icons.history,
+      iconColor: const Color(0xFF2196F3),
+    );
+
+    if (confirmed) {
+      await _saveMaxHistoryItems(newCount, currentCount);
+    } else {
+      // User cancelled, revert to previous value
+      if (mounted) {
+        setState(() {
+          _maxHistoryController.text = _maxHistoryItems.toString();
+          _isEditingMaxHistory = false;
+        });
+      }
+    }
+  }
+
+  /// Save max history items setting
+  Future<void> _saveMaxHistoryItems(int newCount, int currentCount) async {
+    final success = await _preferencesService.saveMaxHistoryItems(newCount);
+    if (success) {
+      setState(() {
+        _maxHistoryItems = newCount;
+        _isEditingMaxHistory = false;
+      });
+
+      // If current count exceeds new limit, trim the history
+      if (currentCount > newCount) {
+        final deletedCount = await _historyService.trimHistory(newCount);
+        if (deletedCount > 0) {
+          _showSuccessSnackBar('设置已保存，已删除 $deletedCount 条旧记录');
+          // Trigger history refresh
+          widget.serverManager.refreshHistory();
+        } else {
+          _showSuccessSnackBar('最大历史记录数已保存');
+        }
+      } else {
+        _showSuccessSnackBar('最大历史记录数已保存');
+      }
     } else {
       _showErrorSnackBar('保存失败');
     }
@@ -645,7 +763,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '同时传输的文件数量（1-10）',
+                            '同时传输的文件数量（1-$_maxConcurrentTransfers）',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
@@ -688,7 +806,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Slider(
                     value: _tempConcurrentTransfers.toDouble(),
                     min: 1,
-                    max: 10,
+                    max: _maxConcurrentTransfers.toDouble(),
                     divisions: 9,
                     label: '$_tempConcurrentTransfers',
                     onChanged: (value) {
@@ -719,6 +837,162 @@ class _SettingsPageState extends State<SettingsPage> {
                       Expanded(
                         child: Text(
                           '较高的并发数可以更好地利用带宽，但可能增加设备负载',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+
+            // Max history items setting
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '最大历史记录数',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF212121),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '保存的最大传输记录数量（$_allowMinHisCount-$_allowMaxHisCount}）',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_isEditingMaxHistory)
+                            TextField(
+                              controller: _maxHistoryController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              decoration: InputDecoration(
+                                hintText:
+                                    '输入数量 ($_allowMinHisCount-$_allowMaxHisCount)',
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              autofocus: true,
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF2196F3,
+                                ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFF2196F3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.history,
+                                    size: 20,
+                                    color: Color(0xFF2196F3),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$_maxHistoryItems 条',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2196F3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_isEditingMaxHistory) ...[
+                      IconButton(
+                        icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
+                        onPressed: _confirmAndSaveMaxHistoryItems,
+                        tooltip: '保存',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE53935)),
+                        onPressed: () {
+                          setState(() {
+                            _maxHistoryController.text = _maxHistoryItems
+                                .toString();
+                            _isEditingMaxHistory = false;
+                          });
+                        },
+                        tooltip: '取消',
+                      ),
+                    ] else ...[
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isEditingMaxHistory = true;
+                          });
+                        },
+                        tooltip: '编辑',
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Color(0xFF1976D2),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '超过设置数量的旧记录将被自动删除，只保留最新的记录',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[700],

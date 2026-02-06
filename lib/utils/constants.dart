@@ -39,7 +39,13 @@ class AppConstants {
   // History constants
 
   /// Maximum number of history items to keep
-  static const int maxHistoryItems = 100;
+  static const int defaultMaxHistoryItems = 100;
+
+  /// Maximum number of history items user can set
+  static const int allowMaxHistoryItems = 1000;
+
+  /// Minimum number of history items user can set
+  static const int allowMinHistoryItems = 10;
 
   // Concurrent transfer constants
 

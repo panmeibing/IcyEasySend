@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
 import '../../models/transfer_history.dart';
@@ -56,6 +57,7 @@ class BatchTransferManager {
     )?
     onFileProgress,
     void Function(String status)? onStatusChange,
+    VoidCallback? onHistoryUpdated,
   }) async {
     final results = <String, OperationResult<sender.TransferData>>{};
 
@@ -220,6 +222,9 @@ class BatchTransferManager {
         targetIP: targetIP,
         deviceName: deviceName,
       );
+
+      // Step 7: Trigger history refresh callback
+      onHistoryUpdated?.call();
 
       return results;
     } catch (e) {

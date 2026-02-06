@@ -14,13 +14,21 @@ class PreferencesService {
   static const String _keyIPHistory = 'ip_history';
   static const String _keyDeviceName = 'device_name';
   static const String _keyConcurrentTransfers = 'concurrent_transfers';
+  static const String _keyMaxHistoryItems = 'max_history_items';
 
   // Maximum number of IP addresses to keep in history
-  static const int _maxHistorySize = 10;
+  static const int _maxIpHistorySize = 10;
+  final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
+  final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
+  final int _maxConcurrentTransfers = AppConstants.maxConcurrentTransfers;
 
   // Default concurrent transfer count
   static const int _defaultConcurrentTransfers =
       AppConstants.defaultConcurrentTransfers;
+
+  // Default max history items
+  static const int _defaultMaxHistoryItems =
+      AppConstants.defaultMaxHistoryItems;
 
   /// Save the last used IP address
   ///
@@ -101,8 +109,8 @@ class PreferencesService {
       history.insert(0, ipAddress);
 
       // Limit size
-      if (history.length > _maxHistorySize) {
-        history = history.sublist(0, _maxHistorySize);
+      if (history.length > _maxIpHistorySize) {
+        history = history.sublist(0, _maxIpHistorySize);
       }
 
       // Save back
@@ -213,7 +221,7 @@ class PreferencesService {
   Future<bool> saveConcurrentTransfers(int count) async {
     try {
       // Validate count range
-      if (count < 1 || count > 10) {
+      if (count < 1 || count > _maxConcurrentTransfers) {
         return false;
       }
 
@@ -235,6 +243,37 @@ class PreferencesService {
           _defaultConcurrentTransfers;
     } catch (e) {
       return _defaultConcurrentTransfers;
+    }
+  }
+
+  /// Save max history items count
+  ///
+  /// Parameters:
+  /// - [count]: Maximum number of history items to keep
+  Future<bool> saveMaxHistoryItems(int count) async {
+    try {
+      // Validate count (minimum 10, maximum 1000)
+      if (count < _allowMinHisCount || count > _allowMaxHisCount) {
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyMaxHistoryItems, count);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get max history items count
+  ///
+  /// Returns the saved max history items count, or default value if none exists
+  Future<int> getMaxHistoryItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyMaxHistoryItems) ?? _defaultMaxHistoryItems;
+    } catch (e) {
+      return _defaultMaxHistoryItems;
     }
   }
 }
