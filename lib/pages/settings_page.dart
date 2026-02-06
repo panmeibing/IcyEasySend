@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../utils/dialog_helper.dart';
+import '../utils/toast_helper.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends StatefulWidget {
@@ -214,26 +215,14 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Show success snackbar
   void _showSuccessSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ToastHelper.showSuccess(context, message);
     }
   }
 
   /// Show error snackbar
   void _showErrorSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ToastHelper.showError(context, message);
     }
   }
 

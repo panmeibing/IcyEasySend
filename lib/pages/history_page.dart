@@ -10,6 +10,7 @@ import '../models/transfer_history.dart';
 import '../services/transfer_history_service.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/format_util.dart';
+import '../utils/toast_helper.dart';
 
 /// History page to display transfer history
 class HistoryPage extends StatefulWidget {
@@ -704,12 +705,7 @@ class HistoryPageState extends State<HistoryPage> {
       await _loadHistory();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('记录已删除'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        ToastHelper.showSuccess(context, '记录已删除');
       }
     }
   }
@@ -717,13 +713,7 @@ class HistoryPageState extends State<HistoryPage> {
   /// Show error snackbar
   void _showErrorSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      ToastHelper.showError(context, message);
     }
   }
 
@@ -854,12 +844,7 @@ class HistoryPageState extends State<HistoryPage> {
     await Clipboard.setData(ClipboardData(text: path));
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('路径已复制到剪贴板'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ToastHelper.showSuccess(context, '路径已复制到剪贴板');
     }
   }
 }

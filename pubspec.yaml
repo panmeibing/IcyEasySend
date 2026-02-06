@@ -68,7 +68,7 @@ dependencies:
   open_file_manager: ^2.0.1
   
   # Device information
-  device_info_plus: ^11.2.0
+  device_info_plus: ^12.3.0
   logger: ^2.6.2
 
 dev_dependencies:

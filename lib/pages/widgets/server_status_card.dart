@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../utils/toast_helper.dart';
+
 /// Server status indicator widget
 class ServerStatusCard extends StatelessWidget {
   final bool isServerRunning;
@@ -155,13 +157,7 @@ class ServerStatusCard extends StatelessWidget {
     await Clipboard.setData(ClipboardData(text: text));
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('IP地址已复制: $text'),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ToastHelper.showSuccess(context, 'IP地址已复制: $text');
     }
   }
 }

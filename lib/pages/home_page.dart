@@ -9,6 +9,7 @@ import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
+import '../utils/toast_helper.dart';
 import 'controllers/file_transfer_controller.dart';
 import 'widgets/file_selection_section.dart';
 import 'widgets/ip_input_section.dart';
@@ -192,13 +193,7 @@ class _HomePageState extends State<HomePage> {
       await _loadIPHistory();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已删除 IP: $ip'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ToastHelper.showSuccess(context, '已删除 IP: $ip');
       }
     }
   }
@@ -557,12 +552,7 @@ class _HomePageState extends State<HomePage> {
               TextButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: fullReport));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('诊断报告已复制到剪贴板'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
                 },
                 child: const Text('复制'),
               ),
@@ -577,9 +567,7 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('运行诊断时出错: $e')));
+        ToastHelper.showError(context, '运行诊断时出错: $e');
       }
     }
   }
