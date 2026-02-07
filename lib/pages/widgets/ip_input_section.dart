@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 /// IP address input section widget
 class IPInputSection extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String? errorMessage;
   final bool isEnabled;
   final List<String> ipHistory;
@@ -13,6 +14,7 @@ class IPInputSection extends StatelessWidget {
   const IPInputSection({
     super.key,
     required this.controller,
+    this.focusNode,
     this.errorMessage,
     required this.isEnabled,
     required this.ipHistory,
@@ -36,6 +38,7 @@ class IPInputSection extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 decoration: InputDecoration(
                   hintText: '例如: 192.168.1.100',
                   border: const OutlineInputBorder(),

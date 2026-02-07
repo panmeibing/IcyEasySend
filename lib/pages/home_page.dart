@@ -61,6 +61,8 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _portController = TextEditingController(
     text: '${AppConstants.defaultPort}',
   );
+  final FocusNode _ipFocusNode = FocusNode();
+  final FocusNode _portFocusNode = FocusNode();
   String? _ipErrorMessage;
   String? _portErrorMessage;
 
@@ -102,6 +104,8 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _ipController.dispose();
     _portController.dispose();
+    _ipFocusNode.dispose();
+    _portFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -244,6 +248,7 @@ class _HomePageState extends State<HomePage> {
                 // IP address input
                 IPInputSection(
                   controller: _ipController,
+                  focusNode: _ipFocusNode,
                   errorMessage: _ipErrorMessage,
                   isEnabled: isServerRunning,
                   ipHistory: _ipHistory,
@@ -259,6 +264,7 @@ class _HomePageState extends State<HomePage> {
                 // Port input
                 PortInputSection(
                   controller: _portController,
+                  focusNode: _portFocusNode,
                   errorMessage: _portErrorMessage,
                   isEnabled: isServerRunning,
                   onReset: () {
@@ -369,6 +375,17 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    // Unfocus all text fields explicitly
+    _ipFocusNode.unfocus();
+    _portFocusNode.unfocus();
+
+    // Temporarily disable focus requests
+    _ipFocusNode.canRequestFocus = false;
+    _portFocusNode.canRequestFocus = false;
+
+    // Also unfocus the current focus scope
+    FocusScope.of(context).unfocus();
+
     await _fileTransferController.sendFiles(
       context: context,
       files: selectedFiles,
@@ -460,6 +477,10 @@ class _HomePageState extends State<HomePage> {
             // Clear selected files on successful transfer
             selectedFiles.clear();
           });
+
+          // Re-enable focus requests after transfer ends
+          _ipFocusNode.canRequestFocus = true;
+          _portFocusNode.canRequestFocus = true;
         }
       },
       onHistoryUpdated: () {
@@ -471,6 +492,22 @@ class _HomePageState extends State<HomePage> {
 
   /// Run network diagnostics
   Future<void> _runNetworkDiagnostics() async {
+    if (!mounted) return;
+
+    // Unfocus all text fields explicitly
+    _ipFocusNode.unfocus();
+    _portFocusNode.unfocus();
+
+    // Temporarily disable focus requests
+    _ipFocusNode.canRequestFocus = false;
+    _portFocusNode.canRequestFocus = false;
+
+    // Also unfocus the current focus scope
+    FocusScope.of(context).unfocus();
+
+    // Wait a frame to ensure focus changes are applied
+    await Future.delayed(const Duration(milliseconds: 100));
+
     if (!mounted) return;
 
     showDialog(
@@ -518,6 +555,10 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         Navigator.of(context).pop();
+
+        // Re-enable focus requests after dialog is closed
+        _ipFocusNode.canRequestFocus = true;
+        _portFocusNode.canRequestFocus = true;
       }
 
       if (mounted) {
@@ -575,7 +616,12 @@ class _HomePageState extends State<HomePage> {
                   child: const Text('复制'),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    // Re-enable focus requests when report dialog is closed
+                    _ipFocusNode.canRequestFocus = true;
+                    _portFocusNode.canRequestFocus = true;
+                  },
                   child: const Text('关闭'),
                 ),
               ],
@@ -586,6 +632,11 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
+
+        // Re-enable focus requests on error
+        _ipFocusNode.canRequestFocus = true;
+        _portFocusNode.canRequestFocus = true;
+
         ToastHelper.showError(context, '运行诊断时出错: $e');
       }
     }

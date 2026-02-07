@@ -6,6 +6,7 @@ import '../../utils/constants.dart';
 /// Port input section widget
 class PortInputSection extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode? focusNode;
   final String? errorMessage;
   final bool isEnabled;
   final VoidCallback onReset;
@@ -13,6 +14,7 @@ class PortInputSection extends StatelessWidget {
   const PortInputSection({
     super.key,
     required this.controller,
+    this.focusNode,
     this.errorMessage,
     required this.isEnabled,
     required this.onReset,
@@ -33,6 +35,7 @@ class PortInputSection extends StatelessWidget {
             Expanded(
               child: TextField(
                 controller: controller,
+                focusNode: focusNode,
                 decoration: InputDecoration(
                   hintText: '默认: ${AppConstants.defaultPort}',
                   border: const OutlineInputBorder(),
