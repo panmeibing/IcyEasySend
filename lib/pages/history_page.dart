@@ -676,9 +676,29 @@ class HistoryPageState extends State<HistoryPage> {
       } else if (Platform.isIOS) {
         // iOS doesn't allow opening folders directly
         _showErrorSnackBar('iOS 不支持直接打开文件夹');
+      } else if (Platform.isWindows) {
+        // On Windows, use 'start' command which is safer and won't be flagged by antivirus
+        // This opens the folder in Windows Explorer
+        final result = await Process.run(
+          'cmd',
+          ['/c', 'start', '', directory.path],
+          runInShell: true,
+        );
+        if (result.exitCode != 0) {
+          _showErrorSnackBar('无法打开文件夹');
+        }
+      } else if (Platform.isMacOS) {
+        // On macOS, use 'open' command to reveal file in Finder
+        final result = await Process.run(
+          'open',
+          ['-R', item.savedPath!],
+        );
+        if (result.exitCode != 0) {
+          _showErrorSnackBar('无法打开文件夹');
+        }
       } else {
-        // Use url_launcher for desktop platforms (macOS, Windows, Linux)
-        final uri = Uri.directory(directory.path);
+        // For Linux, use url_launcher with file:// scheme
+        final uri = Uri.file(directory.path);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
         } else {
