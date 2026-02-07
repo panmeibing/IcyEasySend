@@ -27,8 +27,9 @@ class NetworkUtil {
 
       LogUtil.dTag(logTag, '找到${interfaces.length}个网络接口');
 
-      List<String> privateAddresses = [];
-      List<String> otherAddresses = [];
+      // Store addresses with their interface info for better selection
+      List<_NetworkAddressInfo> privateAddresses = [];
+      List<_NetworkAddressInfo> otherAddresses = [];
 
       // Categorize addresses
       for (var interface in interfaces) {
@@ -36,14 +37,19 @@ class NetworkUtil {
         for (var addr in interface.addresses) {
           if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
             final ip = addr.address;
+            final interfaceName = interface.name.toLowerCase();
 
             // Check if it's a private network address
             if (isPrivateNetwork(ip)) {
               LogUtil.dTag(logTag, '发现私有网络地址: $ip (${interface.name})');
-              privateAddresses.add(ip);
+              privateAddresses.add(
+                _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
+              );
             } else {
               LogUtil.dTag(logTag, '发现其他地址: $ip (${interface.name})');
-              otherAddresses.add(ip);
+              otherAddresses.add(
+                _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
+              );
             }
           }
         }
@@ -51,22 +57,51 @@ class NetworkUtil {
 
       // Prefer private network addresses (typical LAN)
       if (privateAddresses.isNotEmpty) {
-        // Sort to prefer 192.168.x.x over 10.x.x.x
+        // Sort by priority: physical adapters > virtual adapters, and 192.168 > 172 > 10
         privateAddresses.sort((a, b) {
-          if (a.startsWith('192.168.')) return -1;
-          if (b.startsWith('192.168.')) return 1;
-          if (a.startsWith('172.')) return -1;
-          if (b.startsWith('172.')) return 1;
+          // Deprioritize virtual/VPN interfaces
+          final aIsVirtual = _isVirtualInterface(a.interfaceName);
+          final bIsVirtual = _isVirtualInterface(b.interfaceName);
+
+          if (aIsVirtual != bIsVirtual) {
+            return aIsVirtual ? 1 : -1;
+          }
+
+          // Prefer 192.168.x.x over other private ranges
+          if (a.ip.startsWith('192.168.') && !b.ip.startsWith('192.168.')) {
+            return -1;
+          }
+          if (!a.ip.startsWith('192.168.') && b.ip.startsWith('192.168.')) {
+            return 1;
+          }
+
+          // Prefer 172.x.x.x over 10.x.x.x
+          if (a.ip.startsWith('172.') && b.ip.startsWith('10.')) {
+            return -1;
+          }
+          if (a.ip.startsWith('10.') && b.ip.startsWith('172.')) {
+            return 1;
+          }
+
           return 0;
         });
-        LogUtil.iTag(logTag, '本地IP地址: ${privateAddresses.first}');
-        return privateAddresses.first;
+
+        final selectedIP = privateAddresses.first.ip;
+        LogUtil.iTag(
+          logTag,
+          '本地IP地址: $selectedIP (${privateAddresses.first.interfaceName})',
+        );
+        return selectedIP;
       }
 
       // Use other addresses if no private network found
       if (otherAddresses.isNotEmpty) {
-        LogUtil.iTag(logTag, '本地IP地址: ${otherAddresses.first}');
-        return otherAddresses.first;
+        final selectedIP = otherAddresses.first.ip;
+        LogUtil.iTag(
+          logTag,
+          '本地IP地址: $selectedIP (${otherAddresses.first.interfaceName})',
+        );
+        return selectedIP;
       }
 
       // Fallback to localhost if no network interface found
@@ -77,6 +112,35 @@ class NetworkUtil {
       LogUtil.eTag(logTag, '获取IP地址失败，使用回环地址: $e', e, stackTrace);
       return '127.0.0.1';
     }
+  }
+
+  /// Check if a network interface is likely a virtual adapter
+  ///
+  /// Virtual adapters include VPN, virtual machines, Docker, etc.
+  static bool _isVirtualInterface(String interfaceName) {
+    final name = interfaceName.toLowerCase();
+
+    // Common virtual interface patterns
+    final virtualPatterns = [
+      'vmware',
+      'virtualbox',
+      'vbox',
+      'vethernet',
+      'hyper-v',
+      'docker',
+      'vnic',
+      'tap',
+      'tun',
+      'vpn',
+      'virtual',
+      'loopback',
+      'tunnel',
+      'bridge',
+      'vmbr',
+      'virbr',
+    ];
+
+    return virtualPatterns.any((pattern) => name.contains(pattern));
   }
 
   /// Check if an IP address is in a private network range
@@ -183,4 +247,12 @@ class NetworkUtil {
     LogUtil.dTag(logTag, '构建URL: $url');
     return url;
   }
+}
+
+/// Helper class to store network address information
+class _NetworkAddressInfo {
+  final String ip;
+  final String interfaceName;
+
+  _NetworkAddressInfo({required this.ip, required this.interfaceName});
 }
