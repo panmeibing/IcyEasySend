@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:icy_easy_send/utils/constants.dart';
 
 /// Dialogue box tool class - provides a unified dialog box style and behavior
 class DialogHelper {
@@ -17,32 +18,38 @@ class DialogHelper {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, color: iconColor ?? Colors.blue),
-              const SizedBox(width: 12),
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          title: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: iconColor ?? Colors.blue),
+                const SizedBox(width: 12),
+              ],
+              Expanded(child: Text(title)),
             ],
-            Expanded(child: Text(title)),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(cancelText),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: iconColor ?? Colors.blue,
-              foregroundColor: Colors.white,
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(cancelText),
             ),
-            child: Text(confirmText),
-          ),
-        ],
-      ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: iconColor ?? Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(confirmText),
+            ),
+          ],
+        );
+      },
     );
 
     return result ?? false;
@@ -57,22 +64,28 @@ class DialogHelper {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(width: 12),
-            Text(title),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('确定'),
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Text(title),
+            ],
           ),
-        ],
-      ),
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -85,22 +98,28 @@ class DialogHelper {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.check_circle_outline, color: Colors.green),
-            const SizedBox(width: 12),
-            Text(title),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('确定'),
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.green),
+              const SizedBox(width: 12),
+              Text(title),
+            ],
           ),
-        ],
-      ),
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -112,22 +131,28 @@ class DialogHelper {
   }) async {
     return showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Colors.blue),
-            const SizedBox(width: 12),
-            Text(title),
-          ],
-        ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('确定'),
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.blue),
+              const SizedBox(width: 12),
+              Text(title),
+            ],
           ),
-        ],
-      ),
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

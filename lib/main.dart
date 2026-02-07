@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
 import 'services/permission_service.dart';
+import 'utils/constants.dart';
 import 'utils/error_messages.dart';
 import 'utils/toast_helper.dart';
 
@@ -68,30 +69,36 @@ class _MyAppState extends State<MyApp> {
               result.errorMessage ?? '某些权限未授予，部分功能可能受限',
               duration: const Duration(seconds: 5),
             );
-            
+
             // If permanently denied, show a dialog with option to open settings
             if (result.permanentlyDenied) {
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (mounted) {
                   showDialog(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('权限被拒绝'),
-                      content: const Text('某些权限已被永久拒绝，请在设置中手动开启'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('取消'),
+                    builder: (context) {
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      return AlertDialog(
+                        title: const Text('权限被拒绝'),
+                        content: SizedBox(
+                          width: screenWidth * AppConstants.dialogWidthPercent,
+                          child: const Text('某些权限已被永久拒绝，请在设置中手动开启'),
                         ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _permissionService.openAppSettings();
-                          },
-                          child: const Text('打开设置'),
-                        ),
-                      ],
-                    ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('取消'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _permissionService.openAppSettings();
+                            },
+                            child: const Text('打开设置'),
+                          ),
+                        ],
+                      );
+                    },
                   );
                 }
               });
@@ -113,18 +120,24 @@ class _MyAppState extends State<MyApp> {
           if (mounted) {
             showDialog(
               context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('错误'),
-                content: Text(
-                  result.errorMessage ?? ErrorMessages.serverUnknownError,
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('确定'),
+              builder: (context) {
+                final screenWidth = MediaQuery.of(context).size.width;
+                return AlertDialog(
+                  title: const Text('错误'),
+                  content: SizedBox(
+                    width: screenWidth * AppConstants.dialogWidthPercent,
+                    child: Text(
+                      result.errorMessage ?? ErrorMessages.serverUnknownError,
+                    ),
                   ),
-                ],
-              ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('确定'),
+                    ),
+                  ],
+                );
+              },
             );
           }
         });

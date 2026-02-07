@@ -14,9 +14,13 @@ class NotificationService {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
         return AlertDialog(
           title: const Text('错误'),
-          content: Text(message),
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('确定'),
@@ -39,9 +43,13 @@ class NotificationService {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
         return AlertDialog(
           title: const Text('成功'),
-          content: Text(message),
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Text(message),
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('确定'),
@@ -144,67 +152,77 @@ class _ReceiveConfirmationDialogState
     final formattedSize = FormatUtil.formatBytes(widget.fileSize);
     final hasRemainingFiles =
         widget.remainingFiles != null && widget.remainingFiles! > 0;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return AlertDialog(
       title: const Text('接收文件确认'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.senderDeviceName != null) ...[
-            Text(
-              '发送者: ${widget.senderDeviceName}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'IP: ${widget.senderIP}',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ] else ...[
-            Text('发送者 IP: ${widget.senderIP}'),
-          ],
-          const SizedBox(height: 8),
-          Text('文件名: ${widget.fileName}'),
-          const SizedBox(height: 8),
-          Text('文件大小: $formattedSize'),
-          if (hasRemainingFiles) ...[
+      content: SizedBox(
+        width: screenWidth * AppConstants.dialogWidthPercent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.senderDeviceName != null) ...[
+              Text(
+                '发送者: ${widget.senderDeviceName}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'IP: ${widget.senderIP}',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+            ] else ...[
+              Text('发送者 IP: ${widget.senderIP}'),
+            ],
             const SizedBox(height: 8),
+            Text('文件名: ${widget.fileName}'),
+            const SizedBox(height: 8),
+            Text('文件大小: $formattedSize'),
+            if (hasRemainingFiles) ...[
+              const SizedBox(height: 8),
+              Text(
+                '后续还有 ${widget.remainingFiles} 个文件',
+                style: TextStyle(
+                  color: Colors.blue[700],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
             Text(
-              '后续还有 ${widget.remainingFiles} 个文件',
+              '是否接收此文件？($_remainingSeconds 秒后自动拒绝)',
               style: TextStyle(
-                color: Colors.blue[700],
-                fontWeight: FontWeight.bold,
+                color: _remainingSeconds <= 10 ? Colors.red : Colors.grey[600],
+                fontSize: 12,
               ),
             ),
-          ],
-          const SizedBox(height: 16),
-          Text(
-            '是否接收此文件？($_remainingSeconds 秒后自动拒绝)',
-            style: TextStyle(
-              color: _remainingSeconds <= 10 ? Colors.red : Colors.grey[600],
-              fontSize: 12,
-            ),
-          ),
-          if (hasRemainingFiles) ...[
-            const SizedBox(height: 12),
-            CheckboxListTile(
-              title: Text(
-                '自动接收后续 ${widget.remainingFiles} 个文件',
-                style: const TextStyle(fontSize: 14),
+            if (hasRemainingFiles) ...[
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                title: Text(
+                  '自动接收后续 ${widget.remainingFiles} 个文件',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                subtitle: const Text(
+                  '勾选后将不再询问',
+                  style: TextStyle(fontSize: 12),
+                ),
+                value: _autoAcceptRemaining,
+                onChanged: (bool? value) {
+                  setState(() {
+                    _autoAcceptRemaining = value ?? false;
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+                dense: true,
               ),
-              subtitle: const Text('勾选后将不再询问', style: TextStyle(fontSize: 12)),
-              value: _autoAcceptRemaining,
-              onChanged: (bool? value) {
-                setState(() {
-                  _autoAcceptRemaining = value ?? false;
-                });
-              },
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-            ),
+            ],
           ],
-        ],
+        ),
       ),
       actions: <Widget>[
         TextButton(
@@ -264,6 +282,7 @@ class _ReceiveProgressDialogState extends State<_ReceiveProgressDialog> {
     final progress = widget.controller._progress;
     final bytesReceived = widget.controller._bytesReceived;
     final totalBytes = widget.controller._totalBytes;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return AlertDialog(
       title: Row(
@@ -289,45 +308,51 @@ class _ReceiveProgressDialogState extends State<_ReceiveProgressDialog> {
           ],
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.senderDeviceName != null) ...[
-            Text(
-              '发送者: ${widget.senderDeviceName}',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+      content: SizedBox(
+        width: screenWidth * AppConstants.dialogWidthPercent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.senderDeviceName != null) ...[
+              Text(
+                '发送者: ${widget.senderDeviceName}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'IP: ${widget.senderIP}',
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+            ] else ...[
+              Text('发送者 IP: ${widget.senderIP}'),
+            ],
+            const SizedBox(height: 8),
+            Text('文件名: ${widget.fileName}'),
+            const SizedBox(height: 16),
+            LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.grey[300],
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+              minHeight: 8,
             ),
-            const SizedBox(height: 4),
-            Text(
-              'IP: ${widget.senderIP}',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ] else ...[
-            Text('发送者 IP: ${widget.senderIP}'),
-          ],
-          const SizedBox(height: 8),
-          Text('文件名: ${widget.fileName}'),
-          const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.grey[300],
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-            minHeight: 8,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${(progress * 100).toStringAsFixed(1)}%',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          if (totalBytes > 0) ...[
             const SizedBox(height: 8),
             Text(
-              '已接收: ${FormatUtil.formatBytes(bytesReceived)} / ${FormatUtil.formatBytes(totalBytes)}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              '${(progress * 100).toStringAsFixed(1)}%',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
+            if (totalBytes > 0) ...[
+              const SizedBox(height: 8),
+              Text(
+                '已接收: ${FormatUtil.formatBytes(bytesReceived)} / ${FormatUtil.formatBytes(totalBytes)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

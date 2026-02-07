@@ -476,16 +476,22 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('正在运行网络诊断...'),
-          ],
-        ),
-      ),
+      builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        return AlertDialog(
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('正在运行网络诊断...'),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     try {
@@ -538,34 +544,43 @@ class _HomePageState extends State<HomePage> {
 
         showDialog(
           context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.network_check, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('网络诊断报告'),
+          builder: (dialogContext) {
+            final screenWidth = MediaQuery.of(dialogContext).size.width;
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.network_check, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text('网络诊断报告'),
+                ],
+              ),
+              content: SizedBox(
+                width: screenWidth * AppConstants.dialogWidthPercent,
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    fullReport,
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: fullReport));
+                    ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
+                  },
+                  child: const Text('复制'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('关闭'),
+                ),
               ],
-            ),
-            content: SingleChildScrollView(
-              child: SelectableText(
-                fullReport,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: fullReport));
-                  ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
-                },
-                child: const Text('复制'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('关闭'),
-              ),
-            ],
-          ),
+            );
+          },
         );
       }
     } catch (e) {

@@ -85,4 +85,8 @@ class AppConstants {
   static const int bytesPerKB = 1024;
   static const int bytesPerMB = 1024 * 1024;
   static const int bytesPerGB = 1024 * 1024 * 1024;
+
+  /// Dialog width percentage (relative to screen width)
+  /// All dialogs will use this percentage of screen width for consistent sizing
+  static const double dialogWidthPercent = 0.8;
 }

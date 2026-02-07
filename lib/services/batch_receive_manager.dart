@@ -360,6 +360,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   Widget build(BuildContext context) {
     final totalSize = _getTotalSize();
     final fileCount = _displayedFiles.length;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return PopScope(
       canPop: !_isAccepted || _allCompleted,
@@ -380,7 +381,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
           ],
         ),
         content: SizedBox(
-          width: double.maxFinite,
+          width: screenWidth * AppConstants.dialogWidthPercent,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
