@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
+import '../../models/transfer_data.dart';
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/http_helper.dart';
@@ -43,8 +44,7 @@ class BatchTransferManager {
        _historyManager = historyManager ?? TransferHistoryManager();
 
   /// Send multiple files with batch confirmation
-  Future<Map<String, OperationResult<sender.TransferData>>>
-  sendFilesWithBatchConfirm({
+  Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
     required String targetIP,
     required List<File> files,
     void Function(double progress, int bytesTransferred, int totalBytes)?
@@ -59,7 +59,7 @@ class BatchTransferManager {
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
   }) async {
-    final results = <String, OperationResult<sender.TransferData>>{};
+    final results = <String, OperationResult<TransferData>>{};
 
     if (files.isEmpty) {
       return results;
@@ -249,7 +249,7 @@ class BatchTransferManager {
     required String senderIP,
     String? deviceName,
     required int totalBytes,
-    required Map<String, OperationResult<sender.TransferData>> results,
+    required Map<String, OperationResult<TransferData>> results,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
     void Function(
@@ -268,7 +268,7 @@ class BatchTransferManager {
 
     // Initialize fileBytes for valid files
     for (int i = 0; i < files.length; i++) {
-      final fileName = files[i].path.split('/').last;
+      final fileName = path.basename(files[i].path);
       if (transferIds.containsKey(fileName)) {
         fileBytes[i] = 0;
       }
@@ -277,14 +277,14 @@ class BatchTransferManager {
     // Create list of valid file indices
     final validFileIndices = <int>[];
     for (int i = 0; i < files.length; i++) {
-      final fileName = files[i].path.split('/').last;
+      final fileName = path.basename(files[i].path);
       if (transferIds.containsKey(fileName)) {
         validFileIndices.add(i);
       }
     }
 
     // Function to send a single file
-    Future<OperationResult<sender.TransferData>> sendFile(int fileIndex) async {
+    Future<OperationResult<TransferData>> sendFile(int fileIndex) async {
       final file = files[fileIndex];
       final fileName = path.basename(file.path);
 
@@ -337,7 +337,7 @@ class BatchTransferManager {
         final fileIndex = validFileIndices[j];
         batch.add(
           sendFile(fileIndex).then((result) {
-            final fileName = files[fileIndex].path.split('/').last;
+            final fileName = path.basename(files[fileIndex].path);
             results[fileName] = result;
           }),
         );
@@ -351,7 +351,7 @@ class BatchTransferManager {
   /// This prevents concurrent write conflicts to the history file
   Future<void> _saveBatchTransferHistories({
     required List<File> files,
-    required Map<String, OperationResult<sender.TransferData>> results,
+    required Map<String, OperationResult<TransferData>> results,
     required String targetIP,
     String? deviceName,
   }) async {

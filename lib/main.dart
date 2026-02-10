@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
 import 'services/permission_service.dart';
-import 'utils/constants.dart';
+import 'utils/dialog_helper.dart';
 import 'utils/error_messages.dart';
 import 'utils/toast_helper.dart';
 
@@ -72,34 +72,21 @@ class _MyAppState extends State<MyApp> {
 
             // If permanently denied, show a dialog with option to open settings
             if (result.permanentlyDenied) {
-              Future.delayed(const Duration(milliseconds: 500), () {
+              Future.delayed(const Duration(milliseconds: 500), () async {
                 if (mounted) {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      final screenWidth = MediaQuery.of(context).size.width;
-                      return AlertDialog(
-                        title: const Text('权限被拒绝'),
-                        content: SizedBox(
-                          width: screenWidth * AppConstants.dialogWidthPercent,
-                          child: const Text('某些权限已被永久拒绝，请在设置中手动开启'),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('取消'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _permissionService.openAppSettings();
-                            },
-                            child: const Text('打开设置'),
-                          ),
-                        ],
-                      );
-                    },
+                  final confirmed = await DialogHelper.showConfirmDialog(
+                    context,
+                    title: '权限被拒绝',
+                    message: '某些权限已被永久拒绝，请在设置中手动开启',
+                    confirmText: '打开设置',
+                    cancelText: '取消',
+                    icon: Icons.settings,
+                    iconColor: Colors.orange,
                   );
+
+                  if (confirmed) {
+                    _permissionService.openAppSettings();
+                  }
                 }
               });
             }
@@ -116,28 +103,11 @@ class _MyAppState extends State<MyApp> {
       _isInitialized = true;
       if (!result.success) {
         // Show error dialog if server fails to start
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (mounted) {
-            showDialog(
-              context: context,
-              builder: (context) {
-                final screenWidth = MediaQuery.of(context).size.width;
-                return AlertDialog(
-                  title: const Text('错误'),
-                  content: SizedBox(
-                    width: screenWidth * AppConstants.dialogWidthPercent,
-                    child: Text(
-                      result.errorMessage ?? ErrorMessages.serverUnknownError,
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('确定'),
-                    ),
-                  ],
-                );
-              },
+            await DialogHelper.showErrorDialog(
+              context,
+              message: result.errorMessage ?? ErrorMessages.serverUnknownError,
             );
           }
         });

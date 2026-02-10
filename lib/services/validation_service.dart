@@ -51,6 +51,20 @@ class ValidationService {
       );
     }
 
+    if (ip == '0.0.0.0') {
+      return ValidationResult(
+        isValid: false,
+        errorMessage: ErrorMessages.ipAddressSpecial1,
+      );
+    }
+
+    if (ip == '255.255.255.255') {
+      return ValidationResult(
+        isValid: false,
+        errorMessage: ErrorMessages.ipAddressSpecial2,
+      );
+    }
+
     // Validate each octet is in range 0-255
     for (int i = 1; i <= 4; i++) {
       final octet = int.tryParse(match.group(i)!);
@@ -251,22 +265,22 @@ class ValidationService {
   validateFilesForSending(List<File> files) async {
     LogUtil.iTag(logTag, '批量验证文件: ${files.length}个文件');
 
-    final results = <String, OperationResult<FileValidationData>>{};
-    int successCount = 0;
-    int failureCount = 0;
-
-    for (final file in files) {
+    final futures = files.map((file) async {
       final fileName = path.basename(file.path);
       final result = await validateFileForSending(file);
-      results[fileName] = result;
 
-      if (result.isSuccess) {
-        successCount++;
-      } else {
-        failureCount++;
+      if (!result.isSuccess) {
         LogUtil.wTag(logTag, '文件验证失败: $fileName, 原因=${result.errorMessage}');
       }
-    }
+
+      return MapEntry(fileName, result);
+    });
+
+    final resultsList = await Future.wait(futures);
+    final results = Map.fromEntries(resultsList);
+
+    final successCount = resultsList.where((e) => e.value.isSuccess).length;
+    final failureCount = resultsList.length - successCount;
 
     LogUtil.iTag(
       logTag,

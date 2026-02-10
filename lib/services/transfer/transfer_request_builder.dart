@@ -19,7 +19,7 @@ class TransferRequestBuilder {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
         'senderIP': senderIP,
-        if (deviceName != null) 'senderDeviceName': deviceName,
+        'senderDeviceName': ?deviceName,
         'transferId': transferId,
       },
     );

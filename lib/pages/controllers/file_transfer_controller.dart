@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../services/file_transfer_service.dart';
-import '../../services/notification_service.dart';
 import '../../services/permission_service.dart';
 import '../../services/preferences_service.dart';
 import '../../services/validation_service.dart';
@@ -17,7 +16,6 @@ import '../../utils/log_util.dart';
 class FileTransferController {
   final ValidationService _validationService;
   final FileTransferService _fileTransferService;
-  final NotificationService _notificationService;
   final PermissionService _permissionService;
   final PreferencesService _preferencesService;
   final String logTag = LogTags.transfer;
@@ -25,12 +23,10 @@ class FileTransferController {
   FileTransferController({
     ValidationService? validationService,
     FileTransferService? fileTransferService,
-    NotificationService? notificationService,
     PermissionService? permissionService,
     PreferencesService? preferencesService,
   }) : _validationService = validationService ?? ValidationService(),
        _fileTransferService = fileTransferService ?? FileTransferService(),
-       _notificationService = notificationService ?? NotificationService(),
        _permissionService = permissionService ?? PermissionService(),
        _preferencesService = preferencesService ?? PreferencesService();
 
@@ -52,9 +48,11 @@ class FileTransferController {
                 permissionResult.errorMessage,
               );
             } else {
-              await _notificationService.showError(
+              await DialogHelper.showErrorDialog(
                 context,
-                permissionResult.errorMessage ?? ErrorMessages.permissionDenied,
+                message:
+                    permissionResult.errorMessage ??
+                    ErrorMessages.permissionDenied,
               );
             }
           }
@@ -87,9 +85,9 @@ class FileTransferController {
 
         // Show error for invalid files
         if (invalidFileNames.isNotEmpty && context.mounted) {
-          await _notificationService.showError(
+          await DialogHelper.showErrorDialog(
             context,
-            '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
+            message: '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
           );
         }
 
@@ -99,17 +97,17 @@ class FileTransferController {
       return [];
     } on FileSystemException {
       if (context.mounted) {
-        await _notificationService.showError(
+        await DialogHelper.showErrorDialog(
           context,
-          ErrorMessages.fileAccessError,
+          message: ErrorMessages.fileAccessError,
         );
       }
       return [];
     } catch (e) {
       if (context.mounted) {
-        await _notificationService.showError(
+        await DialogHelper.showErrorDialog(
           context,
-          ErrorMessages.fileError(e.toString()),
+          message: ErrorMessages.fileError(e.toString()),
         );
       }
       return [];
@@ -170,18 +168,20 @@ class FileTransferController {
       // Show summary message
       if (context.mounted) {
         if (failureCount == 0) {
-          await _notificationService.showSuccess(
+          await DialogHelper.showSuccessDialog(
             context,
-            successCount == 1 ? '文件发送成功！' : '发送 $successCount 个文件发送成功！',
+            message: successCount == 1
+                ? '文件发送成功！'
+                : '发送 $successCount 个文件发送成功！',
           );
 
           // Save the IP address and port for next time
           await _preferencesService.saveLastUsedIP(targetIP);
           await _preferencesService.saveLastUsedPort(targetPort);
         } else if (successCount == 0) {
-          await _notificationService.showError(
+          await DialogHelper.showErrorDialog(
             context,
-            '所有文件发送失败\n失败的文件:\n${failedFiles.join('\n')}',
+            message: '所有文件发送失败\n失败的文件:\n${failedFiles.join('\n')}',
           );
         } else {
           await DialogHelper.showInfoDialog(
@@ -197,23 +197,23 @@ class FileTransferController {
       }
     } on SocketException {
       if (context.mounted) {
-        await _notificationService.showError(
+        await DialogHelper.showErrorDialog(
           context,
-          ErrorMessages.networkConnectionFailed,
+          message: ErrorMessages.networkConnectionFailed,
         );
       }
     } on FileSystemException {
       if (context.mounted) {
-        await _notificationService.showError(
+        await DialogHelper.showErrorDialog(
           context,
-          ErrorMessages.fileAccessError,
+          message: ErrorMessages.fileAccessError,
         );
       }
     } catch (e) {
       if (context.mounted) {
-        await _notificationService.showError(
+        await DialogHelper.showErrorDialog(
           context,
-          ErrorMessages.unexpectedError(e.toString()),
+          message: ErrorMessages.unexpectedError(e.toString()),
         );
       }
     } finally {

@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/transfer_history.dart';
 import '../services/transfer_history_service.dart';
-import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/format_util.dart';
 import '../utils/toast_helper.dart';
@@ -740,86 +739,78 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Show detail dialog for a transfer history item
   void _showDetailDialog(TransferHistory item) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                item.isReceived ? Icons.download : Icons.upload,
-                color: item.isReceived ? Colors.green : Colors.blue,
-                size: 24,
+    DialogHelper.showCustomDialog(
+      context,
+      title: Row(
+        children: [
+          Icon(
+            item.isReceived ? Icons.download : Icons.upload,
+            color: item.isReceived ? Colors.green : Colors.blue,
+            size: 24,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              item.isReceived ? '接收记录' : '发送记录',
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+          Icon(
+            item.success ? Icons.check_circle : Icons.error,
+            color: item.success ? Colors.green : Colors.red,
+            size: 24,
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildDetailRow('文件名', item.fileName),
+            const Divider(height: 20),
+            _buildDetailRow(
+              '文件大小',
+              FormatUtil.formatBytes(item.fileSize),
+            ),
+            const Divider(height: 20),
+            if (item.peerDeviceName != null) ...[
+              _buildDetailRow(
+                item.isReceived ? '来自设备' : '发送至设备',
+                item.peerDeviceName!,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  item.isReceived ? '接收记录' : '发送记录',
-                  style: const TextStyle(fontSize: 18),
-                ),
-              ),
-              Icon(
-                item.success ? Icons.check_circle : Icons.error,
-                color: item.success ? Colors.green : Colors.red,
-                size: 24,
+              const Divider(height: 20),
+              _buildDetailRow('设备 IP', item.peerIP),
+            ] else ...[
+              _buildDetailRow(
+                item.isReceived ? '来自设备' : '发送至设备',
+                item.peerIP,
               ),
             ],
-          ),
-          content: SizedBox(
-            width: screenWidth * AppConstants.dialogWidthPercent,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildDetailRow('文件名', item.fileName),
-                  const Divider(height: 20),
-                  _buildDetailRow(
-                    '文件大小',
-                    FormatUtil.formatBytes(item.fileSize),
-                  ),
-                  const Divider(height: 20),
-                  if (item.peerDeviceName != null) ...[
-                    _buildDetailRow(
-                      item.isReceived ? '来自设备' : '发送至设备',
-                      item.peerDeviceName!,
-                    ),
-                    const Divider(height: 20),
-                    _buildDetailRow('设备 IP', item.peerIP),
-                  ] else ...[
-                    _buildDetailRow(
-                      item.isReceived ? '来自设备' : '发送至设备',
-                      item.peerIP,
-                    ),
-                  ],
-                  const Divider(height: 20),
-                  _buildDetailRow(
-                    '传输时间',
-                    FormatUtil.formatFullDateTime(item.timestamp),
-                  ),
-                  const Divider(height: 20),
-                  _buildDetailRow(
-                    '传输状态',
-                    item.success ? '成功' : '失败',
-                    valueColor: item.success ? Colors.green : Colors.red,
-                  ),
-                  if (item.isReceived && item.savedPath != null) ...[
-                    const Divider(height: 20),
-                    _buildDetailRow('保存位置', item.savedPath!, copyable: true),
-                  ],
-                ],
-              ),
+            const Divider(height: 20),
+            _buildDetailRow(
+              '传输时间',
+              FormatUtil.formatFullDateTime(item.timestamp),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('关闭'),
+            const Divider(height: 20),
+            _buildDetailRow(
+              '传输状态',
+              item.success ? '成功' : '失败',
+              valueColor: item.success ? Colors.green : Colors.red,
             ),
+            if (item.isReceived && item.savedPath != null) ...[
+              const Divider(height: 20),
+              _buildDetailRow('保存位置', item.savedPath!, copyable: true),
+            ],
           ],
-        );
-      },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
     );
   }
 

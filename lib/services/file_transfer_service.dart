@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
+import '../models/transfer_data.dart';
 import '../utils/log_util.dart';
 import '../utils/operation_result.dart';
 import 'preferences_service.dart';
@@ -27,11 +28,7 @@ class FileTransferService {
     FileReceiver? fileReceiver,
     BatchTransferManager? batchTransferManager,
   }) : _fileReceiver =
-           fileReceiver ??
-           FileReceiver(
-             historyService: historyService,
-             validationService: validationService,
-           ),
+           fileReceiver ?? FileReceiver(validationService: validationService),
        _batchTransferManager =
            batchTransferManager ??
            BatchTransferManager(

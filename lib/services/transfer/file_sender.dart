@@ -5,14 +5,11 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 
+import '../../models/transfer_data.dart';
 import '../../utils/constants.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
-import '../preferences_service.dart';
-import '../validation_service.dart';
-import '../transfer_history_service.dart';
-import 'health_checker.dart';
 import 'transfer_request_builder.dart';
 
 /// Service for sending files to target devices
@@ -20,14 +17,8 @@ class FileSender {
   final TransferRequestBuilder _requestBuilder;
   final String logTag = LogTags.transfer;
 
-  FileSender({
-    TransferHistoryService? historyService,
-    TransferRequestBuilder? requestBuilder,
-    // Keep these parameters for backward compatibility but don't use them
-    HealthChecker? healthChecker,
-    ValidationService? validationService,
-    PreferencesService? preferencesService,
-  }) : _requestBuilder = requestBuilder ?? TransferRequestBuilder();
+  FileSender({TransferRequestBuilder? requestBuilder})
+    : _requestBuilder = requestBuilder ?? TransferRequestBuilder();
 
   /// Send a file with a pre-obtained transfer ID
   ///
@@ -170,12 +161,4 @@ class FileSender {
       return OperationResult.failure('无法解析响应\n错误: $e');
     }
   }
-}
-
-/// Transfer data result
-class TransferData {
-  final String? savedPath;
-  final int bytesTransferred;
-
-  TransferData({this.savedPath, required this.bytesTransferred});
 }

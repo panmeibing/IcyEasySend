@@ -65,8 +65,9 @@ class BatchReceiveManager {
     // Add all files to pending list
     _pendingFilesBySender.putIfAbsent(senderIP, () => []).addAll(files);
 
-    // Cancel any existing timer for this sender
+    // Cancel and remove any existing timer for this sender
     _batchTimers[senderIP]?.cancel();
+    _batchTimers.remove(senderIP);
 
     // Show dialog immediately with all files
     // Don't await here, let it run in background
@@ -97,47 +98,57 @@ class BatchReceiveManager {
     final dialogKey = GlobalKey<_BatchReceiveDialogState>();
     _activeDialogKeys[senderIP] = dialogKey;
 
-    // Show dialog (it will handle its own lifecycle)
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => _BatchReceiveDialog(
-        key: dialogKey,
-        senderIP: senderIP,
-        senderDeviceName: pendingFiles.first.senderDeviceName,
-        pendingFiles: pendingFiles,
-        onAccept: () {
-          // User accepted, update status and complete futures
-          for (final fileInfo in pendingFiles) {
-            if (!fileInfo.completer.isCompleted) {
-              fileInfo.isAccepted = true;
-              fileInfo.status = '准备接收...';
-              fileInfo.completer.complete(true);
+    try {
+      // Show dialog (it will handle its own lifecycle)
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => _BatchReceiveDialog(
+          key: dialogKey,
+          senderIP: senderIP,
+          senderDeviceName: pendingFiles.first.senderDeviceName,
+          pendingFiles: pendingFiles,
+          onAccept: () {
+            // User accepted, update status and complete futures
+            for (final fileInfo in pendingFiles) {
+              if (!fileInfo.completer.isCompleted) {
+                fileInfo.isAccepted = true;
+                fileInfo.status = '准备接收...';
+                fileInfo.completer.complete(true);
+              }
             }
-          }
-        },
-        onReject: () {
-          // User rejected, update status and complete futures
-          for (final fileInfo in pendingFiles) {
-            if (!fileInfo.completer.isCompleted) {
-              fileInfo.isAccepted = false;
-              fileInfo.status = '已拒绝';
-              fileInfo.isCompleted = true;
-              fileInfo.completer.complete(false);
+          },
+          onReject: () {
+            // User rejected, update status and complete futures
+            for (final fileInfo in pendingFiles) {
+              if (!fileInfo.completer.isCompleted) {
+                fileInfo.isAccepted = false;
+                fileInfo.status = '已拒绝';
+                fileInfo.isCompleted = true;
+                fileInfo.completer.complete(false);
+              }
             }
-          }
-          // Close dialog immediately on reject
-          Navigator.of(dialogContext).pop();
-        },
-      ),
-    );
+            // Close dialog immediately on reject
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+      );
+    } catch (e) {
+      // If dialog fails to show or is interrupted, complete all pending files as rejected
+      for (final fileInfo in pendingFiles) {
+        if (!fileInfo.completer.isCompleted) {
+          fileInfo.completer.complete(false);
+        }
+      }
+    } finally {
+      // Always clean up resources
+      _activeDialogKeys.remove(senderIP);
+      _pendingFilesBySender.remove(senderIP);
 
-    // Mark dialog as inactive
-    _activeDialogKeys.remove(senderIP);
-
-    // Clear pending files for this sender
-    _pendingFilesBySender.remove(senderIP);
-    _batchTimers.remove(senderIP);
+      // Cancel and remove timer if it exists
+      _batchTimers[senderIP]?.cancel();
+      _batchTimers.remove(senderIP);
+    }
 
     // Call completion callback if provided
     if (onComplete != null) {
@@ -182,13 +193,25 @@ class BatchReceiveManager {
     return _pendingFilesBySender[senderIP];
   }
 
-  /// Clear all pending files
+  /// Clear all pending files and cancel all timers
   void clear() {
+    // Cancel all batch timers
     for (final timer in _batchTimers.values) {
       timer.cancel();
     }
     _batchTimers.clear();
+
+    // Complete all pending completers before clearing
+    for (final files in _pendingFilesBySender.values) {
+      for (final fileInfo in files) {
+        if (!fileInfo.completer.isCompleted) {
+          fileInfo.completer.complete(false);
+        }
+      }
+    }
     _pendingFilesBySender.clear();
+
+    // Clear active dialog keys
     _activeDialogKeys.clear();
   }
 }
@@ -250,26 +273,35 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _startCountdown() {
+    _countdownTimer?.cancel(); // Cancel any existing timer
     _countdownTimer = Timer.periodic(AppConstants.countdownInterval, (timer) {
-      if (!_disposed && mounted) {
-        setState(() {
-          _remainingSeconds--;
-        });
-        if (_remainingSeconds <= 0) {
-          timer.cancel();
-          // Auto-reject on timeout
-          _handleReject();
-        }
-      } else {
+      if (_disposed || !mounted) {
         timer.cancel();
+        return;
+      }
+
+      setState(() {
+        _remainingSeconds--;
+      });
+
+      if (_remainingSeconds <= 0) {
+        timer.cancel();
+        // Auto-reject on timeout
+        _handleReject();
       }
     });
   }
 
   void _startProgressUpdates() {
+    _updateTimer?.cancel(); // Cancel any existing timer
     // Update UI periodically to show progress
     _updateTimer = Timer.periodic(AppConstants.progressUpdateInterval, (timer) {
-      if (!_disposed && mounted && _isAccepted) {
+      if (_disposed || !mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_isAccepted) {
         setState(() {
           // Check if all files are completed
           _allCompleted = _displayedFiles.every((file) => file.isCompleted);
@@ -284,11 +316,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
             }
           });
         }
-      } else if (!_disposed && !_isAccepted) {
-        // Just keep the timer running if not accepted yet
-      } else {
-        timer.cancel();
       }
+      // Keep timer running if not accepted yet
     });
   }
 
@@ -313,9 +342,12 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _handleAccept() {
+    // Stop countdown timer
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
     setState(() {
       _isAccepted = true;
-      _countdownTimer?.cancel(); // Stop countdown
     });
 
     // Accept all current files
@@ -331,6 +363,12 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _handleReject() {
+    // Cancel all timers
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    _updateTimer?.cancel();
+    _updateTimer = null;
+
     // Reject all files
     for (final fileInfo in _displayedFiles) {
       if (!fileInfo.completer.isCompleted) {

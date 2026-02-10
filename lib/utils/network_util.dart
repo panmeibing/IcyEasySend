@@ -59,31 +59,16 @@ class NetworkUtil {
       if (privateAddresses.isNotEmpty) {
         // Sort by priority: physical adapters > virtual adapters, and 192.168 > 172 > 10
         privateAddresses.sort((a, b) {
-          // Deprioritize virtual/VPN interfaces
+          // 1. Priority: Physical network card>Virtual network card
           final aIsVirtual = _isVirtualInterface(a.interfaceName);
           final bIsVirtual = _isVirtualInterface(b.interfaceName);
-
           if (aIsVirtual != bIsVirtual) {
             return aIsVirtual ? 1 : -1;
           }
-
-          // Prefer 192.168.x.x over other private ranges
-          if (a.ip.startsWith('192.168.') && !b.ip.startsWith('192.168.')) {
-            return -1;
-          }
-          if (!a.ip.startsWith('192.168.') && b.ip.startsWith('192.168.')) {
-            return 1;
-          }
-
-          // Prefer 172.x.x.x over 10.x.x.x
-          if (a.ip.startsWith('172.') && b.ip.startsWith('10.')) {
-            return -1;
-          }
-          if (a.ip.startsWith('10.') && b.ip.startsWith('172.')) {
-            return 1;
-          }
-
-          return 0;
+          // 2. Priority：192.168 > 172 > 10
+          final aPriority = _getIPPriority(a.ip);
+          final bPriority = _getIPPriority(b.ip);
+          return aPriority.compareTo(bPriority);
         });
 
         final selectedIP = privateAddresses.first.ip;
@@ -246,6 +231,13 @@ class NetworkUtil {
     final url = '$baseUrl$endpoint';
     LogUtil.dTag(logTag, '构建URL: $url');
     return url;
+  }
+
+  static int _getIPPriority(String ip) {
+    if (ip.startsWith('192.168.')) return 1;
+    if (ip.startsWith('172.')) return 2;
+    if (ip.startsWith('10.')) return 3;
+    return 4; // other
   }
 }
 

@@ -155,4 +155,56 @@ class DialogHelper {
       },
     );
   }
+
+  /// Display loading dialog with message
+  static void showLoadingDialog(
+    BuildContext context, {
+    required String message,
+  }) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(message),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Display custom dialog with custom content and actions
+  static Future<T?> showCustomDialog<T>(
+    BuildContext context, {
+    Widget? title,
+    required Widget content,
+    List<Widget>? actions,
+    bool barrierDismissible = true,
+  }) async {
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (dialogContext) {
+        final screenWidth = MediaQuery.of(dialogContext).size.width;
+        return AlertDialog(
+          title: title,
+          content: SizedBox(
+            width: screenWidth * AppConstants.dialogWidthPercent,
+            child: content,
+          ),
+          actions: actions,
+        );
+      },
+    );
+  }
 }

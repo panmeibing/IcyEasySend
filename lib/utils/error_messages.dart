@@ -56,6 +56,8 @@ class ErrorMessages {
   static const String ipAddressInvalidFormat =
       'IP 地址格式无效，请使用 xxx.xxx.xxx.xxx 格式';
   static const String ipAddressInvalidRange = 'IP 地址格式无效，每个数字必须在 0-255 之间';
+  static const String ipAddressSpecial1 = '不能使用 0.0.0.0 作为目标地址';
+  static const String ipAddressSpecial2 = '不能使用广播地址 255.255.255.255';
 
   /// Warning message when target IP is not in the same subnet as local IP
   static String ipAddressNotInSameSubnet(String localIP, String targetIP) {

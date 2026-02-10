@@ -25,15 +25,6 @@ class OperationResult<T> {
   bool get isFailure => !success;
 }
 
-/// File transfer result data
-class TransferData {
-  final String? savedPath;
-  final int? bytesTransferred;
-  final Duration? duration;
-
-  const TransferData({this.savedPath, this.bytesTransferred, this.duration});
-}
-
 /// Health check result data
 class HealthCheckData {
   final String deviceName;

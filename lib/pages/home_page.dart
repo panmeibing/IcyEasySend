@@ -7,6 +7,7 @@ import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../services/validation_service.dart';
 import '../utils/constants.dart';
+import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
@@ -16,6 +17,7 @@ import 'widgets/ip_input_section.dart';
 import 'widgets/port_input_section.dart';
 import 'widgets/server_status_card.dart';
 import 'widgets/transfer_progress_card.dart';
+import 'package:path/path.dart' as path;
 
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {
@@ -375,161 +377,143 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
-    // Unfocus all text fields explicitly
-    _ipFocusNode.unfocus();
-    _portFocusNode.unfocus();
+    _disableFocusNodes();
 
-    // Temporarily disable focus requests
-    _ipFocusNode.canRequestFocus = false;
-    _portFocusNode.canRequestFocus = false;
+    try {
+      await _fileTransferController.sendFiles(
+        context: context,
+        files: selectedFiles,
+        targetIP: targetIP,
+        targetPort: port,
+        onProgress: (progress, bytesTransferred, totalBytes) {
+          setState(() {
+            _transferProgress = progress;
+            _bytesTransferred = bytesTransferred;
+            _totalBytes = totalBytes;
 
-    // Also unfocus the current focus scope
-    FocusScope.of(context).unfocus();
+            // Calculate transfer speed
+            if (_transferStartTime != null) {
+              final elapsed = DateTime.now().difference(_transferStartTime!);
+              if (elapsed.inMilliseconds > 0) {
+                _transferSpeed =
+                    bytesTransferred / (elapsed.inMilliseconds / 1000.0);
 
-    await _fileTransferController.sendFiles(
-      context: context,
-      files: selectedFiles,
-      targetIP: targetIP,
-      targetPort: port,
-      onProgress: (progress, bytesTransferred, totalBytes) {
-        setState(() {
-          _transferProgress = progress;
-          _bytesTransferred = bytesTransferred;
-          _totalBytes = totalBytes;
-
-          // Calculate transfer speed
-          if (_transferStartTime != null) {
-            final elapsed = DateTime.now().difference(_transferStartTime!);
-            if (elapsed.inMilliseconds > 0) {
-              _transferSpeed =
-                  bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-
-              if (_transferSpeed > 0) {
-                final remainingBytes = totalBytes - bytesTransferred;
-                final remainingSeconds = remainingBytes / _transferSpeed;
-                _estimatedTimeRemaining = Duration(
-                  seconds: remainingSeconds.toInt(),
-                );
+                if (_transferSpeed > 0) {
+                  final remainingBytes = totalBytes - bytesTransferred;
+                  final remainingSeconds = remainingBytes / _transferSpeed;
+                  _estimatedTimeRemaining = Duration(
+                    seconds: remainingSeconds.toInt(),
+                  );
+                }
               }
             }
-          }
-        });
-      },
-      onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
-        setState(() {
-          _fileProgress[fileIndex] = progress;
-          final fileName = selectedFiles[fileIndex].path.split('/').last;
-
-          if (progress < 1.0) {
-            _fileStatus[fileIndex] =
-                '传输中 ${(progress * 100).toStringAsFixed(1)}%';
-            _transferStatus =
-                '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
-          } else {
-            if (!_completedFileIndices.contains(fileIndex)) {
-              _completedFileIndices.add(fileIndex);
-              _completedFilesCount++;
-            }
-            _fileStatus[fileIndex] = '✓ 发送成功';
-          }
-        });
-      },
-      onStatusChange: (status) {
-        setState(() {
-          _transferStatus = status;
-        });
-      },
-      onTransferStart: () {
-        setState(() {
-          isSending = true;
-          _completedFilesCount = 0;
-          _totalFilesCount = selectedFiles.length;
-          _transferProgress = 0.0;
-          _bytesTransferred = 0;
-          _totalBytes = 0;
-          _transferStartTime = DateTime.now();
-          _transferSpeed = 0.0;
-          _estimatedTimeRemaining = null;
-          _transferStatus = '准备发送...';
-          _fileProgress.clear();
-          _fileStatus.clear();
-          _completedFileIndices.clear();
-        });
-        _scrollToBottom();
-      },
-      onTransferEnd: () {
-        if (mounted) {
+          });
+        },
+        onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
           setState(() {
-            isSending = false;
+            _fileProgress[fileIndex] = progress;
+            final fileName = path.basename(selectedFiles[fileIndex].path);
+
+            if (progress < 1.0) {
+              _fileStatus[fileIndex] =
+                  '传输中 ${(progress * 100).toStringAsFixed(1)}%';
+              _transferStatus =
+                  '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
+            } else {
+              if (!_completedFileIndices.contains(fileIndex)) {
+                _completedFileIndices.add(fileIndex);
+                _completedFilesCount++;
+              }
+              _fileStatus[fileIndex] = '✓ 发送成功';
+            }
+          });
+        },
+        onStatusChange: (status) {
+          setState(() {
+            _transferStatus = status;
+          });
+        },
+        onTransferStart: () {
+          setState(() {
+            isSending = true;
             _completedFilesCount = 0;
-            _totalFilesCount = 0;
+            _totalFilesCount = selectedFiles.length;
             _transferProgress = 0.0;
             _bytesTransferred = 0;
             _totalBytes = 0;
-            _transferStartTime = null;
+            _transferStartTime = DateTime.now();
             _transferSpeed = 0.0;
             _estimatedTimeRemaining = null;
-            _transferStatus = '';
+            _transferStatus = '准备发送...';
             _fileProgress.clear();
             _fileStatus.clear();
             _completedFileIndices.clear();
-
-            // Clear selected files on successful transfer
-            selectedFiles.clear();
           });
+          _scrollToBottom();
+        },
+        onTransferEnd: () {
+          if (mounted) {
+            setState(() {
+              isSending = false;
+              _completedFilesCount = 0;
+              _totalFilesCount = 0;
+              _transferProgress = 0.0;
+              _bytesTransferred = 0;
+              _totalBytes = 0;
+              _transferStartTime = null;
+              _transferSpeed = 0.0;
+              _estimatedTimeRemaining = null;
+              _transferStatus = '';
+              _fileProgress.clear();
+              _fileStatus.clear();
+              _completedFileIndices.clear();
 
-          // Re-enable focus requests after transfer ends
-          _ipFocusNode.canRequestFocus = true;
-          _portFocusNode.canRequestFocus = true;
-        }
-      },
-      onHistoryUpdated: () {
-        // Trigger history refresh after file transfer completes
-        widget.serverManager.refreshHistory();
-      },
-    );
+              // Clear selected files on successful transfer
+              selectedFiles.clear();
+            });
+          }
+        },
+        onHistoryUpdated: () {
+          // Trigger history refresh after file transfer completes
+          widget.serverManager.refreshHistory();
+        },
+      );
+    } finally {
+      // Always re-enable focus nodes after transfer completes or fails
+      if (mounted) {
+        _enableFocusNodes();
+      }
+    }
+  }
+
+  /// Disable all focus nodes and unfocus current scope
+  void _disableFocusNodes() {
+    _ipFocusNode.unfocus();
+    _portFocusNode.unfocus();
+    _ipFocusNode.canRequestFocus = false;
+    _portFocusNode.canRequestFocus = false;
+    FocusScope.of(context).unfocus();
+  }
+
+  /// Enable all focus nodes
+  void _enableFocusNodes() {
+    _ipFocusNode.canRequestFocus = true;
+    _portFocusNode.canRequestFocus = true;
   }
 
   /// Run network diagnostics
   Future<void> _runNetworkDiagnostics() async {
     if (!mounted) return;
 
-    // Unfocus all text fields explicitly
-    _ipFocusNode.unfocus();
-    _portFocusNode.unfocus();
-
-    // Temporarily disable focus requests
-    _ipFocusNode.canRequestFocus = false;
-    _portFocusNode.canRequestFocus = false;
-
-    // Also unfocus the current focus scope
-    FocusScope.of(context).unfocus();
+    _disableFocusNodes();
 
     // Wait a frame to ensure focus changes are applied
     await Future.delayed(const Duration(milliseconds: 100));
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        return AlertDialog(
-          content: SizedBox(
-            width: screenWidth * AppConstants.dialogWidthPercent,
-            child: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('正在运行网络诊断...'),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    // Show loading dialog (don't await it)
+    DialogHelper.showLoadingDialog(context, message: '正在运行网络诊断...');
 
     try {
       String? diagTargetIP;
@@ -555,10 +539,7 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         Navigator.of(context).pop();
-
-        // Re-enable focus requests after dialog is closed
-        _ipFocusNode.canRequestFocus = true;
-        _portFocusNode.canRequestFocus = true;
+        _enableFocusNodes();
       }
 
       if (mounted) {
@@ -583,60 +564,43 @@ class _HomePageState extends State<HomePage> {
 
         final fullReport = reportHeader.toString() + report.toString();
 
-        showDialog(
-          context: context,
-          builder: (dialogContext) {
-            final screenWidth = MediaQuery.of(dialogContext).size.width;
-            return AlertDialog(
-              title: const Row(
-                children: [
-                  Icon(Icons.network_check, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text('网络诊断报告'),
-                ],
-              ),
-              content: SizedBox(
-                width: screenWidth * AppConstants.dialogWidthPercent,
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    fullReport,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: fullReport));
-                    ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
-                  },
-                  child: const Text('复制'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(dialogContext).pop();
-                    // Re-enable focus requests when report dialog is closed
-                    _ipFocusNode.canRequestFocus = true;
-                    _portFocusNode.canRequestFocus = true;
-                  },
-                  child: const Text('关闭'),
-                ),
-              ],
-            );
-          },
+        await DialogHelper.showCustomDialog(
+          context,
+          title: const Row(
+            children: [
+              Icon(Icons.network_check, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('网络诊断报告'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: SelectableText(
+              fullReport,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: fullReport));
+                ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
+              },
+              child: const Text('复制'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _enableFocusNodes();
+              },
+              child: const Text('关闭'),
+            ),
+          ],
         );
       }
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-
-        // Re-enable focus requests on error
-        _ipFocusNode.canRequestFocus = true;
-        _portFocusNode.canRequestFocus = true;
-
+        _enableFocusNodes();
         ToastHelper.showError(context, '运行诊断时出错: $e');
       }
     }

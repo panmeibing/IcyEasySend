@@ -1,10 +1,10 @@
 import 'dart:io';
 
+import '../../models/transfer_data.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
 import '../../utils/platform_util.dart';
-import '../transfer_history_service.dart';
 import '../validation_service.dart';
 
 /// Service for receiving files from sender devices
@@ -12,16 +12,14 @@ class FileReceiver {
   final ValidationService _validationService;
   final String logTag = LogTags.transfer;
 
-  FileReceiver({
-    ValidationService? validationService,
-    TransferHistoryService? historyService,
-  }) : _validationService = validationService ?? ValidationService();
+  FileReceiver({ValidationService? validationService})
+    : _validationService = validationService ?? ValidationService();
 
   /// Receive a file directly without user confirmation
   ///
   /// Note: This method does NOT save transfer history.
   /// The caller is responsible for collecting results and saving history in batch.
-  Future<OperationResult<FileReceivedData>> receiveFileDirectly({
+  Future<OperationResult<TransferData>> receiveFileDirectly({
     required Stream<List<int>> fileStream,
     required String fileName,
     required int fileSize,
@@ -126,7 +124,7 @@ class FileReceiver {
       }
 
       return OperationResult.success(
-        data: FileReceivedData(savedPath: filePath, bytesTransferred: fileSize),
+        data: TransferData(savedPath: filePath, bytesTransferred: fileSize),
       );
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, 'Unexpected error in receiveFileDirectly: $e');
@@ -189,12 +187,4 @@ class FileReceiver {
 
     return candidateName;
   }
-}
-
-/// File received data result
-class FileReceivedData {
-  final String savedPath;
-  final int bytesTransferred;
-
-  FileReceivedData({required this.savedPath, required this.bytesTransferred});
 }
