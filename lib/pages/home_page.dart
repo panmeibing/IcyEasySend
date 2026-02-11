@@ -87,6 +87,8 @@ class _HomePageState extends State<HomePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         widget.serverManager.setContext(context);
+        // Register network change callback
+        widget.serverManager.addNetworkChangeCallback(_onNetworkChanged);
       }
     });
 
@@ -104,12 +106,21 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    widget.serverManager.removeNetworkChangeCallback(_onNetworkChanged);
     _ipController.dispose();
     _portController.dispose();
     _ipFocusNode.dispose();
     _portFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Handle network change event
+  void _onNetworkChanged() {
+    if (mounted) {
+      _updateServerStatus();
+      ToastHelper.showSuccess(context, '网络已变化，服务器地址已更新');
+    }
   }
 
   /// Validate the IP address in real-time

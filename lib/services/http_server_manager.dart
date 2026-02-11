@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -32,12 +34,18 @@ class HTTPServerManager {
   int? _currentPort;
   BuildContext? _context;
   VoidCallback? _historyRefreshCallback;
+  final List<VoidCallback> _networkChangeCallbacks = [];
 
   final String logTag = LogTags.server;
 
   // API handlers
   final HealthCheckHandler _healthCheckHandler;
   late final FileTransferHandler _fileTransferHandler;
+
+  // Network connectivity monitoring
+  final Connectivity _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  String? _lastKnownIP;
 
   HTTPServerManager({
     HealthCheckHandler? healthCheckHandler,
@@ -60,6 +68,91 @@ class HTTPServerManager {
   /// Set the callback to refresh history page
   void setHistoryRefreshCallback(VoidCallback callback) {
     _historyRefreshCallback = callback;
+  }
+
+  /// Add a callback to be notified of network changes
+  void addNetworkChangeCallback(VoidCallback callback) {
+    if (!_networkChangeCallbacks.contains(callback)) {
+      _networkChangeCallbacks.add(callback);
+    }
+  }
+
+  /// Remove a network change callback
+  void removeNetworkChangeCallback(VoidCallback callback) {
+    _networkChangeCallbacks.remove(callback);
+  }
+
+  /// Notify all registered callbacks about network change
+  void _notifyNetworkChange() {
+    for (final callback in _networkChangeCallbacks) {
+      callback();
+    }
+  }
+
+  /// Start monitoring network connectivity changes
+  void startNetworkMonitoring() {
+    LogUtil.iTag(logTag, '开始监听网络变化...');
+
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
+      (List<ConnectivityResult> results) async {
+        LogUtil.iTag(logTag, '检测到网络变化: $results');
+
+        // Wait a bit for network to stabilize
+        await Future.delayed(const Duration(seconds: 1));
+
+        // Check if server is running
+        if (!isRunning()) {
+          LogUtil.dTag(logTag, '服务器未运行，跳过网络变化处理');
+          return;
+        }
+
+        // Get current IP address
+        final currentIP = await NetworkUtil.getLocalIPAddress();
+
+        // Check if IP has changed
+        if (_lastKnownIP != null && _lastKnownIP != currentIP) {
+          LogUtil.iTag(logTag, 'IP地址已变化: $_lastKnownIP -> $currentIP');
+
+          // Restart server to update IP
+          await _restartServerOnNetworkChange();
+        } else {
+          LogUtil.dTag(logTag, 'IP地址未变化: $currentIP');
+          _lastKnownIP = currentIP;
+        }
+      },
+      onError: (error) {
+        LogUtil.eTag(logTag, '网络监听出错: $error');
+      },
+    );
+  }
+
+  /// Stop monitoring network connectivity changes
+  void stopNetworkMonitoring() {
+    LogUtil.iTag(logTag, '停止监听网络变化');
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
+  }
+
+  /// Restart server when network changes
+  Future<void> _restartServerOnNetworkChange() async {
+    LogUtil.iTag(logTag, '网络变化，重启服务器以更新IP地址...');
+
+    final currentPort = _currentPort;
+
+    // Stop current server
+    await stopServer();
+
+    // Start server with same port
+    final result = await startServer(port: currentPort);
+
+    if (result.success) {
+      LogUtil.iTag(logTag, '服务器重启成功，新地址: ${result.serverAddress}');
+
+      // Notify all registered callbacks
+      _notifyNetworkChange();
+    } else {
+      LogUtil.eTag(logTag, '服务器重启失败: ${result.errorMessage}');
+    }
   }
 
   /// Trigger history refresh (called after file transfer completes)
@@ -136,6 +229,7 @@ class HTTPServerManager {
         // Get the local IP address
         final localIP = await NetworkUtil.getLocalIPAddress();
         _serverAddress = '$localIP:$tryPort';
+        _lastKnownIP = localIP; // Store current IP for change detection
 
         LogUtil.iTag(logTag, '✅ 服务器启动成功！');
         LogUtil.iTag(logTag, '监听地址: 0.0.0.0:$tryPort');
@@ -227,6 +321,12 @@ class HTTPServerManager {
     } else {
       LogUtil.dTag(logTag, '服务器未运行，无需停止');
     }
+  }
+
+  /// Dispose resources
+  void dispose() {
+    stopNetworkMonitoring();
+    stopServer();
   }
 
   /// Get the current port number

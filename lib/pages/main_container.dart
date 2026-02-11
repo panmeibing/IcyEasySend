@@ -25,6 +25,15 @@ class _MainContainerState extends State<MainContainer> {
     super.initState();
     // Register the refresh callback with the server manager
     widget.serverManager.setHistoryRefreshCallback(_refreshHistory);
+
+    // Start network monitoring
+    widget.serverManager.startNetworkMonitoring();
+  }
+
+  @override
+  void dispose() {
+    widget.serverManager.stopNetworkMonitoring();
+    super.dispose();
   }
 
   /// Public method to refresh history from external calls

@@ -54,13 +54,28 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadServerInfo();
     _loadConcurrentTransfers();
     _loadMaxHistoryItems();
+
+    // Register network change callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.serverManager.addNetworkChangeCallback(_onNetworkChanged);
+      }
+    });
   }
 
   @override
   void dispose() {
+    widget.serverManager.removeNetworkChangeCallback(_onNetworkChanged);
     _deviceNameController.dispose();
     _maxHistoryController.dispose();
     super.dispose();
+  }
+
+  /// Handle network change event
+  void _onNetworkChanged() {
+    if (mounted) {
+      _loadServerInfo();
+    }
   }
 
   /// Load device information
