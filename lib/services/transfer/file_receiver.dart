@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as path;
+
 import '../../models/transfer_data.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
@@ -63,7 +65,7 @@ class FileReceiver {
         downloadsDir,
         fileName,
       );
-      final filePath = '${downloadsDir.path}/$finalFileName';
+      final filePath = path.join(downloadsDir.path, finalFileName);
 
       // Save file data
       file = File(filePath);
@@ -180,7 +182,7 @@ class FileReceiver {
     String candidateName = fileName;
     int counter = 1;
 
-    while (await File('${directory.path}/$candidateName').exists()) {
+    while (await File(path.join(directory.path, candidateName)).exists()) {
       candidateName = '$baseName($counter)$extension';
       counter++;
     }

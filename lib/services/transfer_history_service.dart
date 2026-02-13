@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as path_provider;
 
 import '../models/transfer_history.dart';
@@ -24,7 +25,7 @@ class TransferHistoryService {
   /// Get the history file path
   Future<String> _getHistoryFilePath() async {
     final directory = await path_provider.getApplicationDocumentsDirectory();
-    return '${directory.path}/$_historyFileName';
+    return path.join(directory.path, _historyFileName);
   }
 
   /// Load transfer history from local storage
