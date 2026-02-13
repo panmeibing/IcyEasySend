@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:icy_easy_send/utils/constants.dart';
 
 import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
@@ -118,7 +119,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Icy Easy Send',
+      title: AppConstants.projectName,
       theme: _buildModernTheme(),
       home: _isInitialized
           ? MainContainer(serverManager: _serverManager)

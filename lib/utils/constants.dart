@@ -89,4 +89,9 @@ class AppConstants {
   /// Dialog width percentage (relative to screen width)
   /// All dialogs will use this percentage of screen width for consistent sizing
   static const double dialogWidthPercent = 0.8;
+
+  // Information about this project
+  static const String projectName = "Icy Easy Send";
+  static const String version = "1.0.1";
+  static const String author = "冰冷的希望";
 }

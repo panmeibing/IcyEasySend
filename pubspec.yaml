@@ -89,6 +89,9 @@ dev_dependencies:
   test: ^1.26.3
   faker: ^2.2.0
   mockito: ^5.4.4
+  
+  # Icon generator
+  flutter_launcher_icons: ^0.14.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -100,6 +103,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  
+  assets:
+    - lib/images/icon.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -131,3 +137,30 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Flutter Launcher Icons configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "lib/images/icon.jpg"
+  min_sdk_android: 21
+  
+  # macOS configuration
+  macos:
+    generate: true
+    image_path: "lib/images/icon.jpg"
+  
+  # Windows configuration
+  windows:
+    generate: true
+    image_path: "lib/images/icon.jpg"
+  
+  # Linux configuration
+  linux:
+    generate: true
+    image_path: "lib/images/icon.jpg"
+  
+  # Web configuration
+  web:
+    generate: true
+    image_path: "lib/images/icon.jpg"

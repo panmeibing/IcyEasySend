@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as path;
 
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
@@ -17,7 +18,6 @@ import 'widgets/ip_input_section.dart';
 import 'widgets/port_input_section.dart';
 import 'widgets/server_status_card.dart';
 import 'widgets/transfer_progress_card.dart';
-import 'package:path/path.dart' as path;
 
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {
@@ -243,7 +243,7 @@ class _HomePageState extends State<HomePage> {
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
-        appBar: AppBar(title: const Text('Icy Easy Send')),
+        appBar: AppBar(title: const Text(AppConstants.projectName)),
         body: SingleChildScrollView(
           controller: _scrollController,
           child: Padding(
