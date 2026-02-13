@@ -92,6 +92,6 @@ class AppConstants {
 
   // Information about this project
   static const String projectName = "Icy Easy Send";
-  static const String version = "1.0.1";
+  static const String version = "v1.0.1";
   static const String author = "冰冷的希望";
 }

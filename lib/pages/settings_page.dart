@@ -1057,7 +1057,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 20),
-            
+
             // App icon and info
             Row(
               children: [
@@ -1084,7 +1084,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // App info
                 Expanded(
                   child: Column(
@@ -1099,13 +1099,25 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '版本 ${AppConstants.version}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.update, size: 14, color: Colors.grey[600]),
+                          const SizedBox(width: 4),
+                          Text(
+                            "版本: ",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          Text(
+                            AppConstants.version,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -1116,6 +1128,13 @@ class _SettingsPageState extends State<SettingsPage> {
                             color: Colors.grey[600],
                           ),
                           const SizedBox(width: 4),
+                          Text(
+                            "作者: ",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
                           Text(
                             AppConstants.author,
                             style: TextStyle(
@@ -1131,12 +1150,13 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Description
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.05),
+                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -1146,7 +1166,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   color: Colors.grey[700],
                   height: 1.5,
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
           ],
