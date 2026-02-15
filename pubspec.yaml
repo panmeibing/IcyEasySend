@@ -68,7 +68,7 @@ dependencies:
   open_file_manager: ^2.0.1
   
   # Device information
-  device_info_plus: ^12.3.0
+  device_info_plus: ^10.1.2
   logger: ^2.6.2
   
   # Network connectivity monitoring
@@ -76,6 +76,9 @@ dependencies:
   
   # Image processing
   image: ^4.0.17
+  
+  # Clipboard with image support
+  super_clipboard: ^0.8.22
 
 dev_dependencies:
   flutter_test:

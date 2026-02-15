@@ -7,12 +7,12 @@ import 'package:path/path.dart' as path;
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../services/validation_service.dart';
-import '../services/enhanced_clipboard_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
+import 'controllers/clipboard_controller.dart';
 import 'controllers/file_transfer_controller.dart';
 import 'widgets/file_selection_section.dart';
 import 'widgets/ip_input_section.dart';
@@ -58,7 +58,7 @@ class _HomePageState extends State<HomePage> {
   late final ValidationService _validationService;
   late final PreferencesService _preferencesService;
   late final FileTransferController _fileTransferController;
-  late final EnhancedClipboardService _clipboardService;
+  late final ClipboardController _clipboardController;
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
@@ -84,7 +84,7 @@ class _HomePageState extends State<HomePage> {
     _validationService = ValidationService();
     _preferencesService = PreferencesService();
     _fileTransferController = FileTransferController();
-    _clipboardService = EnhancedClipboardService();
+    _clipboardController = ClipboardController();
 
     // Set context for server manager
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -663,67 +663,19 @@ class _HomePageState extends State<HomePage> {
     _disableFocusNodes();
 
     try {
-      // Show loading dialog
-      if (mounted) {
-        DialogHelper.showLoadingDialog(context, message: '正在请求剪切板...');
-      }
-
-      // Get device name for the request
-      final deviceName = await NetworkUtil.getDeviceName();
-
-      // Request clipboard from target device
-      final result = await _clipboardService.syncClipboardFromDevice(
+      await _clipboardController.syncClipboard(
+        context: context,
         targetIP: targetIP,
-        port: port,
-        deviceName: deviceName,
-      );
-
-      // Close loading dialog
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-
-      if (result.isSuccess) {
-        if (mounted) {
-          // 获取剪切板数据类型
-          final data = result.data;
-          String successMessage = '剪切板同步成功';
-          
-          // 根据类型显示不同的提示
-          if (data != null) {
-            if (data.type.name == 'text') {
-              successMessage = '文本剪切板同步成功';
-            } else if (data.type.name == 'image') {
-              successMessage = '图片剪切板同步成功';
-            }
+        targetPort: port,
+        onSuccess: () async {
+          if (mounted) {
+            await _loadIPHistory();
           }
-          
-          ToastHelper.showSuccess(context, successMessage);
-
-          // Save IP to history
-          await _preferencesService.saveLastUsedIP(targetIP);
-          await _loadIPHistory();
-        }
-      } else {
-        if (mounted) {
-          await DialogHelper.showErrorDialog(
-            context,
-            message: result.errorMessage ?? '剪切板同步失败',
-            title: '同步失败',
-          );
-        }
-      }
-    } catch (e) {
-      // Close loading dialog if still open
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        
-        await DialogHelper.showErrorDialog(
-          context,
-          message: '请求剪切板时发生错误: $e',
-          title: '错误',
-        );
-      }
+        },
+        onError: () {
+          // Error already handled by controller
+        },
+      );
     } finally {
       // Always re-enable focus nodes
       if (mounted) {

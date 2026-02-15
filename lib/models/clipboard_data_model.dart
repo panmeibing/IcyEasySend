@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:icy_easy_send/utils/constants.dart';
+import 'package:path/path.dart' as path;
+
 /// 剪切板数据类型
-enum ClipboardDataType {
-  text,
-  image,
-  unknown,
-}
+enum ClipboardDataType { text, file, unknown }
 
 /// 剪切板数据模型
 ///
@@ -14,14 +13,16 @@ enum ClipboardDataType {
 class ClipboardDataModel {
   final ClipboardDataType type;
   final String? textContent;
-  final Uint8List? imageData;
-  final String? imageFormat; // png, jpeg, etc.
+  final Uint8List? fileData;
+  final String? fileName;
+  final String? mimeType; // 文件的 MIME 类型
 
   ClipboardDataModel({
     required this.type,
     this.textContent,
-    this.imageData,
-    this.imageFormat,
+    this.fileData,
+    this.fileName,
+    this.mimeType,
   });
 
   /// 转换为JSON（用于HTTP传输）
@@ -29,8 +30,9 @@ class ClipboardDataModel {
     return {
       'type': type.name,
       'textContent': textContent,
-      'imageData': imageData != null ? base64Encode(imageData!) : null,
-      'imageFormat': imageFormat,
+      'fileData': fileData != null ? base64Encode(fileData!) : null,
+      'fileName': fileName,
+      'mimeType': mimeType,
     };
   }
 
@@ -45,10 +47,11 @@ class ClipboardDataModel {
     return ClipboardDataModel(
       type: type,
       textContent: json['textContent'] as String?,
-      imageData: json['imageData'] != null
-          ? base64Decode(json['imageData'] as String)
+      fileData: json['fileData'] != null
+          ? base64Decode(json['fileData'] as String)
           : null,
-      imageFormat: json['imageFormat'] as String?,
+      fileName: json['fileName'] as String?,
+      mimeType: json['mimeType'] as String?,
     );
   }
 
@@ -56,15 +59,15 @@ class ClipboardDataModel {
   int get sizeInBytes {
     if (type == ClipboardDataType.text && textContent != null) {
       return textContent!.length;
-    } else if (type == ClipboardDataType.image && imageData != null) {
-      return imageData!.length;
+    } else if (type == ClipboardDataType.file && fileData != null) {
+      return fileData!.length;
     }
     return 0;
   }
 
   /// 获取数据大小（MB）
   double get sizeInMB {
-    return sizeInBytes / (1024 * 1024);
+    return sizeInBytes / AppConstants.bytesPerMB;
   }
 
   /// 获取类型描述
@@ -72,11 +75,31 @@ class ClipboardDataModel {
     switch (type) {
       case ClipboardDataType.text:
         return '文本';
-      case ClipboardDataType.image:
-        return '图片';
+      case ClipboardDataType.file:
+        return fileName != null ? '文件: $fileName' : '文件';
       case ClipboardDataType.unknown:
         return '未知';
     }
+  }
+
+  /// 判断是否为图片文件
+  bool get isImage {
+    if (type != ClipboardDataType.file) return false;
+    if (mimeType != null && mimeType!.startsWith('image/')) return true;
+    if (fileName != null) {
+      final ext = path.extension(fileName!).toLowerCase();
+      final extWithoutDot = ext.isEmpty ? '' : ext.substring(1);
+      return [
+        'png',
+        'jpg',
+        'jpeg',
+        'gif',
+        'bmp',
+        'webp',
+        'svg',
+      ].contains(extWithoutDot);
+    }
+    return false;
   }
 
   @override

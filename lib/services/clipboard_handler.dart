@@ -6,7 +6,7 @@ import 'package:icy_easy_send/utils/constants.dart';
 import 'package:shelf/shelf.dart';
 
 import '../models/clipboard_data_model.dart';
-import '../services/enhanced_clipboard_service.dart';
+import '../services/clipboard_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/log_util.dart';
 
@@ -15,15 +15,15 @@ import '../utils/log_util.dart';
 /// 处理来自其他设备的剪切板请求
 class ClipboardHandler {
   final BuildContext? Function()? contextGetter;
-  final EnhancedClipboardService _clipboardService;
+  final ClipboardService _clipboardService;
   final PreferencesService _preferencesService;
   final String logTag = LogTags.clipboard;
 
   ClipboardHandler({
     this.contextGetter,
-    EnhancedClipboardService? clipboardService,
+    ClipboardService? clipboardService,
     PreferencesService? preferencesService,
-  }) : _clipboardService = clipboardService ?? EnhancedClipboardService(),
+  }) : _clipboardService = clipboardService ?? ClipboardService(),
        _preferencesService = preferencesService ?? PreferencesService();
 
   /// 处理 POST /clipboard-request 请求
@@ -42,6 +42,9 @@ class ClipboardHandler {
   ///   "accepted": true/false,
   ///   "content": "剪切板内容" (仅当accepted为true时),
   ///   "message": "消息"
+  ///   "clipboardData": 响应成功携带的剪切板数据,
+  ///   "actualSizeMB": 文件过大的时候返回文件的实际大小,
+  ///   "maxSizeMB": 文件过大的时候返回设备限制文件的大小,
   /// }
   Future<Response> handleClipboardRequest(Request request) async {
     LogUtil.iTag(logTag, '收到剪切板请求: /clipboard-request');
@@ -59,8 +62,9 @@ class ClipboardHandler {
       }
 
       // 提取参数
-      final requesterDeviceName = body['requesterDeviceName'] as String? ?? '未知设备';
-      
+      final requesterDeviceName =
+          body['requesterDeviceName'] as String? ?? '未知设备';
+
       LogUtil.dTag(logTag, '请求设备: $requesterDeviceName');
 
       // 检查上下文是否可用
@@ -133,17 +137,14 @@ class ClipboardHandler {
     bool dialogClosed = false;
 
     // 设置超时定时器
-    final timeoutTimer = Timer(
-      AppConstants.receiveConfirmationTimeout,
-      () {
-        if (!dialogClosed && !completer.isCompleted) {
-          dialogClosed = true;
-          Navigator.of(context, rootNavigator: true).pop();
-          completer.complete(false);
-          LogUtil.wTag(logTag, '剪切板请求确认超时');
-        }
-      },
-    );
+    final timeoutTimer = Timer(AppConstants.receiveConfirmationTimeout, () {
+      if (!dialogClosed && !completer.isCompleted) {
+        dialogClosed = true;
+        Navigator.of(context, rootNavigator: true).pop();
+        completer.complete(false);
+        LogUtil.wTag(logTag, '剪切板请求确认超时');
+      }
+    });
 
     try {
       if (!context.mounted) {
@@ -196,10 +197,7 @@ class ClipboardHandler {
   Response _buildRejectedResponse() {
     return Response(
       200,
-      body: jsonEncode({
-        'accepted': false,
-        'message': '用户拒绝了剪切板请求',
-      }),
+      body: jsonEncode({'accepted': false, 'message': '用户拒绝了剪切板请求'}),
       headers: {'Content-Type': 'application/json'},
     );
   }
@@ -208,10 +206,7 @@ class ClipboardHandler {
   Response _buildEmptyClipboardResponse() {
     return Response(
       200,
-      body: jsonEncode({
-        'accepted': false,
-        'message': '剪切板为空',
-      }),
+      body: jsonEncode({'accepted': false, 'message': '剪切板为空'}),
       headers: {'Content-Type': 'application/json'},
     );
   }
@@ -222,7 +217,8 @@ class ClipboardHandler {
       413, // Payload Too Large
       body: jsonEncode({
         'accepted': false,
-        'message': '剪切板内容过大 (${actualSizeMB.toStringAsFixed(2)} MB)，超过限制 ($maxSizeMB MB)。建议使用文件传输功能。',
+        'message':
+            '剪切板内容过大 (${actualSizeMB.toStringAsFixed(2)} MB)，超过对方设备的限制 ($maxSizeMB MB)。建议使用文件传输功能。',
         'actualSizeMB': actualSizeMB,
         'maxSizeMB': maxSizeMB,
       }),
@@ -234,10 +230,7 @@ class ClipboardHandler {
   Response _buildErrorResponse(String message) {
     return Response(
       400,
-      body: jsonEncode({
-        'accepted': false,
-        'message': message,
-      }),
+      body: jsonEncode({'accepted': false, 'message': message}),
       headers: {'Content-Type': 'application/json'},
     );
   }
@@ -277,24 +270,21 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
   }
 
   void _startCountdown() {
-    _countdownTimer = Timer.periodic(
-      AppConstants.countdownInterval,
-      (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
+    _countdownTimer = Timer.periodic(AppConstants.countdownInterval, (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
 
-        setState(() {
-          _countdown--;
-        });
+      setState(() {
+        _countdown--;
+      });
 
-        if (_countdown <= 0) {
-          timer.cancel();
-          widget.onReject();
-        }
-      },
-    );
+      if (_countdown <= 0) {
+        timer.cancel();
+        widget.onReject();
+      }
+    });
   }
 
   @override
@@ -322,10 +312,7 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
             const SizedBox(height: 16),
             Text(
               '是否允许？',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
             LinearProgressIndicator(
@@ -338,19 +325,13 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
             const SizedBox(height: 8),
             Text(
               '$_countdown 秒后自动拒绝',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: widget.onReject,
-          child: const Text('拒绝'),
-        ),
+        TextButton(onPressed: widget.onReject, child: const Text('拒绝')),
         ElevatedButton(
           onPressed: widget.onAccept,
           style: ElevatedButton.styleFrom(

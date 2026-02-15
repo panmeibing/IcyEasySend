@@ -26,7 +26,8 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TransferHistoryService _historyService;
   final TextEditingController _deviceNameController = TextEditingController();
   final TextEditingController _maxHistoryController = TextEditingController();
-  final TextEditingController _maxClipboardSizeController = TextEditingController();
+  final TextEditingController _maxClipboardSizeController =
+      TextEditingController();
 
   String _deviceName = '';
   String _deviceModel = '';
@@ -332,7 +333,7 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
 
-    if (newSize < AppConstants.minClipboardSizeMB || 
+    if (newSize < AppConstants.minClipboardSizeMB ||
         newSize > AppConstants.maxClipboardSizeMB) {
       _showErrorSnackBar(
         '剪切板大小范围: ${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB',
@@ -349,8 +350,9 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     // Build confirmation message
-    String message = '确定要将最大剪切板大小从 $_maxClipboardSizeMB MB 修改为 $newSize MB 吗？\n\n';
-    
+    String message =
+        '确定要将最大剪切板大小从 $_maxClipboardSizeMB MB 修改为 $newSize MB 吗？\n\n';
+
     if (newSize < _maxClipboardSizeMB) {
       message += '⚠️ 提示：降低限制后，超过 $newSize MB 的剪切板内容将无法同步，建议使用文件传输功能。';
     } else {
@@ -1217,7 +1219,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         icon: const Icon(Icons.close, color: Color(0xFFE53935)),
                         onPressed: () {
                           setState(() {
-                            _maxClipboardSizeController.text = 
+                            _maxClipboardSizeController.text =
                                 _maxClipboardSizeMB.toString();
                             _isEditingMaxClipboardSize = false;
                           });

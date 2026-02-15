@@ -96,13 +96,16 @@ class AppConstants {
   static const String author = "冰冷的希望";
 
   // Clipboard constants
-  
-  /// Default max clipboard size (10MB)
-  static const int defaultMaxClipboardSize = 10;
-  
-  /// Minimum clipboard size (1MB)
+
+  /// Default max clipboard size
+  static const int defaultMaxClipboardSize = 2;
+
+  /// Minimum clipboard size
   static const int minClipboardSizeMB = 1;
-  
-  /// Maximum clipboard size (100MB)
-  static const int maxClipboardSizeMB = 100;
+
+  /// Maximum clipboard size
+  static const int maxClipboardSizeMB = 10;
+
+  /// Keep the lastest temp file count from clipboard
+  static const int maxClipboardKeepCount = 5;
 }

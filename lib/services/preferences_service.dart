@@ -31,7 +31,7 @@ class PreferencesService {
   static const int _defaultMaxHistoryItems =
       AppConstants.defaultMaxHistoryItems;
 
-  // Default max clipboard size (10MB)
+  // Default max clipboard size
   static const int _defaultMaxClipboardSize =
       AppConstants.defaultMaxClipboardSize;
 
@@ -289,7 +289,7 @@ class PreferencesService {
   Future<bool> saveMaxClipboardSize(int sizeMB) async {
     try {
       // Validate size (minimum 1MB, maximum 100MB)
-      if (sizeMB < AppConstants.minClipboardSizeMB || 
+      if (sizeMB < AppConstants.minClipboardSizeMB ||
           sizeMB > AppConstants.maxClipboardSizeMB) {
         return false;
       }
@@ -304,7 +304,7 @@ class PreferencesService {
 
   /// Get max clipboard size (in MB)
   ///
-  /// Returns the saved max clipboard size, or default value (10MB) if none exists
+  /// Returns the saved max clipboard size, or default value if none exists
   Future<int> getMaxClipboardSize() async {
     try {
       final prefs = await SharedPreferences.getInstance();
