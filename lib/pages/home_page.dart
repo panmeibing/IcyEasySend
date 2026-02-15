@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../services/validation_service.dart';
+import '../services/enhanced_clipboard_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
@@ -57,6 +58,7 @@ class _HomePageState extends State<HomePage> {
   late final ValidationService _validationService;
   late final PreferencesService _preferencesService;
   late final FileTransferController _fileTransferController;
+  late final EnhancedClipboardService _clipboardService;
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
@@ -82,6 +84,7 @@ class _HomePageState extends State<HomePage> {
     _validationService = ValidationService();
     _preferencesService = PreferencesService();
     _fileTransferController = FileTransferController();
+    _clipboardService = EnhancedClipboardService();
 
     // Set context for server manager
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -284,6 +287,21 @@ class _HomePageState extends State<HomePage> {
                     _portController.text = '${AppConstants.defaultPort}';
                     _validatePort();
                   },
+                ),
+                const SizedBox(height: 24),
+
+                // Clipboard sync button
+                OutlinedButton.icon(
+                  onPressed: _canRequestClipboard() ? _requestClipboard : null,
+                  icon: const Icon(Icons.content_paste),
+                  label: const Text('同步对方剪切板'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: Colors.blue,
+                    side: BorderSide(
+                      color: _canRequestClipboard() ? Colors.blue : Colors.grey,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -613,6 +631,103 @@ class _HomePageState extends State<HomePage> {
         Navigator.of(context).pop();
         _enableFocusNodes();
         ToastHelper.showError(context, '运行诊断时出错: $e');
+      }
+    }
+  }
+
+  /// Check if the clipboard request button should be enabled
+  bool _canRequestClipboard() {
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    final isPortValid = port != null && port >= 1 && port <= 65535;
+
+    return isServerRunning &&
+        !isSending &&
+        targetIP.isNotEmpty &&
+        _ipErrorMessage == null &&
+        isPortValid;
+  }
+
+  /// Request clipboard content from target device
+  Future<void> _requestClipboard() async {
+    if (targetIP.isEmpty) {
+      return;
+    }
+
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    if (port == null || port < 1 || port > 65535) {
+      return;
+    }
+
+    _disableFocusNodes();
+
+    try {
+      // Show loading dialog
+      if (mounted) {
+        DialogHelper.showLoadingDialog(context, message: '正在请求剪切板...');
+      }
+
+      // Get device name for the request
+      final deviceName = await NetworkUtil.getDeviceName();
+
+      // Request clipboard from target device
+      final result = await _clipboardService.syncClipboardFromDevice(
+        targetIP: targetIP,
+        port: port,
+        deviceName: deviceName,
+      );
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result.isSuccess) {
+        if (mounted) {
+          // 获取剪切板数据类型
+          final data = result.data;
+          String successMessage = '剪切板同步成功';
+          
+          // 根据类型显示不同的提示
+          if (data != null) {
+            if (data.type.name == 'text') {
+              successMessage = '文本剪切板同步成功';
+            } else if (data.type.name == 'image') {
+              successMessage = '图片剪切板同步成功';
+            }
+          }
+          
+          ToastHelper.showSuccess(context, successMessage);
+
+          // Save IP to history
+          await _preferencesService.saveLastUsedIP(targetIP);
+          await _loadIPHistory();
+        }
+      } else {
+        if (mounted) {
+          await DialogHelper.showErrorDialog(
+            context,
+            message: result.errorMessage ?? '剪切板同步失败',
+            title: '同步失败',
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        
+        await DialogHelper.showErrorDialog(
+          context,
+          message: '请求剪切板时发生错误: $e',
+          title: '错误',
+        );
+      }
+    } finally {
+      // Always re-enable focus nodes
+      if (mounted) {
+        _enableFocusNodes();
       }
     }
   }

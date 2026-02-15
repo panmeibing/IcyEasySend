@@ -15,6 +15,7 @@ class PreferencesService {
   static const String _keyDeviceName = 'device_name';
   static const String _keyConcurrentTransfers = 'concurrent_transfers';
   static const String _keyMaxHistoryItems = 'max_history_items';
+  static const String _keyMaxClipboardSize = 'max_clipboard_size';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -29,6 +30,10 @@ class PreferencesService {
   // Default max history items
   static const int _defaultMaxHistoryItems =
       AppConstants.defaultMaxHistoryItems;
+
+  // Default max clipboard size (10MB)
+  static const int _defaultMaxClipboardSize =
+      AppConstants.defaultMaxClipboardSize;
 
   /// Save the last used IP address
   ///
@@ -274,6 +279,38 @@ class PreferencesService {
       return prefs.getInt(_keyMaxHistoryItems) ?? _defaultMaxHistoryItems;
     } catch (e) {
       return _defaultMaxHistoryItems;
+    }
+  }
+
+  /// Save max clipboard size (in MB)
+  ///
+  /// Parameters:
+  /// - [sizeMB]: Maximum clipboard size in MB (1-100)
+  Future<bool> saveMaxClipboardSize(int sizeMB) async {
+    try {
+      // Validate size (minimum 1MB, maximum 100MB)
+      if (sizeMB < AppConstants.minClipboardSizeMB || 
+          sizeMB > AppConstants.maxClipboardSizeMB) {
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_keyMaxClipboardSize, sizeMB);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get max clipboard size (in MB)
+  ///
+  /// Returns the saved max clipboard size, or default value (10MB) if none exists
+  Future<int> getMaxClipboardSize() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt(_keyMaxClipboardSize) ?? _defaultMaxClipboardSize;
+    } catch (e) {
+      return _defaultMaxClipboardSize;
     }
   }
 }

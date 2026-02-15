@@ -11,6 +11,7 @@ import '../utils/constants.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
+import 'clipboard_handler.dart';
 import 'file_transfer_handler.dart';
 import 'health_check_handler.dart';
 
@@ -41,6 +42,7 @@ class HTTPServerManager {
   // API handlers
   final HealthCheckHandler _healthCheckHandler;
   late final FileTransferHandler _fileTransferHandler;
+  late final ClipboardHandler _clipboardHandler;
 
   // Network connectivity monitoring
   final Connectivity _connectivity = Connectivity();
@@ -50,6 +52,7 @@ class HTTPServerManager {
   HTTPServerManager({
     HealthCheckHandler? healthCheckHandler,
     FileTransferHandler? fileTransferHandler,
+    ClipboardHandler? clipboardHandler,
   }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler() {
     // Create file transfer handler with a context getter if not provided
     _fileTransferHandler =
@@ -57,6 +60,13 @@ class HTTPServerManager {
         FileTransferHandler(
           contextGetter: () => _context,
           historyRefreshCallbackGetter: () => _historyRefreshCallback,
+        );
+    
+    // Create clipboard handler with a context getter if not provided
+    _clipboardHandler =
+        clipboardHandler ??
+        ClipboardHandler(
+          contextGetter: () => _context,
         );
   }
 
@@ -211,6 +221,9 @@ class HTTPServerManager {
 
         // Configure file transfer endpoint
         router.post('/transfer', _fileTransferHandler.handleFileTransfer);
+
+        // Configure clipboard request endpoint
+        router.post('/clipboard-request', _clipboardHandler.handleClipboardRequest);
 
         // Create handler with middleware
         final handler = Pipeline()

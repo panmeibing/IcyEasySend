@@ -73,6 +73,9 @@ dependencies:
   
   # Network connectivity monitoring
   connectivity_plus: ^6.1.2
+  
+  # Image processing
+  image: ^4.0.17
 
 dev_dependencies:
   flutter_test:

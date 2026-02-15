@@ -26,6 +26,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TransferHistoryService _historyService;
   final TextEditingController _deviceNameController = TextEditingController();
   final TextEditingController _maxHistoryController = TextEditingController();
+  final TextEditingController _maxClipboardSizeController = TextEditingController();
 
   String _deviceName = '';
   String _deviceModel = '';
@@ -37,6 +38,8 @@ class _SettingsPageState extends State<SettingsPage> {
   int _tempConcurrentTransfers = 5; // Temporary value for slider
   int _maxHistoryItems = AppConstants.defaultMaxHistoryItems;
   bool _isEditingMaxHistory = false;
+  int _maxClipboardSizeMB = AppConstants.defaultMaxClipboardSize;
+  bool _isEditingMaxClipboardSize = false;
 
   final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
   final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
@@ -54,6 +57,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadServerInfo();
     _loadConcurrentTransfers();
     _loadMaxHistoryItems();
+    _loadMaxClipboardSize();
 
     // Register network change callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -68,6 +72,7 @@ class _SettingsPageState extends State<SettingsPage> {
     widget.serverManager.removeNetworkChangeCallback(_onNetworkChanged);
     _deviceNameController.dispose();
     _maxHistoryController.dispose();
+    _maxClipboardSizeController.dispose();
     super.dispose();
   }
 
@@ -158,6 +163,17 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _maxHistoryItems = count;
         _maxHistoryController.text = count.toString();
+      });
+    }
+  }
+
+  /// Load max clipboard size setting
+  Future<void> _loadMaxClipboardSize() async {
+    final sizeMB = await _preferencesService.getMaxClipboardSize();
+    if (mounted) {
+      setState(() {
+        _maxClipboardSizeMB = sizeMB;
+        _maxClipboardSizeController.text = sizeMB.toString();
       });
     }
   }
@@ -297,6 +313,83 @@ class _SettingsPageState extends State<SettingsPage> {
       } else {
         _showSuccessSnackBar('最大历史记录数已保存');
       }
+    } else {
+      _showErrorSnackBar('保存失败');
+    }
+  }
+
+  /// Confirm and save max clipboard size
+  Future<void> _confirmAndSaveMaxClipboardSize() async {
+    final newSizeText = _maxClipboardSizeController.text.trim();
+    if (newSizeText.isEmpty) {
+      _showErrorSnackBar('请输入有效的数字');
+      return;
+    }
+
+    final newSize = int.tryParse(newSizeText);
+    if (newSize == null) {
+      _showErrorSnackBar('请输入有效的数字');
+      return;
+    }
+
+    if (newSize < AppConstants.minClipboardSizeMB || 
+        newSize > AppConstants.maxClipboardSizeMB) {
+      _showErrorSnackBar(
+        '剪切板大小范围: ${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB',
+      );
+      return;
+    }
+
+    // If value hasn't changed, no need to confirm
+    if (newSize == _maxClipboardSizeMB) {
+      setState(() {
+        _isEditingMaxClipboardSize = false;
+      });
+      return;
+    }
+
+    // Build confirmation message
+    String message = '确定要将最大剪切板大小从 $_maxClipboardSizeMB MB 修改为 $newSize MB 吗？\n\n';
+    
+    if (newSize < _maxClipboardSizeMB) {
+      message += '⚠️ 提示：降低限制后，超过 $newSize MB 的剪切板内容将无法同步，建议使用文件传输功能。';
+    } else {
+      message += '提示：增加限制后，可以同步更大的剪切板内容，但可能会影响传输速度。';
+    }
+
+    if (!mounted) return;
+
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '确认修改',
+      message: message,
+      confirmText: '确认修改',
+      icon: Icons.content_paste,
+      iconColor: const Color(0xFF2196F3),
+    );
+
+    if (confirmed) {
+      await _saveMaxClipboardSize(newSize);
+    } else {
+      // User cancelled, revert to previous value
+      if (mounted) {
+        setState(() {
+          _maxClipboardSizeController.text = _maxClipboardSizeMB.toString();
+          _isEditingMaxClipboardSize = false;
+        });
+      }
+    }
+  }
+
+  /// Save max clipboard size setting
+  Future<void> _saveMaxClipboardSize(int newSize) async {
+    final success = await _preferencesService.saveMaxClipboardSize(newSize);
+    if (success) {
+      setState(() {
+        _maxClipboardSizeMB = newSize;
+        _isEditingMaxClipboardSize = false;
+      });
+      _showSuccessSnackBar('最大剪切板大小已保存');
     } else {
       _showErrorSnackBar('保存失败');
     }
@@ -1010,6 +1103,162 @@ class _SettingsPageState extends State<SettingsPage> {
                       Expanded(
                         child: Text(
                           '超过设置数量的旧记录将被自动删除，只保留最新的记录',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+
+            // Max clipboard size setting
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '最大剪切板大小',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF212121),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '允许同步的最大剪切板大小（${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB）',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_isEditingMaxClipboardSize)
+                            TextField(
+                              controller: _maxClipboardSizeController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              decoration: InputDecoration(
+                                hintText:
+                                    '输入大小 (${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB)',
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              autofocus: true,
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF2196F3,
+                                ).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFF2196F3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.content_paste,
+                                    size: 20,
+                                    color: Color(0xFF2196F3),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '$_maxClipboardSizeMB MB',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF2196F3),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (_isEditingMaxClipboardSize) ...[
+                      IconButton(
+                        icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
+                        onPressed: _confirmAndSaveMaxClipboardSize,
+                        tooltip: '保存',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Color(0xFFE53935)),
+                        onPressed: () {
+                          setState(() {
+                            _maxClipboardSizeController.text = 
+                                _maxClipboardSizeMB.toString();
+                            _isEditingMaxClipboardSize = false;
+                          });
+                        },
+                        tooltip: '取消',
+                      ),
+                    ] else ...[
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit,
+                          size: 20,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isEditingMaxClipboardSize = true;
+                          });
+                        },
+                        tooltip: '编辑',
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.info_outline,
+                        size: 16,
+                        color: Color(0xFF1976D2),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '超过此大小的剪切板内容将无法同步，建议使用文件传输功能',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[700],

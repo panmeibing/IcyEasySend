@@ -13,6 +13,7 @@ class LogTags {
   static const String permission = 'Permission';
   static const String history = 'History';
   static const String ui = 'UI';
+  static const String clipboard = 'Clipboard';
 }
 
 class MyLogPrinter extends LogPrinter {

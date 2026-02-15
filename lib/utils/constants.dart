@@ -94,4 +94,15 @@ class AppConstants {
   static const String projectName = "Icy Easy Send";
   static const String version = "v1.0.1";
   static const String author = "冰冷的希望";
+
+  // Clipboard constants
+  
+  /// Default max clipboard size (10MB)
+  static const int defaultMaxClipboardSize = 10;
+  
+  /// Minimum clipboard size (1MB)
+  static const int minClipboardSizeMB = 1;
+  
+  /// Maximum clipboard size (100MB)
+  static const int maxClipboardSizeMB = 100;
 }
