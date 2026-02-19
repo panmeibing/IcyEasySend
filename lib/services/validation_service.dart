@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:storage_space/storage_space.dart';
 
 import '../utils/constants.dart';
 import '../utils/error_messages.dart';
@@ -314,23 +315,120 @@ class ValidationService {
         );
       }
 
-      // 检查可用空间
-      // 注意：这是一个简化的实现
-      // 在生产环境中，应该使用平台特定的实现来准确检查可用空间
-      // 目前假设如果文件小于1GB则有足够空间
-      if (requiredBytes > (AppConstants.bytesPerGB)) {
-        // 对于大于1GB的文件，我们无法确定是否有足够空间
-        // 返回警告但不阻止传输
+      // 检查平台支持
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Android 和 iOS 平台使用 storage_space 包
+        return await _validateStorageSpaceMobile(requiredBytes);
+      } else {
+        // 桌面平台（macOS、Windows、Linux）使用降级方案
+        return await _validateStorageSpaceDesktop(requiredBytes, directory);
+      }
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '存储空间检查失败: $e', e, stackTrace);
+      return OperationResult.failure(ErrorMessages.storageCheckFailed);
+    }
+  }
+
+  /// 移动平台（Android、iOS）的存储空间验证
+  Future<OperationResult<void>> _validateStorageSpaceMobile(
+    int requiredBytes,
+  ) async {
+    try {
+      // 设置低空间阈值为需要的空间加上100MB的缓冲区
+      final lowSpaceThreshold = requiredBytes + (100 * AppConstants.bytesPerMB);
+
+      final storageSpace = await getStorageSpace(
+        lowOnSpaceThreshold: lowSpaceThreshold,
+        fractionDigits: 2,
+      );
+
+      LogUtil.dTag(
+        logTag,
+        '存储空间信息: 总空间=${storageSpace.totalSize}, '
+        '可用空间=${storageSpace.freeSize}, '
+        '已用空间=${storageSpace.usedSize}, '
+        '使用率=${storageSpace.usagePercent}%',
+      );
+
+      // 检查可用空间是否足够
+      if (storageSpace.free < requiredBytes) {
+        final requiredMB = (requiredBytes / AppConstants.bytesPerMB)
+            .toStringAsFixed(2);
         LogUtil.wTag(
           logTag,
-          '文件大小超过1GB，无法准确检查存储空间: ${(requiredBytes / AppConstants.bytesPerGB).toStringAsFixed(2)}GB',
+          '存储空间不足: 需要${requiredMB}MB, 可用${storageSpace.freeSize}',
+        );
+        return OperationResult.failure(ErrorMessages.storageInsufficient);
+      }
+
+      // 检查是否处于低存储空间状态
+      if (storageSpace.lowOnSpace) {
+        LogUtil.wTag(
+          logTag,
+          '存储空间较低: 可用${storageSpace.freeSize}, 建议保留至少100MB额外空间',
         );
       }
 
-      LogUtil.dTag(logTag, '存储空间验证通过');
+      LogUtil.dTag(
+        logTag,
+        '存储空间验证通过: 需要${(requiredBytes / AppConstants.bytesPerMB).toStringAsFixed(2)}MB, 可用${storageSpace.freeSize}',
+      );
       return OperationResult.success();
     } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '存储空间检查失败: $e', e, stackTrace);
+      LogUtil.eTag(logTag, '移动平台存储空间检查失败: $e', e, stackTrace);
+      // 移动平台如果检查失败，降级到桌面平台的方案
+      final directory = await PlatformUtil.getDownloadsDirectory();
+      if (directory != null) {
+        return await _validateStorageSpaceDesktop(requiredBytes, directory);
+      }
+      return OperationResult.failure(ErrorMessages.storageCheckFailed);
+    }
+  }
+
+  /// 桌面平台（macOS、Windows、Linux）的存储空间验证
+  ///
+  /// 使用文件系统统计信息来估算可用空间
+  Future<OperationResult<void>> _validateStorageSpaceDesktop(
+    int requiredBytes,
+    Directory directory,
+  ) async {
+    try {
+      LogUtil.dTag(logTag, '使用桌面平台存储空间检查方案: ${Platform.operatingSystem}');
+
+      // 尝试通过创建临时文件来检查是否有足够空间
+      // 这是一个简化的检查方法，不能精确获取可用空间
+      // 但可以验证是否至少有写入权限
+
+      final testFile = File(
+        path.join(
+          directory.path,
+          '.storage_test_${DateTime.now().millisecondsSinceEpoch}',
+        ),
+      );
+
+      try {
+        // 尝试创建测试文件
+        await testFile.create();
+        await testFile.delete();
+
+        LogUtil.dTag(logTag, '桌面平台存储空间检查: 目录可写，假设有足够空间');
+
+        // 对于桌面平台，如果文件大小超过5GB，给出警告但不阻止
+        if (requiredBytes > (5 * AppConstants.bytesPerGB)) {
+          LogUtil.wTag(
+            logTag,
+            '文件较大: ${(requiredBytes / AppConstants.bytesPerGB).toStringAsFixed(2)}GB, 请确保有足够的磁盘空间',
+          );
+        }
+
+        LogUtil.dTag(logTag, '桌面平台存储空间验证通过（降级方案）');
+        return OperationResult.success();
+      } catch (e) {
+        LogUtil.eTag(logTag, '无法在目标目录创建文件: $e');
+        return OperationResult.failure('无法写入下载目录，请检查权限');
+      }
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '桌面平台存储空间检查失败: $e', e, stackTrace);
       return OperationResult.failure(ErrorMessages.storageCheckFailed);
     }
   }

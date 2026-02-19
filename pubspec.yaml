@@ -78,7 +78,10 @@ dependencies:
   image: ^4.0.17
   
   # Clipboard with image support
-  super_clipboard: ^0.8.22
+  super_clipboard: ^0.9.1
+  
+  # Storage space check
+  storage_space: ^1.2.0
 
 dev_dependencies:
   flutter_test:

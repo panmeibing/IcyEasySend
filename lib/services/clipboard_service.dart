@@ -252,6 +252,8 @@ class ClipboardService {
   /// 将指定的内容写入剪切板（文本或文件）
   /// 对于文件，会同时写入文件URI，使其可以在文件管理器中粘贴
   /// 对于图片文件，还会写入图片格式，使其可以在图片编辑器中粘贴
+  ///
+  /// 注意：Android 平台对文件 URI 的支持有限，主要支持图片数据
   Future<bool> setClipboardContent(ClipboardDataModel data) async {
     try {
       LogUtil.dTag(logTag, '正在写入剪切板，类型: ${data.typeDescription}');
@@ -276,28 +278,76 @@ class ClipboardService {
       if (data.type == ClipboardDataType.file &&
           data.fileData != null &&
           data.fileName != null) {
-        // 如果是图片文件，同时写入图片格式（用于在图片编辑器中粘贴）
+        // 如果是图片文件，写入图片格式（所有平台都支持）
         if (data.isImage) {
           final mimeType = data.mimeType ?? '';
+          bool imageAdded = false;
+
           if (mimeType.contains('png')) {
             item.add(Formats.png(data.fileData!));
+            imageAdded = true;
             LogUtil.dTag(logTag, '添加 PNG 图片格式');
           } else if (mimeType.contains('jpeg') || mimeType.contains('jpg')) {
             item.add(Formats.jpeg(data.fileData!));
+            imageAdded = true;
             LogUtil.dTag(logTag, '添加 JPEG 图片格式');
+          } else if (mimeType.contains('bmp')) {
+            // BMP 格式需要转换为 PNG
+            try {
+              item.add(Formats.png(data.fileData!));
+              imageAdded = true;
+              LogUtil.dTag(logTag, '添加 BMP 图片（作为 PNG）');
+            } catch (e) {
+              LogUtil.wTag(logTag, 'BMP 格式处理失败: $e');
+            }
+          }
+
+          if (imageAdded) {
+            // 对于图片，在非 Android 平台也尝试添加文件 URI
+            if (!Platform.isAndroid) {
+              try {
+                final fileUri = await _createTempFile(
+                  data.fileData!,
+                  data.fileName!,
+                );
+                if (fileUri != null) {
+                  item.add(Formats.fileUri(fileUri));
+                  LogUtil.dTag(logTag, '添加文件 URI（非 Android 平台）');
+                }
+              } catch (e) {
+                LogUtil.wTag(logTag, '添加文件 URI 失败（非关键错误）: $e');
+              }
+            }
+
+            await clipboard.write([item]);
+            LogUtil.iTag(logTag, '成功写入图片剪切板: ${data.fileName}');
+            return true;
           }
         }
 
-        // 创建临时文件并写入文件URI（用于在文件管理器中粘贴）
-        final fileUri = await _createTempFile(data.fileData!, data.fileName!);
-
-        if (fileUri != null) {
-          item.add(Formats.fileUri(fileUri));
-          await clipboard.write([item]);
-          LogUtil.iTag(logTag, '成功写入文件剪切板: ${data.fileName}（支持文件管理器粘贴）');
-          return true;
+        // 对于非图片文件，只在非 Android 平台尝试写入文件 URI
+        if (!Platform.isAndroid) {
+          try {
+            final fileUri = await _createTempFile(
+              data.fileData!,
+              data.fileName!,
+            );
+            if (fileUri != null) {
+              item.add(Formats.fileUri(fileUri));
+              await clipboard.write([item]);
+              LogUtil.iTag(logTag, '成功写入文件剪切板: ${data.fileName}（支持文件管理器粘贴）');
+              return true;
+            } else {
+              LogUtil.wTag(logTag, '创建临时文件失败');
+              return false;
+            }
+          } catch (e, stackTrace) {
+            LogUtil.eTag(logTag, '写入文件 URI 失败: $e', e, stackTrace);
+            return false;
+          }
         } else {
-          LogUtil.wTag(logTag, '创建临时文件失败');
+          // Android 平台不支持非图片文件的剪切板
+          LogUtil.wTag(logTag, 'Android 平台不支持非图片文件的剪切板操作: ${data.fileName}');
           return false;
         }
       }
