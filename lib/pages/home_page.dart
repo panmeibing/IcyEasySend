@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as path;
@@ -75,6 +76,9 @@ class _HomePageState extends State<HomePage> {
 
   // Scroll controller
   final ScrollController _scrollController = ScrollController();
+
+  // Drag and drop state
+  bool _isDragging = false;
 
   @override
   void initState() {
@@ -241,129 +245,210 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
+    return DropTarget(
+      onDragEntered: (details) {
+        if (isServerRunning && !isSending) {
+          setState(() {
+            _isDragging = true;
+          });
+        }
       },
-      child: Scaffold(
-        appBar: AppBar(title: const Text(AppConstants.projectName)),
-        body: SingleChildScrollView(
-          controller: _scrollController,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Server status indicator
-                ServerStatusCard(
-                  isServerRunning: isServerRunning,
-                  serverAddress: serverAddress,
-                ),
-                const SizedBox(height: 24),
+      onDragExited: (details) {
+        setState(() {
+          _isDragging = false;
+        });
+      },
+      onDragDone: (details) async {
+        setState(() {
+          _isDragging = false;
+        });
 
-                // IP address input
-                IPInputSection(
-                  controller: _ipController,
-                  focusNode: _ipFocusNode,
-                  errorMessage: _ipErrorMessage,
-                  isEnabled: isServerRunning,
-                  ipHistory: _ipHistory,
-                  onDiagnostics: _runNetworkDiagnostics,
-                  onIPSelected: (ip) {
-                    _ipController.text = ip;
-                    _validateIPAddress();
-                  },
-                  onIPDeleted: _deleteIPFromHistory,
-                ),
-                const SizedBox(height: 16),
+        if (!isServerRunning || isSending) {
+          return;
+        }
 
-                // Port input
-                PortInputSection(
-                  controller: _portController,
-                  focusNode: _portFocusNode,
-                  errorMessage: _portErrorMessage,
-                  isEnabled: isServerRunning,
-                  onReset: () {
-                    _portController.text = '${AppConstants.defaultPort}';
-                    _validatePort();
-                  },
-                ),
-                const SizedBox(height: 24),
+        // Convert XFile to File
+        final files = details.files.map((xFile) => File(xFile.path)).toList();
 
-                // Clipboard sync button
-                OutlinedButton.icon(
-                  onPressed: _canRequestClipboard() ? _requestClipboard : null,
-                  icon: const Icon(Icons.content_paste),
-                  label: const Text('同步对方剪切板'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    foregroundColor: Colors.blue,
-                    side: BorderSide(
-                      color: _canRequestClipboard() ? Colors.blue : Colors.grey,
+        if (files.isNotEmpty) {
+          await _handleDroppedFiles(files);
+        }
+      },
+      child: Stack(
+        children: [
+          GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: Scaffold(
+              appBar: AppBar(title: const Text(AppConstants.projectName)),
+              body: SingleChildScrollView(
+                controller: _scrollController,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Server status indicator
+                      ServerStatusCard(
+                        isServerRunning: isServerRunning,
+                        serverAddress: serverAddress,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // IP address input
+                      IPInputSection(
+                        controller: _ipController,
+                        focusNode: _ipFocusNode,
+                        errorMessage: _ipErrorMessage,
+                        isEnabled: isServerRunning,
+                        ipHistory: _ipHistory,
+                        onDiagnostics: _runNetworkDiagnostics,
+                        onIPSelected: (ip) {
+                          _ipController.text = ip;
+                          _validateIPAddress();
+                        },
+                        onIPDeleted: _deleteIPFromHistory,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Port input
+                      PortInputSection(
+                        controller: _portController,
+                        focusNode: _portFocusNode,
+                        errorMessage: _portErrorMessage,
+                        isEnabled: isServerRunning,
+                        onReset: () {
+                          _portController.text = '${AppConstants.defaultPort}';
+                          _validatePort();
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Clipboard sync button
+                      OutlinedButton.icon(
+                        onPressed: _canRequestClipboard()
+                            ? _requestClipboard
+                            : null,
+                        icon: const Icon(Icons.content_paste),
+                        label: const Text('同步对方剪切板'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(
+                            color: _canRequestClipboard()
+                                ? Colors.blue
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // File selection
+                      FileSelectionSection(
+                        selectedFiles: selectedFiles,
+                        isEnabled: isServerRunning,
+                        isSending: isSending,
+                        onSelectFiles: _selectFiles,
+                        onRemoveFile: (index) {
+                          setState(() {
+                            selectedFiles.removeAt(index);
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Send button
+                      ElevatedButton.icon(
+                        onPressed: _canSend() ? _sendFiles : null,
+                        icon: isSending
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.send),
+                        label: Text(
+                          isSending
+                              ? '发送中...'
+                              : selectedFiles.length > 1
+                              ? '发送 ${selectedFiles.length} 个文件'
+                              : '发送文件',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+
+                      // Progress indicator
+                      if (isSending) ...[
+                        const SizedBox(height: 24),
+                        TransferProgressCard(
+                          progress: _transferProgress,
+                          bytesTransferred: _bytesTransferred,
+                          totalBytes: _totalBytes,
+                          transferSpeed: _transferSpeed,
+                          estimatedTimeRemaining: _estimatedTimeRemaining,
+                          status: _transferStatus,
+                          completedFilesCount: _completedFilesCount,
+                          totalFilesCount: _totalFilesCount,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Drag overlay
+          if (_isDragging)
+            Positioned.fill(
+              child: Container(
+                color: Colors.blue.withOpacity(0.1),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 48,
+                      vertical: 32,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue, width: 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.file_download, size: 64, color: Colors.blue),
+                        const SizedBox(height: 16),
+                        Text(
+                          '松开鼠标以添加文件',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-
-                // File selection
-                FileSelectionSection(
-                  selectedFiles: selectedFiles,
-                  isEnabled: isServerRunning,
-                  isSending: isSending,
-                  onSelectFiles: _selectFiles,
-                  onRemoveFile: (index) {
-                    setState(() {
-                      selectedFiles.removeAt(index);
-                    });
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Send button
-                ElevatedButton.icon(
-                  onPressed: _canSend() ? _sendFiles : null,
-                  icon: isSending
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.send),
-                  label: Text(
-                    isSending
-                        ? '发送中...'
-                        : selectedFiles.length > 1
-                        ? '发送 ${selectedFiles.length} 个文件'
-                        : '发送文件',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-
-                // Progress indicator
-                if (isSending) ...[
-                  const SizedBox(height: 24),
-                  TransferProgressCard(
-                    progress: _transferProgress,
-                    bytesTransferred: _bytesTransferred,
-                    totalBytes: _totalBytes,
-                    transferSpeed: _transferSpeed,
-                    estimatedTimeRemaining: _estimatedTimeRemaining,
-                    status: _transferStatus,
-                    completedFilesCount: _completedFilesCount,
-                    totalFilesCount: _totalFilesCount,
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -389,6 +474,22 @@ class _HomePageState extends State<HomePage> {
     if (files.isNotEmpty) {
       setState(() {
         selectedFiles = files;
+      });
+      _scrollToBottom();
+    }
+  }
+
+  /// Handle dropped files from drag and drop
+  Future<void> _handleDroppedFiles(List<File> droppedFiles) async {
+    final validFiles = await _fileTransferController.validateDroppedFiles(
+      context,
+      droppedFiles,
+    );
+
+    if (validFiles.isNotEmpty) {
+      setState(() {
+        // Add to existing files instead of replacing
+        selectedFiles.addAll(validFiles);
       });
       _scrollToBottom();
     }

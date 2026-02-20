@@ -99,6 +99,14 @@ class FileSender {
     final fileStream = file.openRead();
 
     try {
+      // Handle empty files (0 bytes)
+      if (fileSize == 0) {
+        // For empty files, immediately report 100% progress
+        onProgress?.call(1.0, 0, 0);
+        await request.sink.close();
+        return;
+      }
+
       await for (final chunk in fileStream) {
         request.sink.add(chunk);
         bytesSent += chunk.length;

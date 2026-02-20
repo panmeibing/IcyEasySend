@@ -84,16 +84,28 @@ class MyLogPrinter extends LogPrinter {
 class LogUtil {
   static final LogUtil _instance = LogUtil._internal();
   late Logger _logger;
+  bool _isInitialized = false;
 
   factory LogUtil() {
     return _instance;
   }
 
   LogUtil._internal() {
-    _initLogger();
+    // 同步初始化一个基本的 logger，避免 late 变量未初始化错误
+    _logger = Logger(
+      filter: DevelopmentFilter(),
+      printer: MyLogPrinter(),
+      output: ConsoleOutput(),
+    );
+    Logger.level = kDebugMode ? Level.debug : Level.warning;
+    
+    // 异步初始化文件输出（如果需要）
+    _initFileLogger();
   }
 
-  Future<void> _initLogger() async {
+  Future<void> _initFileLogger() async {
+    if (_isInitialized) return;
+    
     List<LogOutput> outputs = [ConsoleOutput()];
 
     // 如果不是调试模式，则额外添加文件输出（可选，用于持久化重要日志）
@@ -106,30 +118,21 @@ class LogUtil {
           await logFile.create(recursive: true);
         }
         outputs.add(FileOutput(file: logFile));
+        
+        // 重新创建 logger 以包含文件输出
+        _logger = Logger(
+          filter: _getLogFilter(),
+          printer: MyLogPrinter(),
+          output: MultiOutput(outputs),
+        );
+        Logger.level = kDebugMode ? Level.debug : Level.warning;
       } catch (e) {
         // ignore: avoid_print
         print("Failed to initialize file logging: $e");
       }
     }
-
-    _logger = Logger(
-      filter: _getLogFilter(),
-      // printer: PrettyPrinter(
-      //   methodCount: 1,
-      //   // 显示调用方法栈的数量，有助于定位日志来源
-      //   errorMethodCount: 8,
-      //   // colors: kDebugMode,
-      //   colors: false,
-      //   printEmojis: false,
-      //   dateTimeFormat: DateTimeFormat.dateAndTime,
-      //   noBoxingByDefault: false,
-      // ),
-      // printer: SimplePrinter(printTime: true),
-      printer: MyLogPrinter(),
-      output: MultiOutput(outputs),
-    );
-
-    Logger.level = kDebugMode ? Level.debug : Level.warning;
+    
+    _isInitialized = true;
   }
 
   LogFilter _getLogFilter() {
@@ -258,8 +261,6 @@ class LogUtil {
 
   //Optional: Explicitly initialize at application startup (e.g. if asynchronous path setting is required)
   static Future<void> init() async {
-    // If there are complex asynchronous operations in ''initLogger',
-    // you can ensure that initialization is complete here
-    // In the current simple case, the constructor has been processed
+    await _instance._initFileLogger();
   }
 }

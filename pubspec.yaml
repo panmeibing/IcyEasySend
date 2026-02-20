@@ -82,6 +82,9 @@ dependencies:
   
   # Storage space check
   storage_space: ^1.2.0
+  
+  # Drag and drop support for desktop
+  desktop_drop: ^0.7.0
 
 dev_dependencies:
   flutter_test:

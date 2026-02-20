@@ -114,6 +114,46 @@ class FileTransferController {
     }
   }
 
+  /// Validate dropped files and return valid ones
+  Future<List<File>> validateDroppedFiles(
+    BuildContext context,
+    List<File> droppedFiles,
+  ) async {
+    try {
+      final List<File> validFiles = [];
+      final List<String> invalidFileNames = [];
+
+      // Validate each dropped file
+      for (final file in droppedFiles) {
+        final validationResult = _validationService.validateFile(file);
+
+        if (validationResult.isValid) {
+          validFiles.add(file);
+        } else {
+          invalidFileNames.add(file.path.split('/').last);
+        }
+      }
+
+      // Show error for invalid files
+      if (invalidFileNames.isNotEmpty && context.mounted) {
+        await DialogHelper.showErrorDialog(
+          context,
+          message: '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
+        );
+      }
+
+      return validFiles;
+    } catch (e) {
+      if (context.mounted) {
+        await DialogHelper.showErrorDialog(
+          context,
+          message: ErrorMessages.fileError(e.toString()),
+        );
+      }
+      return [];
+    }
+  }
+
   /// Send multiple selected files to the target device
   Future<void> sendFiles({
     required BuildContext context,

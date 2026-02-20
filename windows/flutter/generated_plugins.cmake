@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
+  desktop_drop
   irondash_engine_context
   permission_handler_windows
   super_native_extensions

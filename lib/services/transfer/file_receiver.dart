@@ -74,13 +74,22 @@ class FileReceiver {
       int bytesReceived = 0;
 
       try {
-        await for (final chunk in fileStream) {
-          sink.add(chunk);
-
-          bytesReceived += chunk.length;
+        // Handle empty files (0 bytes)
+        if (fileSize == 0) {
+          // For empty files, drain the stream (even if empty) and report 100% progress
+          await fileStream.drain();
           if (onProgress != null) {
-            final progress = bytesReceived / fileSize;
-            onProgress(progress, bytesReceived, fileSize);
+            onProgress(1.0, 0, 0);
+          }
+        } else {
+          await for (final chunk in fileStream) {
+            sink.add(chunk);
+
+            bytesReceived += chunk.length;
+            if (onProgress != null) {
+              final progress = bytesReceived / fileSize;
+              onProgress(progress, bytesReceived, fileSize);
+            }
           }
         }
 
