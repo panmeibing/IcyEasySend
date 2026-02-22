@@ -48,6 +48,14 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>需要访问局域网以传输文件</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>需要访问相册以选择文件</string>
+	<string>需要访问相册以选择照片</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问相册以保存照片</string>
+	<key>UISupportsDocumentBrowser</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 </dict>
 </plist>

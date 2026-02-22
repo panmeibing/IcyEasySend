@@ -75,28 +75,10 @@ class PermissionService {
           );
         }
       } else if (Platform.isIOS) {
-        // On iOS, request photo library permission for file picker
-        final status = await ph.Permission.photos.request();
-
-        if (status.isGranted || status.isLimited) {
-          return PermissionRequestResult(granted: true);
-        } else if (status.isPermanentlyDenied) {
-          return PermissionRequestResult(
-            granted: false,
-            permanentlyDenied: true,
-            errorMessage: '照片权限已被永久拒绝，请在设置中手动开启',
-          );
-        } else if (status.isDenied) {
-          return PermissionRequestResult(
-            granted: false,
-            errorMessage: '需要照片权限才能选择文件',
-          );
-        } else {
-          return PermissionRequestResult(
-            granted: false,
-            errorMessage: '照片权限请求失败',
-          );
-        }
+        // On iOS, file_picker uses the system document picker which doesn't require permissions
+        // Only request photo library permission if specifically accessing photos
+        // For general file selection, no permission is needed
+        return PermissionRequestResult(granted: true);
       } else {
         // Desktop platforms don't require runtime permissions
         return PermissionRequestResult(granted: true);
@@ -134,8 +116,8 @@ class PermissionService {
         // even without these permissions, so return true
         return true;
       } else if (Platform.isIOS) {
-        final status = await ph.Permission.photos.status;
-        return status.isGranted || status.isLimited;
+        // On iOS, file_picker doesn't require permissions for document selection
+        return true;
       } else {
         // Desktop platforms don't require runtime permissions
         return true;
