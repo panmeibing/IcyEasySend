@@ -85,6 +85,9 @@ dependencies:
   
   # Drag and drop support for desktop
   desktop_drop: ^0.7.0
+  
+  # Receive sharing intent from other apps (supports Android and iOS)
+  flutter_sharing_intent: ^2.0.4
 
 dev_dependencies:
   flutter_test:

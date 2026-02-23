@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -7,6 +8,7 @@ import 'package:path/path.dart' as path;
 
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
+import '../services/sharing_intent_service.dart';
 import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
@@ -24,8 +26,13 @@ import 'widgets/transfer_progress_card.dart';
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {
   final HTTPServerManager serverManager;
+  final SharingIntentService sharingIntentService;
 
-  const HomePage({super.key, required this.serverManager});
+  const HomePage({
+    super.key,
+    required this.serverManager,
+    required this.sharingIntentService,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -80,6 +87,9 @@ class _HomePageState extends State<HomePage> {
   // Drag and drop state
   bool _isDragging = false;
 
+  // Sharing intent subscription
+  StreamSubscription? _sharingIntentSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -109,11 +119,20 @@ class _HomePageState extends State<HomePage> {
     _loadLastUsedIP();
     _loadLastUsedPort();
     _loadIPHistory();
+
+    // Listen for shared files from other apps
+    _sharingIntentSubscription = widget.sharingIntentService.sharedFilesStream
+        .listen((files) {
+          if (files.isNotEmpty && mounted) {
+            _handleSharedFiles(files);
+          }
+        });
   }
 
   @override
   void dispose() {
     widget.serverManager.removeNetworkChangeCallback(_onNetworkChanged);
+    _sharingIntentSubscription?.cancel();
     _ipController.dispose();
     _portController.dispose();
     _ipFocusNode.dispose();
@@ -491,6 +510,38 @@ class _HomePageState extends State<HomePage> {
         // Add to existing files instead of replacing
         selectedFiles.addAll(validFiles);
       });
+      _scrollToBottom();
+    }
+  }
+
+  /// Handle shared files from other apps
+  Future<void> _handleSharedFiles(List<File> sharedFiles) async {
+    // Clear the shared files from the service
+    widget.sharingIntentService.clearSharedFiles();
+
+    if (!isServerRunning) {
+      ToastHelper.showWarning(context, '服务器未运行，无法接收分享的文件');
+      return;
+    }
+
+    if (isSending) {
+      ToastHelper.showWarning(context, '正在发送文件，请稍后再试');
+      return;
+    }
+
+    final validFiles = await _fileTransferController.validateDroppedFiles(
+      context,
+      sharedFiles,
+    );
+
+    if (validFiles.isNotEmpty) {
+      setState(() {
+        // Add shared files to the selection
+        selectedFiles.addAll(validFiles);
+      });
+
+      ToastHelper.showSuccess(context, '已添加 ${validFiles.length} 个分享的文件');
+
       _scrollToBottom();
     }
   }

@@ -4,6 +4,7 @@ import 'package:icy_easy_send/utils/constants.dart';
 import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
 import 'services/permission_service.dart';
+import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/error_messages.dart';
 import 'utils/toast_helper.dart';
@@ -22,6 +23,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late final HTTPServerManager _serverManager;
   late final PermissionService _permissionService;
+  late final SharingIntentService _sharingIntentService;
   bool _isInitialized = false;
 
   @override
@@ -31,6 +33,7 @@ class _MyAppState extends State<MyApp> {
     // Initialize services
     _serverManager = HTTPServerManager();
     _permissionService = PermissionService();
+    _sharingIntentService = SharingIntentService();
 
     _initializeApp();
   }
@@ -38,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     _serverManager.dispose();
+    _sharingIntentService.dispose();
     super.dispose();
   }
 
@@ -49,6 +53,9 @@ class _MyAppState extends State<MyApp> {
 
     // Step 2: Initialize the HTTP server
     await _initializeServer();
+
+    // Step 3: Initialize sharing intent service
+    _sharingIntentService.initialize();
   }
 
   /// Request necessary permissions on app startup
@@ -122,7 +129,10 @@ class _MyAppState extends State<MyApp> {
       title: AppConstants.projectName,
       theme: _buildModernTheme(),
       home: _isInitialized
-          ? MainContainer(serverManager: _serverManager)
+          ? MainContainer(
+              serverManager: _serverManager,
+              sharingIntentService: _sharingIntentService,
+            )
           : const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }

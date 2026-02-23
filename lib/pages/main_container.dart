@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/http_server_manager.dart';
+import '../services/sharing_intent_service.dart';
 import 'history_page.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
@@ -8,8 +9,13 @@ import 'settings_page.dart';
 /// MainContainer provides bottom navigation to switch between pages
 class MainContainer extends StatefulWidget {
   final HTTPServerManager serverManager;
+  final SharingIntentService sharingIntentService;
 
-  const MainContainer({super.key, required this.serverManager});
+  const MainContainer({
+    super.key,
+    required this.serverManager,
+    required this.sharingIntentService,
+  });
 
   @override
   State<MainContainer> createState() => _MainContainerState();
@@ -47,7 +53,10 @@ class _MainContainerState extends State<MainContainer> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          HomePage(serverManager: widget.serverManager),
+          HomePage(
+            serverManager: widget.serverManager,
+            sharingIntentService: widget.sharingIntentService,
+          ),
           HistoryPage(key: _historyPageKey),
           SettingsPage(serverManager: widget.serverManager),
         ],
