@@ -111,6 +111,7 @@ class NetworkUtil {
       'virtualbox',
       'vbox',
       'vethernet',
+      'veth',
       'hyper-v',
       'docker',
       'vnic',
@@ -123,6 +124,12 @@ class NetworkUtil {
       'bridge',
       'vmbr',
       'virbr',
+      'br-',
+      'vmnet',
+      'vboxnet',
+      'utun',
+      'lo',
+      'dummy',
     ];
 
     return virtualPatterns.any((pattern) => name.contains(pattern));
