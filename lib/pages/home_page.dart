@@ -454,7 +454,7 @@ class HomePageState extends State<HomePage> {
           if (_isDragging)
             Positioned.fill(
               child: Container(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 child: Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -467,7 +467,7 @@ class HomePageState extends State<HomePage> {
                       border: Border.all(color: Colors.blue, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -561,6 +561,8 @@ class HomePageState extends State<HomePage> {
       context,
       sharedFiles,
     );
+
+    if (!mounted) return;
 
     if (validFiles.isNotEmpty) {
       setState(() {

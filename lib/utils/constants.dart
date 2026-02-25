@@ -21,7 +21,7 @@ class AppConstants {
   static const int requestTimeout = 30;
 
   /// Timeout for network requests (health check), seconds
-  static const int checkHealthTimeout = 10;
+  static const int checkHealthTimeout = 5;
 
   /// Timeout for confirmation requests (longer to allow user to respond)
   /// User has 30 seconds to confirm, so we add 5 seconds buffer
@@ -92,7 +92,7 @@ class AppConstants {
 
   // Information about this project
   static const String projectName = "Icy Easy Send";
-  static const String version = "v1.0.1";
+  static const String version = "v1.0.3";
   static const String author = "冰冷的希望";
 
   // Clipboard constants
