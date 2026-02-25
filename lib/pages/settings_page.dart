@@ -41,6 +41,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isEditingMaxHistory = false;
   int _maxClipboardSizeMB = AppConstants.defaultMaxClipboardSize;
   bool _isEditingMaxClipboardSize = false;
+  bool _enableIPValidation = true; // Whether IP validation is enabled
 
   final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
   final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
@@ -59,6 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadConcurrentTransfers();
     _loadMaxHistoryItems();
     _loadMaxClipboardSize();
+    _loadIPValidationEnabled();
 
     // Register network change callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -176,6 +178,29 @@ class _SettingsPageState extends State<SettingsPage> {
         _maxClipboardSizeMB = sizeMB;
         _maxClipboardSizeController.text = sizeMB.toString();
       });
+    }
+  }
+
+  /// Load IP validation enabled state
+  Future<void> _loadIPValidationEnabled() async {
+    final enabled = await _preferencesService.getIPValidationEnabled();
+    if (mounted) {
+      setState(() {
+        _enableIPValidation = enabled;
+      });
+    }
+  }
+
+  /// Save IP validation enabled state
+  Future<void> _saveIPValidationEnabled(bool enabled) async {
+    final success = await _preferencesService.saveIPValidationEnabled(enabled);
+    if (success) {
+      setState(() {
+        _enableIPValidation = enabled;
+      });
+      _showSuccessSnackBar(enabled ? 'IP地址校验已启用' : 'IP地址校验已禁用');
+    } else {
+      _showErrorSnackBar('保存失败');
     }
   }
 
@@ -1264,6 +1289,88 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+
+            // IP validation toggle
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'IP地址校验',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF212121),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '校验目标设备IP是否在同一网段',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _enableIPValidation,
+                      onChanged: (value) {
+                        _saveIPValidationEnabled(value);
+                      },
+                      activeTrackColor: const Color(0xFF2196F3),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _enableIPValidation
+                        ? const Color(0xFF2196F3).withValues(alpha: 0.1)
+                        : const Color(0xFFFFA726).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _enableIPValidation
+                            ? Icons.info_outline
+                            : Icons.warning_amber_rounded,
+                        size: 16,
+                        color: _enableIPValidation
+                            ? const Color(0xFF1976D2)
+                            : const Color(0xFFF57C00),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _enableIPValidation
+                              ? '启用后会检查目标IP是否在同一网段，可以避免连接错误的设备'
+                              : '禁用后不会检查IP网段，适用于复杂网络环境（如热点、VPN等）',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _enableIPValidation
+                                ? Colors.grey[700]
+                                : const Color(0xFFE65100),
                           ),
                         ),
                       ),

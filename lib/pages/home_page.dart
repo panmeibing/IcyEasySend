@@ -35,10 +35,10 @@ class HomePage extends StatefulWidget {
   });
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   // State variables
   String targetIP = '';
   List<File> selectedFiles = [];
@@ -76,7 +76,11 @@ class _HomePageState extends State<HomePage> {
   final FocusNode _ipFocusNode = FocusNode();
   final FocusNode _portFocusNode = FocusNode();
   String? _ipErrorMessage;
+
+  // True if the IP error message is a warning, not a hard error
+  bool _ipIsWarning = false;
   String? _portErrorMessage;
+  bool _enableIPValidation = true; // Whether IP validation is enabled
 
   // IP history
   List<String> _ipHistory = [];
@@ -119,6 +123,7 @@ class _HomePageState extends State<HomePage> {
     _loadLastUsedIP();
     _loadLastUsedPort();
     _loadIPHistory();
+    _loadIPValidationEnabled();
 
     // Listen for shared files from other apps
     _sharingIntentSubscription = widget.sharingIntentService.sharedFilesStream
@@ -150,25 +155,28 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Validate the IP address in real-time
-  void _validateIPAddress() {
+  Future<void> _validateIPAddress() async {
     final ip = _ipController.text.trim();
 
     if (ip.isEmpty) {
       setState(() {
         targetIP = ip;
         _ipErrorMessage = null;
+        _ipIsWarning = false;
       });
       return;
     }
 
-    final result = _validationService.validateIPv4WithSubnet(
+    final result = await _validationService.validateIPv4WithSubnet(
       ip,
       serverAddress: serverAddress,
+      enableValidation: _enableIPValidation,
     );
 
     setState(() {
       targetIP = ip;
       _ipErrorMessage = result.isValid ? null : result.errorMessage;
+      _ipIsWarning = result.isWarning;
     });
   }
 
@@ -218,6 +226,23 @@ class _HomePageState extends State<HomePage> {
         _ipHistory = history;
       });
     }
+  }
+
+  /// Load IP validation enabled state from preferences
+  Future<void> _loadIPValidationEnabled() async {
+    final enabled = await _preferencesService.getIPValidationEnabled();
+    if (mounted) {
+      setState(() {
+        _enableIPValidation = enabled;
+      });
+      // Re-validate IP address with new setting
+      _validateIPAddress();
+    }
+  }
+
+  /// Public method to reload IP validation setting (called when returning from settings)
+  void reloadIPValidationSetting() {
+    _loadIPValidationEnabled();
   }
 
   /// Save the current port to preferences
@@ -478,11 +503,14 @@ class _HomePageState extends State<HomePage> {
     final port = int.tryParse(portText);
     final isPortValid = port != null && port >= 1 && port <= 65535;
 
+    // Allow sending if IP error is just a warning (not a hard error)
+    final isIPValid =
+        targetIP.isNotEmpty && (_ipErrorMessage == null || _ipIsWarning);
+
     return isServerRunning &&
         !isSending &&
         selectedFiles.isNotEmpty &&
-        targetIP.isNotEmpty &&
-        _ipErrorMessage == null &&
+        isIPValid &&
         isPortValid;
   }
 
@@ -793,11 +821,11 @@ class _HomePageState extends State<HomePage> {
     final port = int.tryParse(portText);
     final isPortValid = port != null && port >= 1 && port <= 65535;
 
-    return isServerRunning &&
-        !isSending &&
-        targetIP.isNotEmpty &&
-        _ipErrorMessage == null &&
-        isPortValid;
+    // Allow requesting clipboard if IP error is just a warning (not a hard error)
+    final isIPValid =
+        targetIP.isNotEmpty && (_ipErrorMessage == null || _ipIsWarning);
+
+    return isServerRunning && !isSending && isIPValid && isPortValid;
   }
 
   /// Request clipboard content from target device

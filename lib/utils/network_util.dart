@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 import 'constants.dart';
@@ -245,6 +246,36 @@ class NetworkUtil {
     if (ip.startsWith('172.')) return 2;
     if (ip.startsWith('10.')) return 3;
     return 4; // other
+  }
+
+  /// Check if the device is connected to WiFi
+  ///
+  /// Returns true if connected to WiFi, false otherwise
+  /// This is used to detect hotspot scenarios where the device may not be connected to WiFi
+  static Future<bool> isConnectedToWiFi() async {
+    try {
+      LogUtil.dTag(logTag, '检查WiFi连接状态...');
+
+      final connectivity = Connectivity();
+      final connectivityResults = await connectivity.checkConnectivity();
+
+      // Check if any of the connectivity results is WiFi
+      final isWiFi = connectivityResults.contains(ConnectivityResult.wifi);
+
+      LogUtil.iTag(logTag, 'WiFi连接状态: $isWiFi, 连接类型: $connectivityResults');
+      return isWiFi;
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '检查WiFi连接状态失败: $e', e, stackTrace);
+      // If we can't determine, assume connected to be safe
+      return true;
+    }
+  }
+
+  /// Check if the IP address starts with 10.x.x.x
+  ///
+  /// This is commonly used for hotspot networks
+  static bool isHotspotIP(String ip) {
+    return ip.startsWith('10.');
   }
 }
 

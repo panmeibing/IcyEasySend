@@ -6,6 +6,7 @@ import 'package:storage_space/storage_space.dart';
 import '../utils/constants.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
+import '../utils/network_util.dart';
 import '../utils/operation_result.dart';
 import '../utils/platform_util.dart';
 
@@ -86,15 +87,29 @@ class ValidationService {
   ///
   /// [ip] - The target IP address to validate
   /// [serverAddress] - The server address in format "IP:Port" (optional)
+  /// [enableValidation] - Whether to enable subnet validation (defaults to true)
   ///
   /// Returns a ValidationResult with detailed error message if not in same subnet
-  ValidationResult validateIPv4WithSubnet(String ip, {String? serverAddress}) {
-    LogUtil.dTag(logTag, '验证IPv4地址和子网: $ip, 服务器地址=$serverAddress');
+  Future<ValidationResult> validateIPv4WithSubnet(
+    String ip, {
+    String? serverAddress,
+    bool enableValidation = true,
+  }) async {
+    LogUtil.dTag(
+      logTag,
+      '验证IPv4地址和子网: $ip, 服务器地址=$serverAddress, 启用校验=$enableValidation',
+    );
 
     // First validate the IP format using the extracted method
     final formatValidation = validateIPv4(ip);
     if (!formatValidation.isValid) {
       return formatValidation;
+    }
+
+    // If validation is disabled, skip subnet check
+    if (!enableValidation) {
+      LogUtil.iTag(logTag, 'IP校验已禁用，跳过子网检查');
+      return ValidationResult(isValid: true);
     }
 
     // If no server address provided, skip subnet check
@@ -111,13 +126,28 @@ class ValidationService {
       return ValidationResult(isValid: true);
     }
 
+    // Check for hotspot scenario:
+    // If device is not connected to WiFi and local IP starts with 10.x.x.x,
+    // it's likely a hotspot scenario, so we skip strict subnet check
+    final isConnectedToWiFi = await NetworkUtil.isConnectedToWiFi();
+    final isLocalHotspotIP = NetworkUtil.isHotspotIP(localIP);
+
+    if (!isConnectedToWiFi && isLocalHotspotIP) {
+      LogUtil.iTag(logTag, '检测到热点场景: 未连接WiFi且本地IP为10.x.x.x ($localIP)，跳过子网检查');
+      return ValidationResult(
+        isValid: true,
+        errorMessage: '提示：检测到可能是热点连接场景，已跳过子网检查',
+        isWarning: true,
+      );
+    }
+
     // Check if in same subnet (assuming /24 subnet mask: 255.255.255.0)
     if (!_isInSameSubnet(localIP, ip)) {
       LogUtil.wTag(logTag, '目标IP不在同一子网: 本地=$localIP, 目标=$ip');
       return ValidationResult(
         isValid: false,
         errorMessage: ErrorMessages.ipAddressNotInSameSubnet(localIP, ip),
-        isWarning: true, // This is a warning, not a hard error
+        isWarning: false, // This is a hard error, not just a warning
       );
     }
 

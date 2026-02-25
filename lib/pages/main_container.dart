@@ -25,6 +25,7 @@ class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
   final GlobalKey<HistoryPageState> _historyPageKey =
       GlobalKey<HistoryPageState>();
+  final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
 
   @override
   void initState() {
@@ -54,6 +55,7 @@ class _MainContainerState extends State<MainContainer> {
         index: _currentIndex,
         children: [
           HomePage(
+            key: _homePageKey,
             serverManager: widget.serverManager,
             sharingIntentService: widget.sharingIntentService,
           ),
@@ -76,6 +78,10 @@ class _MainContainerState extends State<MainContainer> {
             // Refresh history page when switching to it
             if (index == 1) {
               _refreshHistory();
+            }
+            // Reload IP validation setting when switching to home page
+            if (index == 0) {
+              _homePageKey.currentState?.reloadIPValidationSetting();
             }
           },
           items: const [

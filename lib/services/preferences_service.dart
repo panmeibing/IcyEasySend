@@ -16,6 +16,7 @@ class PreferencesService {
   static const String _keyConcurrentTransfers = 'concurrent_transfers';
   static const String _keyMaxHistoryItems = 'max_history_items';
   static const String _keyMaxClipboardSize = 'max_clipboard_size';
+  static const String _keyEnableIPValidation = 'enable_ip_validation';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -311,6 +312,33 @@ class PreferencesService {
       return prefs.getInt(_keyMaxClipboardSize) ?? _defaultMaxClipboardSize;
     } catch (e) {
       return _defaultMaxClipboardSize;
+    }
+  }
+
+  /// Save IP validation enabled state
+  ///
+  /// Parameters:
+  /// - [enabled]: Whether IP validation is enabled
+  Future<bool> saveIPValidationEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyEnableIPValidation, enabled);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get IP validation enabled state
+  ///
+  /// Returns whether IP validation is enabled, defaults to true
+  Future<bool> getIPValidationEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Default to true (enabled) for backward compatibility
+      return prefs.getBool(_keyEnableIPValidation) ?? true;
+    } catch (e) {
+      return true;
     }
   }
 }
