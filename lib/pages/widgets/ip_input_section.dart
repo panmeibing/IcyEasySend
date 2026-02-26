@@ -95,6 +95,7 @@ class _IPInputSectionState extends State<IPInputSection> {
         ),
         const SizedBox(height: 8),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: TextField(
