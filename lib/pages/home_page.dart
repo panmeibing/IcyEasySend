@@ -347,6 +347,7 @@ class HomePageState extends State<HomePage> {
                         errorMessage: _ipErrorMessage,
                         isEnabled: isServerRunning,
                         ipHistory: _ipHistory,
+                        serverAddress: serverAddress,
                         onDiagnostics: _runNetworkDiagnostics,
                         onIPSelected: (ip) {
                           _ipController.text = ip;
