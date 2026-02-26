@@ -52,7 +52,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
   desktop_drop: 10a3e6a7fa9dbe350541f2574092fecfa345a07b
-  device_info_plus: a56e6e74dbbd2bb92f2da12c64ddd4f67a749041
+  device_info_plus: 4fb280989f669696856f8b129e4a5e3cd6c48f76
   file_picker: 7584aae6fa07a041af2b36a2655122d42f578c1a
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   irondash_engine_context: 893c7d96d20ce361d7e996f39d360c4c2f9869ba

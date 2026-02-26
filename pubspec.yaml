@@ -68,11 +68,11 @@ dependencies:
   open_file_manager: ^2.0.1
   
   # Device information
-  device_info_plus: ^10.1.2
+  device_info_plus: ^11.5.0
   logger: ^2.6.2
   
   # Network connectivity monitoring
-  connectivity_plus: ^6.1.2
+  connectivity_plus: ^7.0.0
   
   # Image processing
   image: ^4.0.17
@@ -101,7 +101,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   
   # Testing utilities
-  test: ^1.26.3
+  test: ^1.29.0
   faker: ^2.2.0
   mockito: ^5.4.4
   

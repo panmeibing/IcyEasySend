@@ -11,6 +11,20 @@ allprojects {
                 jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
         }
+        
+        // Force Java 17 for all Java compilation tasks
+        tasks.withType<JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+        }
+        
+        // Configure Android plugin if present
+        extensions.findByType<com.android.build.gradle.BaseExtension>()?.apply {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
     }
 }
 
