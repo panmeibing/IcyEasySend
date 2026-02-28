@@ -19,6 +19,11 @@ class SharingIntentService {
 
   /// Initialize the service and listen for shared files
   void initialize() {
+    // Only initialize on mobile platforms (Android and iOS)
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
+
     // Listen for shared files while app is in memory
     _intentStreamSubscription = FlutterSharingIntent.instance
         .getMediaStream()
@@ -65,7 +70,10 @@ class SharingIntentService {
   /// Clear shared files
   void clearSharedFiles() {
     _sharedFiles.clear();
-    FlutterSharingIntent.instance.reset();
+    // Only reset on mobile platforms
+    if (Platform.isAndroid || Platform.isIOS) {
+      FlutterSharingIntent.instance.reset();
+    }
   }
 
   /// Dispose the service
