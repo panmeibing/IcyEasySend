@@ -34,7 +34,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Use a temporary position (will be centered after creation)
   Win32Window::Point origin(100, 100);
   
-  if (!window.Create(L"icy_easy_send", origin, size)) {
+  if (!window.Create(L"IcyEasySend", origin, size)) {
     return EXIT_FAILURE;
   }
   

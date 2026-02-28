@@ -1,6 +1,6 @@
 {
-    "name": "icy_easy_send",
-    "short_name": "icy_easy_send",
+    "name": "IcyEasySend",
+    "short_name": "IcyEasySend",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
