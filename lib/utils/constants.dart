@@ -1,5 +1,11 @@
 /// Application-wide constants
 class AppConstants {
+  // Information about this project
+  static const String projectName = "Icy Easy Send";
+  static const String projectNameTight = "IcyEasySend";
+  static const String version = "v1.0.3";
+  static const String author = "冰冷的希望";
+
   // Network constants
 
   /// Default port for file transfer server
@@ -90,11 +96,6 @@ class AppConstants {
   /// All dialogs will use this percentage of screen width for consistent sizing
   static const double dialogWidthPercent = 0.8;
 
-  // Information about this project
-  static const String projectName = "Icy Easy Send";
-  static const String version = "v1.0.3";
-  static const String author = "冰冷的希望";
-
   // Clipboard constants
 
   /// Default max clipboard size
@@ -109,6 +110,7 @@ class AppConstants {
   /// Keep the lastest temp file count from clipboard
   static const int maxClipboardKeepCount = 5;
 
-  // Logger constants
+  // File name constants
   static const String defaultLoggerFileName = "IcyEasySend.log";
+  static const String historyFileName = "IcyEasySendTransferHistory.json";
 }

@@ -9,6 +9,7 @@ import '../services/preferences_service.dart';
 import '../services/transfer_history_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
+import '../utils/platform_util.dart';
 import '../utils/toast_helper.dart';
 
 /// Settings page for app configuration
@@ -46,6 +47,10 @@ class _SettingsPageState extends State<SettingsPage> {
   final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
   final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
   final int _maxConcurrentTransfers = AppConstants.maxConcurrentTransfers;
+
+  // Developer mode related
+  int _versionTapCount = 0;
+  DateTime? _lastVersionTapTime;
 
   @override
   void initState() {
@@ -476,6 +481,110 @@ class _SettingsPageState extends State<SettingsPage> {
   void _showErrorSnackBar(String message) {
     if (mounted) {
       ToastHelper.showError(context, message);
+    }
+  }
+
+  /// Handle version tap for developer mode
+  void _handleVersionTap() {
+    final now = DateTime.now();
+
+    // Reset counter if more than 2 seconds since last tap
+    if (_lastVersionTapTime != null &&
+        now.difference(_lastVersionTapTime!).inSeconds > 2) {
+      _versionTapCount = 0;
+    }
+
+    _lastVersionTapTime = now;
+    _versionTapCount++;
+
+    if (_versionTapCount >= 5) {
+      _versionTapCount = 0;
+      _showDeveloperInfo();
+    }
+  }
+
+  /// Show developer information dialog
+  Future<void> _showDeveloperInfo() async {
+    // Show loading dialog
+    if (!mounted) return;
+    DialogHelper.showLoadingDialog(context, message: '正在加载开发信息...');
+
+    try {
+      // Get paths
+      final downloadDir = await PlatformUtil.getDownloadsDirectory();
+      final logPath = await PlatformUtil.getLoggerFilePath();
+      final historyPath = await PlatformUtil.getHistoryFilePath();
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      // Build developer info report
+      String separator = AppConstants.diagInfoSeparator;
+      final buffer = StringBuffer();
+      buffer.writeln(separator * 3);
+      buffer.writeln('开发信息');
+      buffer.writeln(separator * 3);
+      buffer.writeln();
+
+      buffer.writeln('【下载文件路径】');
+      if (downloadDir != null) {
+        buffer.writeln(downloadDir.path);
+      } else {
+        buffer.writeln('无法获取下载路径');
+      }
+      buffer.writeln();
+
+      buffer.writeln('【日志文件路径】');
+      buffer.writeln(logPath);
+      buffer.writeln();
+
+      buffer.writeln('【历史文件路径】');
+      buffer.writeln(historyPath);
+      buffer.writeln();
+
+      buffer.writeln(separator * 3);
+
+      final devInfo = buffer.toString();
+
+      // Show developer info dialog
+      await DialogHelper.showCustomDialog(
+        context,
+        title: const Row(
+          children: [
+            Icon(Icons.developer_mode, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('开发信息'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            devInfo,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: devInfo));
+              ToastHelper.showSuccess(context, '开发信息已复制到剪贴板');
+            },
+            child: const Text('复制'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('关闭'),
+          ),
+        ],
+      );
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ToastHelper.showError(context, '加载开发信息时出错: $e');
+      }
     }
   }
 
@@ -1457,25 +1566,32 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.update, size: 14, color: Colors.grey[600]),
-                          const SizedBox(width: 4),
-                          Text(
-                            "版本: ",
-                            style: TextStyle(
-                              fontSize: 13,
+                      GestureDetector(
+                        onTap: _handleVersionTap,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.update,
+                              size: 14,
                               color: Colors.grey[600],
                             ),
-                          ),
-                          Text(
-                            AppConstants.version,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
+                            const SizedBox(width: 4),
+                            Text(
+                              "版本: ",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
                             ),
-                          ),
-                        ],
+                            Text(
+                              AppConstants.version,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(

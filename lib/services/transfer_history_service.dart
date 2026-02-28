@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:icy_easy_send/utils/platform_util.dart';
 
 import '../models/transfer_history.dart';
 import '../utils/log_util.dart';
@@ -15,25 +14,18 @@ import 'preferences_service.dart';
 /// - Load transfer history from local storage
 /// - Clear transfer history
 class TransferHistoryService {
-  static const String _historyFileName = 'transfer_history.json';
   final String logTag = LogTags.history;
   final PreferencesService _preferencesService;
 
   TransferHistoryService({PreferencesService? preferencesService})
     : _preferencesService = preferencesService ?? PreferencesService();
 
-  /// Get the history file path
-  Future<String> _getHistoryFilePath() async {
-    final directory = await path_provider.getApplicationDocumentsDirectory();
-    return path.join(directory.path, _historyFileName);
-  }
-
   /// Load transfer history from local storage
   ///
   /// Returns a list of [TransferHistory] objects, sorted by timestamp (newest first)
   Future<List<TransferHistory>> loadHistory() async {
     try {
-      final filePath = await _getHistoryFilePath();
+      final filePath = await PlatformUtil.getHistoryFilePath();
       final file = File(filePath);
 
       if (!await file.exists()) {
@@ -124,7 +116,7 @@ class TransferHistoryService {
   /// Save the entire history list to local storage
   Future<void> _saveHistory(List<TransferHistory> history) async {
     try {
-      final filePath = await _getHistoryFilePath();
+      final filePath = await PlatformUtil.getHistoryFilePath();
       final file = File(filePath);
 
       final jsonList = history.map((h) => h.toJson()).toList();
@@ -140,7 +132,7 @@ class TransferHistoryService {
   /// Clear all transfer history
   Future<void> clearHistory() async {
     try {
-      final filePath = await _getHistoryFilePath();
+      final filePath = await PlatformUtil.getHistoryFilePath();
       final file = File(filePath);
 
       if (await file.exists()) {

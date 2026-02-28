@@ -102,4 +102,20 @@ class PlatformUtil {
 
     return path.join(directory.path, finalFileName);
   }
+
+  /// Get historical transfer items directory
+  static Future<String> getHistoryFilePath() async {
+    final directory = await path_provider.getApplicationDocumentsDirectory();
+    final targetDirectory = Directory(
+      path.join(directory.path, AppConstants.projectNameTight, "configs"),
+    );
+    if (!await targetDirectory.exists()) {
+      await targetDirectory.create(recursive: true);
+      LogUtil.iTag(
+        logTag,
+        'Create history file path successfully: ${targetDirectory.path}',
+      );
+    }
+    return path.join(targetDirectory.path, AppConstants.historyFileName);
+  }
 }
