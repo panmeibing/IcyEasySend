@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:icy_easy_send/utils/platform_util.dart';
 import 'package:logger/logger.dart';
-import 'package:path_provider/path_provider.dart' as path_provider;
 
 /// Log label constant
 class LogTags {
@@ -98,40 +98,38 @@ class LogUtil {
       output: ConsoleOutput(),
     );
     Logger.level = kDebugMode ? Level.debug : Level.warning;
-    
+
     // 异步初始化文件输出（如果需要）
     _initFileLogger();
   }
 
   Future<void> _initFileLogger() async {
     if (_isInitialized) return;
-    
+
     List<LogOutput> outputs = [ConsoleOutput()];
 
-    // 如果不是调试模式，则额外添加文件输出（可选，用于持久化重要日志）
-    if (!kDebugMode) {
-      try {
-        final directory = await path_provider
-            .getApplicationDocumentsDirectory();
-        final logFile = File('${directory.path}/app_log.txt');
-        if (!await logFile.exists()) {
-          await logFile.create(recursive: true);
-        }
-        outputs.add(FileOutput(file: logFile));
-        
-        // 重新创建 logger 以包含文件输出
-        _logger = Logger(
-          filter: _getLogFilter(),
-          printer: MyLogPrinter(),
-          output: MultiOutput(outputs),
-        );
-        Logger.level = kDebugMode ? Level.debug : Level.warning;
-      } catch (e) {
-        // ignore: avoid_print
-        print("Failed to initialize file logging: $e");
+    try {
+      String loggerFilePath = await PlatformUtil.getLoggerFilePath();
+      // ignore: avoid_print
+      print("Init logger, loggerFilePath: $loggerFilePath");
+      final logFile = File(loggerFilePath);
+      if (!await logFile.exists()) {
+        await logFile.create(recursive: true);
       }
+      outputs.add(FileOutput(file: logFile));
+
+      // 重新创建 logger 以包含文件输出
+      _logger = Logger(
+        filter: _getLogFilter(),
+        printer: MyLogPrinter(),
+        output: MultiOutput(outputs),
+      );
+      Logger.level = kDebugMode ? Level.debug : Level.warning;
+    } catch (e) {
+      // ignore: avoid_print
+      print("Failed to initialize file logging: $e");
     }
-    
+
     _isInitialized = true;
   }
 

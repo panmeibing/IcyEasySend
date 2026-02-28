@@ -108,4 +108,7 @@ class AppConstants {
 
   /// Keep the lastest temp file count from clipboard
   static const int maxClipboardKeepCount = 5;
+
+  // Logger constants
+  static const String defaultLoggerFileName = "IcyEasySend.log";
 }

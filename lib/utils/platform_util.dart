@@ -1,5 +1,9 @@
 import 'dart:io';
+
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as path_provider;
+
+import 'constants.dart';
 import 'log_util.dart';
 
 /// Platform related tools and methods
@@ -74,5 +78,28 @@ class PlatformUtil {
       LogUtil.eTag(logTag, '获取下载目录失败: $e', e, stackTrace);
       return null;
     }
+  }
+
+  /// Get logger file directory
+  ///
+  /// Mobile: Must use the system allocated writable directory
+  /// Desktop: Retrieve the directory where the executable file is located
+  static Future<String> getLoggerFilePath([String? fileName]) async {
+    final String effectiveFileName =
+        fileName ?? AppConstants.defaultLoggerFileName;
+    final String finalFileName = path.extension(effectiveFileName).isEmpty
+        ? '$effectiveFileName.log'
+        : effectiveFileName;
+
+    Directory directory;
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      directory = await path_provider.getApplicationSupportDirectory();
+    } else {
+      final String exePath = Platform.resolvedExecutable;
+      directory = Directory(path.dirname(exePath));
+    }
+
+    return path.join(directory.path, finalFileName);
   }
 }
