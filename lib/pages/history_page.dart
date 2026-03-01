@@ -846,13 +846,16 @@ class HistoryPageState extends State<HistoryPage> {
               ),
             ),
             if (copyable)
-              IconButton(
-                icon: const Icon(Icons.copy, size: 18),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _copyPathToClipboard(value),
-                tooltip: '复制',
-                color: Colors.blue,
+              Padding(
+                padding: const EdgeInsets.only(left: 8, right: 12),
+                child: IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _copyPathToClipboard(value),
+                  tooltip: '复制',
+                  color: Colors.blue,
+                ),
               ),
           ],
         ),
