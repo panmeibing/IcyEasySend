@@ -1,0 +1,24 @@
+{
+  "title": "IcyEasySend",
+  "icon": "../../lib/images/icons/app_icon.icns",
+  "window": {
+    "size": {
+      "width": 800,
+      "height": 400
+    }
+  },
+  "contents": [
+    {
+      "x": 250,
+      "y": 150,
+      "type": "file",
+      "path": "../../build/macos/Build/Products/Release/IcyEasySend.app"
+    },
+    {
+      "x": 550,
+      "y": 150,
+      "type": "link",
+      "path": "/Applications"
+    }
+  ]
+}
