@@ -1,7 +1,7 @@
 #define MyAppName "IcyEasySend"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.9"
 #define MyAppPublisher "IcyHope"
-#define MyAppURL "https://binglengdexiwang.top/"
+#define MyAppURL "https://binglengdexiwang.top"
 #define MyAppExeName "IcyEasySend.exe"
 
 [Setup]
@@ -18,7 +18,7 @@ PrivilegesRequired=admin
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-SetupIconFile=..\..\lib\images\icons\app_icon.ico
+SetupIconFile=..\..\windows\runner\resources\app_icon.ico
 OutputBaseFilename={#MyAppName}_setup_{#MyAppVersion}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -26,14 +26,14 @@ DisableProgramGroupPage=yes
 
 [VersionInfo]
 CompanyVersion={#MyAppVersion}
-CompanyVersionNumbers=1,0,3,0
+CompanyVersionNumbers=1,0,9,0
 CompanyName={#MyAppPublisher}
 FileDescription={#MyAppName} Setup
 FileVersion={#MyAppVersion}
-FileVersionNumbers=1,0,3,0
+FileVersionNumbers=1,0,9,0
 ProductName={#MyAppName}
 ProductVersion={#MyAppVersion}
-ProductVersionNumbers=1,0,3,0
+ProductVersionNumbers=1,0,9,0
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -45,7 +45,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\..\lib\images\icons\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\windows\runner\resources\app_icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app_icon.ico"
