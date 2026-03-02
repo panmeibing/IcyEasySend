@@ -39,8 +39,8 @@ class AppConstants {
 
   // File size constants
 
-  /// Maximum file size (2GB)
-  static const int maxFileSize = 2 * 1024 * 1024 * 1024;
+  /// Maximum file size (120GB)
+  static const int maxFileSize = 20 * 1024 * 1024 * 1024;
 
   // History constants
 
