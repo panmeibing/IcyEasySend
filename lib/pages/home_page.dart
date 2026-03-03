@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:path/path.dart' as path;
 
 import '../services/http_server_manager.dart';
@@ -39,6 +40,8 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> {
+  final String logTag = LogTags.ui;
+
   // State variables
   String targetIP = '';
   List<File> selectedFiles = [];
@@ -128,8 +131,19 @@ class HomePageState extends State<HomePage> {
     // Listen for shared files from other apps
     _sharingIntentSubscription = widget.sharingIntentService.sharedFilesStream
         .listen((files) {
+          LogUtil.iTag(
+            logTag,
+            "Monitored the files from sharing intent, files: ${files.toString()}",
+          );
           if (files.isNotEmpty && mounted) {
             _handleSharedFiles(files);
+          } else if (files.isNotEmpty) {
+            LogUtil.wTag(logTag, 'Sharing intent received empty files');
+          } else if (!mounted) {
+            LogUtil.wTag(
+              logTag,
+              'Sharing intent received files but page do not mounted',
+            );
           }
         });
   }
@@ -545,6 +559,8 @@ class HomePageState extends State<HomePage> {
 
   /// Handle shared files from other apps
   Future<void> _handleSharedFiles(List<File> sharedFiles) async {
+    LogUtil.wTag(LogTags.ui, 'Start processing the shared file');
+
     // Clear the shared files from the service
     widget.sharingIntentService.clearSharedFiles();
 
@@ -563,7 +579,10 @@ class HomePageState extends State<HomePage> {
       sharedFiles,
     );
 
-    if (!mounted) return;
+    if (!mounted) {
+      LogUtil.wTag(LogTags.ui, 'The current page is not mounted.');
+      return;
+    }
 
     if (validFiles.isNotEmpty) {
       setState(() {

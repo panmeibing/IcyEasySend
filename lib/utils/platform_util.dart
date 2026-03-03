@@ -82,8 +82,8 @@ class PlatformUtil {
 
   /// Get logger file directory
   ///
-  /// Mobile: Must use the system allocated writable directory
-  /// Desktop: Retrieve the directory where the executable file is located
+  /// All platforms: Use the system allocated writable directory (Application Support)
+  /// This ensures the log file can be created and written to without permission issues
   static Future<String> getLoggerFilePath([String? fileName]) async {
     final String effectiveFileName =
         fileName ?? AppConstants.defaultLoggerFileName;
@@ -91,14 +91,9 @@ class PlatformUtil {
         ? '$effectiveFileName.log'
         : effectiveFileName;
 
-    Directory directory;
-
-    if (Platform.isAndroid || Platform.isIOS) {
-      directory = await path_provider.getApplicationSupportDirectory();
-    } else {
-      final String exePath = Platform.resolvedExecutable;
-      directory = Directory(path.dirname(exePath));
-    }
+    // Use Application Support directory for all platforms
+    // This is a writable location provided by the system
+    final directory = await path_provider.getApplicationSupportDirectory();
 
     return path.join(directory.path, finalFileName);
   }

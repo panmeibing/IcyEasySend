@@ -113,4 +113,7 @@ class AppConstants {
   // File name constants
   static const String defaultLoggerFileName = "IcyEasySend.log";
   static const String historyFileName = "IcyEasySendTransferHistory.json";
+
+  // Logger constants
+  static const int maxReadLogLines = 50;
 }

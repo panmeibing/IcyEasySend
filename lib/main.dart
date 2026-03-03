@@ -7,9 +7,22 @@ import 'services/permission_service.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/error_messages.dart';
+import 'utils/log_util.dart';
 import 'utils/toast_helper.dart';
 
-void main() {
+void main() async {
+  // Ensure Flutter binding is initialized
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize logger explicitly to ensure log file is created
+  await LogUtil.init();
+
+  // Log app startup
+  LogUtil.iTag(
+    LogTags.ui,
+    '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
+  );
+
   runApp(const MyApp());
 }
 

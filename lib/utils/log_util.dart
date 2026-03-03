@@ -93,11 +93,11 @@ class LogUtil {
   LogUtil._internal() {
     // 同步初始化一个基本的 logger，避免 late 变量未初始化错误
     _logger = Logger(
-      filter: DevelopmentFilter(),
+      filter: ProductionFilter(),
       printer: MyLogPrinter(),
       output: ConsoleOutput(),
     );
-    Logger.level = kDebugMode ? Level.debug : Level.warning;
+    Logger.level = kDebugMode ? Level.debug : Level.info;
 
     // 异步初始化文件输出（如果需要）
     _initFileLogger();
@@ -120,11 +120,11 @@ class LogUtil {
 
       // 重新创建 logger 以包含文件输出
       _logger = Logger(
-        filter: _getLogFilter(),
+        filter: ProductionFilter(),
         printer: MyLogPrinter(),
         output: MultiOutput(outputs),
       );
-      Logger.level = kDebugMode ? Level.debug : Level.warning;
+      Logger.level = kDebugMode ? Level.debug : Level.info;
     } catch (e) {
       // ignore: avoid_print
       print("Failed to initialize file logging: $e");
@@ -132,46 +132,6 @@ class LogUtil {
 
     _isInitialized = true;
   }
-
-  LogFilter _getLogFilter() {
-    return DevelopmentFilter();
-    // Attention: This may result in excessive production environment logs
-    // return ProductionFilter();
-  }
-
-  // ==================== 基础日志方法 ====================
-
-  // /// Trace级别日志（最详细）
-  // static void v(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.t(message, error: error, stackTrace: stackTrace);
-  // }
-  //
-  // /// Debug级别日志
-  // static void d(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.d(message, error: error, stackTrace: stackTrace);
-  // }
-  //
-  // /// Info级别日志
-  // static void i(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.i(message, error: error, stackTrace: stackTrace);
-  // }
-  //
-  // /// Warning级别日志
-  // static void w(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.w(message, error: error, stackTrace: stackTrace);
-  // }
-  //
-  // /// Error级别日志
-  // static void e(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.e(message, error: error, stackTrace: stackTrace);
-  // }
-  //
-  // /// Fatal级别日志（最严重）
-  // static void f(dynamic message, [dynamic error, StackTrace? stackTrace]) {
-  //   _instance._logger.f(message, error: error, stackTrace: stackTrace);
-  // }
-
-  // ==================== 带标签的日志方法 ====================
 
   /// 带标签的Trace日志
   static void vTag(

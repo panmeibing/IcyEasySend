@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -559,9 +560,27 @@ class _SettingsPageState extends State<SettingsPage> {
           ],
         ),
         content: SingleChildScrollView(
-          child: SelectableText(
-            devInfo,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText(
+                devInfo,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => _copyLogContent(logPath),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('复制日志'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -584,6 +603,78 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) {
         Navigator.of(context).pop();
         ToastHelper.showError(context, '加载开发信息时出错: $e');
+      }
+    }
+  }
+
+  /// Copy log content (last 50 lines)
+  /// Efficiently reads from the end of the file without loading the entire file
+  Future<void> _copyLogContent(String logPath) async {
+    try {
+      final logFile = File(logPath);
+
+      if (!await logFile.exists()) {
+        if (mounted) {
+          ToastHelper.showError(context, '日志文件不存在');
+        }
+        return;
+      }
+
+      // Get file size
+      final fileSize = await logFile.length();
+
+      if (fileSize == 0) {
+        if (mounted) {
+          ToastHelper.showWarning(context, '日志文件为空');
+        }
+        return;
+      }
+
+      // Read from the end of file
+      // Estimate: average line length ~100 bytes, so read last 8KB to ensure we get 50+ lines
+      final bytesToRead = fileSize < 8192 ? fileSize : 8192;
+      final startPosition = fileSize - bytesToRead;
+
+      final randomAccessFile = await logFile.open(mode: FileMode.read);
+      await randomAccessFile.setPosition(startPosition);
+      final bytes = await randomAccessFile.read(bytesToRead);
+      await randomAccessFile.close();
+
+      // Decode bytes to string
+      final content = utf8.decode(bytes, allowMalformed: true);
+      final lines = content.split('\n');
+
+      // Remove first incomplete line if we didn't start from beginning
+      if (startPosition > 0 && lines.isNotEmpty) {
+        lines.removeAt(0);
+      }
+
+      // Remove last empty line if exists
+      if (lines.isNotEmpty && lines.last.trim().isEmpty) {
+        lines.removeLast();
+      }
+
+      if (lines.isEmpty) {
+        if (mounted) {
+          ToastHelper.showWarning(context, '日志文件为空');
+        }
+        return;
+      }
+
+      // Get last 50 lines (or all lines if less than 50)
+      final linesToCopy = lines.length > AppConstants.maxReadLogLines
+          ? lines.sublist(lines.length - AppConstants.maxReadLogLines)
+          : lines;
+
+      final logContent = linesToCopy.join('\n');
+      await Clipboard.setData(ClipboardData(text: logContent));
+
+      if (mounted) {
+        ToastHelper.showSuccess(context, '已复制最后${linesToCopy.length}行日志到剪贴板');
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastHelper.showError(context, '读取日志文件失败: $e');
       }
     }
   }
