@@ -47,6 +47,7 @@ class BatchTransferManager {
   Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
     required String targetIP,
     required List<File> files,
+    String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
     void Function(
@@ -132,9 +133,15 @@ class BatchTransferManager {
         "sendFilesWithBatchConfirm() confirmUrl: [$confirmUrl], confirmBody: [$confirmBody]",
       );
 
+      // Add secret key to headers if provided
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (secretKey != null && secretKey.isNotEmpty) {
+        headers['X-Secret-Key'] = secretKey;
+      }
+
       final confirmResult = await HttpHelper.post(
         confirmUrl,
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: confirmBody,
         timeout: AppConstants.confirmTimeout,
       );
@@ -208,6 +215,7 @@ class BatchTransferManager {
         targetIP: targetIP,
         senderIP: senderIP,
         deviceName: deviceName,
+        secretKey: secretKey,
         totalBytes: totalBytes,
         results: results,
         onProgress: onProgress,
@@ -248,6 +256,7 @@ class BatchTransferManager {
     required String targetIP,
     required String senderIP,
     String? deviceName,
+    String? secretKey,
     required int totalBytes,
     required Map<String, OperationResult<TransferData>> results,
     void Function(double progress, int bytesTransferred, int totalBytes)?
@@ -307,6 +316,7 @@ class BatchTransferManager {
         transferId: transferId,
         senderIP: senderIP,
         deviceName: deviceName,
+        secretKey: secretKey,
         onProgress: (progress, bytes, total) {
           fileProgress[fileIndex] = progress;
           fileBytes[fileIndex] = bytes;

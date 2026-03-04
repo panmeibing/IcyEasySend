@@ -39,6 +39,7 @@ class FileTransferService {
   Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
     required String targetIP,
     required List<File> files,
+    String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
     void Function(
@@ -57,6 +58,7 @@ class FileTransferService {
       final results = await _batchTransferManager.sendFilesWithBatchConfirm(
         targetIP: targetIP,
         files: files,
+        secretKey: secretKey,
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,

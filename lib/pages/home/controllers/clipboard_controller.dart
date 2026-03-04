@@ -37,6 +37,7 @@ class ClipboardController {
     required BuildContext context,
     required String targetIP,
     required int targetPort,
+    String? secretKey,
     required VoidCallback onSuccess,
     required VoidCallback onError,
   }) async {
@@ -87,6 +88,7 @@ class ClipboardController {
         targetIP: targetIP,
         port: targetPort,
         deviceName: deviceName,
+        secretKey: secretKey,
       );
 
       // Close loading dialog

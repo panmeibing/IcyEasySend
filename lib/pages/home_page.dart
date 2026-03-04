@@ -21,6 +21,7 @@ import 'home/controllers/file_transfer_controller.dart';
 import 'home/widgets/file_selection_section.dart';
 import 'home/widgets/ip_input_section.dart';
 import 'home/widgets/port_input_section.dart';
+import 'home/widgets/secret_key_input_section.dart';
 import 'home/widgets/server_status_card.dart';
 import 'home/widgets/transfer_progress_card.dart';
 
@@ -76,8 +77,10 @@ class HomePageState extends State<HomePage> {
   final TextEditingController _portController = TextEditingController(
     text: '${AppConstants.defaultPort}',
   );
+  final TextEditingController _secretKeyController = TextEditingController();
   final FocusNode _ipFocusNode = FocusNode();
   final FocusNode _portFocusNode = FocusNode();
+  final FocusNode _secretKeyFocusNode = FocusNode();
   String? _ipErrorMessage;
 
   // True if the IP error message is a warning, not a hard error
@@ -154,8 +157,10 @@ class HomePageState extends State<HomePage> {
     _sharingIntentSubscription?.cancel();
     _ipController.dispose();
     _portController.dispose();
+    _secretKeyController.dispose();
     _ipFocusNode.dispose();
     _portFocusNode.dispose();
+    _secretKeyFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -380,6 +385,17 @@ class HomePageState extends State<HomePage> {
                         onReset: () {
                           _portController.text = '${AppConstants.defaultPort}';
                           _validatePort();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Secret key input
+                      SecretKeyInputSection(
+                        controller: _secretKeyController,
+                        focusNode: _secretKeyFocusNode,
+                        isEnabled: isServerRunning,
+                        onClear: () {
+                          _secretKeyController.clear();
                         },
                       ),
                       const SizedBox(height: 24),
@@ -616,6 +632,7 @@ class HomePageState extends State<HomePage> {
         files: selectedFiles,
         targetIP: targetIP,
         targetPort: port,
+        secretKey: _secretKeyController.text.trim(),
         onProgress: (progress, bytesTransferred, totalBytes) {
           setState(() {
             _transferProgress = progress;
@@ -721,8 +738,10 @@ class HomePageState extends State<HomePage> {
   void _disableFocusNodes() {
     _ipFocusNode.unfocus();
     _portFocusNode.unfocus();
+    _secretKeyFocusNode.unfocus();
     _ipFocusNode.canRequestFocus = false;
     _portFocusNode.canRequestFocus = false;
+    _secretKeyFocusNode.canRequestFocus = false;
     FocusScope.of(context).unfocus();
   }
 
@@ -730,6 +749,7 @@ class HomePageState extends State<HomePage> {
   void _enableFocusNodes() {
     _ipFocusNode.canRequestFocus = true;
     _portFocusNode.canRequestFocus = true;
+    _secretKeyFocusNode.canRequestFocus = true;
   }
 
   /// Run network diagnostics
@@ -869,6 +889,7 @@ class HomePageState extends State<HomePage> {
         context: context,
         targetIP: targetIP,
         targetPort: port,
+        secretKey: _secretKeyController.text.trim(),
         onSuccess: () async {
           if (mounted) {
             await _loadIPHistory();

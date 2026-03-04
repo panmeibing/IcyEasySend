@@ -9,6 +9,7 @@ import '../models/clipboard_data_model.dart';
 import '../services/clipboard_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/log_util.dart';
+import '../utils/toast_helper.dart';
 
 /// 剪切板请求处理器
 ///
@@ -65,7 +66,13 @@ class ClipboardHandler {
       final requesterDeviceName =
           body['requesterDeviceName'] as String? ?? '未知设备';
 
-      LogUtil.dTag(logTag, '请求设备: $requesterDeviceName');
+      // Extract secret key from headers
+      final secretKey = request.headers['x-secret-key'];
+
+      LogUtil.dTag(
+        logTag,
+        '请求设备: $requesterDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}',
+      );
 
       // 检查上下文是否可用
       final ctx = contextGetter?.call();
@@ -75,11 +82,40 @@ class ClipboardHandler {
         return _buildErrorResponse('服务器内部错误');
       }
 
-      // 显示确认对话框
-      final userAccepted = await _showClipboardRequestDialog(
-        ctx,
-        requesterDeviceName,
-      );
+      // Check if secret key matches
+      bool skipConfirmation = false;
+      if (secretKey != null && secretKey.isNotEmpty) {
+        final savedSecretKey = await _preferencesService.getDeviceSecretKey();
+
+        if (savedSecretKey != null &&
+            savedSecretKey.isNotEmpty &&
+            savedSecretKey == secretKey) {
+          skipConfirmation = true;
+          LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
+
+          // Show toast notification instead of dialog
+          final currentCtx = contextGetter?.call();
+          if (currentCtx != null && currentCtx.mounted) {
+            ToastHelper.showSuccess(
+              currentCtx,
+              '$requesterDeviceName 使用秘钥验证通过，自动分享剪切板',
+            );
+          }
+        } else {
+          LogUtil.wTag(logTag, '秘钥验证失败或未设置本机秘钥');
+        }
+      }
+
+      // 显示确认对话框或自动接受
+      bool userAccepted;
+      if (skipConfirmation) {
+        userAccepted = true;
+      } else {
+        userAccepted = await _showClipboardRequestDialog(
+          ctx,
+          requesterDeviceName,
+        );
+      }
 
       if (!userAccepted) {
         LogUtil.iTag(logTag, '用户拒绝了剪切板请求');

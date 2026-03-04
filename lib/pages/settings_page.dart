@@ -42,6 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _maxHistoryController = TextEditingController();
   final TextEditingController _maxClipboardSizeController =
       TextEditingController();
+  final TextEditingController _secretKeyController = TextEditingController();
 
   // State
   late SettingsState _state;
@@ -95,6 +96,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _deviceNameController.dispose();
     _maxHistoryController.dispose();
     _maxClipboardSizeController.dispose();
+    _secretKeyController.dispose();
     super.dispose();
   }
 
@@ -113,6 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _loadMaxHistoryItems(),
       _loadMaxClipboardSize(),
       _loadIPValidationEnabled(),
+      _loadDeviceSecretKey(),
     ]);
     _loadServerInfo(); // This is synchronous
   }
@@ -194,6 +197,17 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) {
       setState(() {
         _state = _state.copyWith(enableIPValidation: enabled);
+      });
+    }
+  }
+
+  /// Load device secret key
+  Future<void> _loadDeviceSecretKey() async {
+    final secretKey = await _preferencesService.getDeviceSecretKey();
+    if (mounted) {
+      setState(() {
+        _state = _state.copyWith(deviceSecretKey: secretKey ?? '');
+        _secretKeyController.text = secretKey ?? '';
       });
     }
   }
@@ -475,6 +489,28 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// Save device secret key
+  Future<void> _saveDeviceSecretKey() async {
+    final newKey = _secretKeyController.text.trim();
+
+    final success = await _preferencesService.saveDeviceSecretKey(newKey);
+    if (success) {
+      setState(() {
+        _state = _state.copyWith(
+          deviceSecretKey: newKey,
+          isEditingSecretKey: false,
+        );
+      });
+      if (newKey.isEmpty) {
+        _showSuccessSnackBar('设备秘钥已清空');
+      } else {
+        _showSuccessSnackBar('设备秘钥已保存');
+      }
+    } else {
+      _showErrorSnackBar('保存失败');
+    }
+  }
+
   // ========== Developer Mode Actions ==========
 
   /// Handle version tap for developer mode
@@ -716,6 +752,21 @@ class _SettingsPageState extends State<SettingsPage> {
                       },
                       enableIPValidation: _state.enableIPValidation,
                       onIPValidationChanged: _saveIPValidationEnabled,
+                      deviceSecretKey: _state.deviceSecretKey,
+                      isEditingSecretKey: _state.isEditingSecretKey,
+                      secretKeyController: _secretKeyController,
+                      onEditSecretKey: () {
+                        setState(() {
+                          _state = _state.copyWith(isEditingSecretKey: true);
+                        });
+                      },
+                      onSaveSecretKey: _saveDeviceSecretKey,
+                      onCancelSecretKey: () {
+                        setState(() {
+                          _secretKeyController.text = _state.deviceSecretKey;
+                          _state = _state.copyWith(isEditingSecretKey: false);
+                        });
+                      },
                     ),
                     const SizedBox(height: 16),
                     AboutCard(onVersionTap: _handleVersionTap),

@@ -12,6 +12,7 @@ class TransferRequestBuilder {
     required String senderIP,
     String? deviceName,
     required String transferId,
+    String? secretKey,
   }) {
     final baseUrl = NetworkUtil.buildHttpUrl(targetIP, '/transfer');
     final uri = Uri.parse(baseUrl).replace(
@@ -19,7 +20,7 @@ class TransferRequestBuilder {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
         'senderIP': senderIP,
-        'senderDeviceName': ?deviceName,
+        'senderDeviceName': deviceName,
         'transferId': transferId,
       },
     );
@@ -27,6 +28,11 @@ class TransferRequestBuilder {
     final request = http.StreamedRequest('POST', uri);
     request.headers['Content-Type'] = 'application/octet-stream';
     request.contentLength = fileSize;
+    
+    // Add secret key to headers if provided
+    if (secretKey != null && secretKey.isNotEmpty) {
+      request.headers['X-Secret-Key'] = secretKey;
+    }
 
     return request;
   }

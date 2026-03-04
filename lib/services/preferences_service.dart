@@ -17,6 +17,7 @@ class PreferencesService {
   static const String _keyMaxHistoryItems = 'max_history_items';
   static const String _keyMaxClipboardSize = 'max_clipboard_size';
   static const String _keyEnableIPValidation = 'enable_ip_validation';
+  static const String _keyDeviceSecretKey = 'device_secret_key';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -339,6 +340,32 @@ class PreferencesService {
       return prefs.getBool(_keyEnableIPValidation) ?? true;
     } catch (e) {
       return true;
+    }
+  }
+
+  /// Save device secret key
+  ///
+  /// Parameters:
+  /// - [secretKey]: The secret key to save
+  Future<bool> saveDeviceSecretKey(String secretKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyDeviceSecretKey, secretKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get device secret key
+  ///
+  /// Returns the saved secret key, or null if none exists
+  Future<String?> getDeviceSecretKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyDeviceSecretKey);
+    } catch (e) {
+      return null;
     }
   }
 }

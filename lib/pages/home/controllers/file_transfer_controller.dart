@@ -160,6 +160,7 @@ class FileTransferController {
     required List<File> files,
     required String targetIP,
     required int targetPort,
+    String? secretKey,
     required Function(double, int, int) onProgress,
     required Function(int, double, int, int) onFileProgress,
     required Function(String) onStatusChange,
@@ -185,6 +186,7 @@ class FileTransferController {
       final results = await _fileTransferService.sendFilesWithBatchConfirm(
         targetIP: targetAddress,
         files: files,
+        secretKey: secretKey,
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,

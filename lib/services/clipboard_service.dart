@@ -369,12 +369,14 @@ class ClipboardService {
   /// - [targetIP]: 目标设备的IP地址
   /// - [port]: 目标设备的端口号
   /// - [deviceName]: 本设备的名称（可选）
+  /// - [secretKey]: 秘钥（可选）
   ///
   /// 返回: [OperationResult<ClipboardDataModel>] 包含剪切板内容或错误信息
   Future<OperationResult<ClipboardDataModel>> requestClipboardFromDevice({
     required String targetIP,
     required int port,
     String? deviceName,
+    String? secretKey,
   }) async {
     LogUtil.iTag(logTag, '向 $targetIP:$port 请求剪切板内容...');
 
@@ -390,10 +392,16 @@ class ClipboardService {
       'timestamp': DateTime.now().toIso8601String(),
     });
 
+    // 构建请求头
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (secretKey != null && secretKey.isNotEmpty) {
+      headers['X-Secret-Key'] = secretKey;
+    }
+
     // 发送POST请求
     final result = await HttpHelper.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: headers,
       body: requestBody,
       timeout: AppConstants.confirmTimeout,
     );
@@ -433,12 +441,14 @@ class ClipboardService {
     required String targetIP,
     required int port,
     String? deviceName,
+    String? secretKey,
   }) async {
     // 1. 请求目标设备的剪切板
     final requestResult = await requestClipboardFromDevice(
       targetIP: targetIP,
       port: port,
       deviceName: deviceName,
+      secretKey: secretKey,
     );
 
     if (!requestResult.isSuccess) {

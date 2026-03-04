@@ -18,6 +18,10 @@ class SettingsState {
   final bool isEditingMaxClipboardSize;
   final bool enableIPValidation;
 
+  // Secret key
+  final String deviceSecretKey;
+  final bool isEditingSecretKey;
+
   // Developer mode
   final int versionTapCount;
   final DateTime? lastVersionTapTime;
@@ -38,6 +42,8 @@ class SettingsState {
     required this.maxClipboardSizeMB,
     this.isEditingMaxClipboardSize = false,
     required this.enableIPValidation,
+    this.deviceSecretKey = '',
+    this.isEditingSecretKey = false,
     this.versionTapCount = 0,
     this.lastVersionTapTime,
     this.isLoading = true,
@@ -56,6 +62,8 @@ class SettingsState {
     int? maxClipboardSizeMB,
     bool? isEditingMaxClipboardSize,
     bool? enableIPValidation,
+    String? deviceSecretKey,
+    bool? isEditingSecretKey,
     int? versionTapCount,
     DateTime? lastVersionTapTime,
     bool? isLoading,
@@ -75,6 +83,8 @@ class SettingsState {
       isEditingMaxClipboardSize:
           isEditingMaxClipboardSize ?? this.isEditingMaxClipboardSize,
       enableIPValidation: enableIPValidation ?? this.enableIPValidation,
+      deviceSecretKey: deviceSecretKey ?? this.deviceSecretKey,
+      isEditingSecretKey: isEditingSecretKey ?? this.isEditingSecretKey,
       versionTapCount: versionTapCount ?? this.versionTapCount,
       lastVersionTapTime: lastVersionTapTime ?? this.lastVersionTapTime,
       isLoading: isLoading ?? this.isLoading,

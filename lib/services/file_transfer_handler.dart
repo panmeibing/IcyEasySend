@@ -6,8 +6,10 @@ import 'package:icy_easy_send/utils/constants.dart';
 import 'package:shelf/shelf.dart';
 
 import '../models/transfer_history.dart';
+import '../services/preferences_service.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
+import '../utils/toast_helper.dart';
 import 'batch_receive_manager.dart';
 import 'file_transfer_service.dart';
 import 'transfer/transfer_history_manager.dart';
@@ -75,7 +77,7 @@ class FileTransferHandler {
     if (histories.isNotEmpty) {
       await _historyManager.saveTransferHistoryBatch(histories);
       LogUtil.dTag(logTag, '批量保存了 ${histories.length} 条接收历史记录 (来自 $senderIP)');
-      
+
       // Trigger history refresh after saving
       historyRefreshCallbackGetter?.call()?.call();
     }
@@ -117,9 +119,12 @@ class FileTransferHandler {
       final senderIP = body['senderIP'] as String?;
       final senderDeviceName = body['senderDeviceName'] as String?;
 
+      // Extract secret key from headers
+      final secretKey = request.headers['x-secret-key'];
+
       LogUtil.dTag(
         logTag,
-        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName',
+        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}',
       );
 
       // Validate required parameters
@@ -151,6 +156,31 @@ class FileTransferHandler {
           body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
           headers: {'Content-Type': 'application/json'},
         );
+      }
+
+      // Check if secret key matches
+      bool skipConfirmation = false;
+      if (secretKey != null && secretKey.isNotEmpty) {
+        final preferencesService = PreferencesService();
+        final savedSecretKey = await preferencesService.getDeviceSecretKey();
+
+        if (savedSecretKey != null &&
+            savedSecretKey.isNotEmpty &&
+            savedSecretKey == secretKey) {
+          skipConfirmation = true;
+          LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
+
+          // Show toast notification instead of dialog
+          final currentCtx = contextGetter?.call();
+          if (currentCtx != null && currentCtx.mounted) {
+            ToastHelper.showSuccess(
+              currentCtx,
+              '${senderDeviceName ?? senderIP} 使用秘钥验证通过，自动接收 ${files.length} 个文件',
+            );
+          }
+        } else {
+          LogUtil.wTag(logTag, '秘钥验证失败或未设置本机秘钥');
+        }
       }
 
       // Create PendingFileInfo for each file
@@ -196,19 +226,30 @@ class FileTransferHandler {
 
       LogUtil.iTag(logTag, '显示批量接收确认对话框: ${pendingFiles.length}个文件');
 
-      // Show batch dialog with all files at once
-      // When dialog closes (all files received), save histories in batch
-      final accepted = await _batchReceiveManager
-          .requestBatchReceiveConfirmation(
-            context: ctx,
-            files: pendingFiles,
-            senderIP: senderIP,
-            senderDeviceName: senderDeviceName,
-            onComplete: () async {
-              // Save all transfer histories for this sender in batch
-              await saveBatchHistories(senderIP);
-            },
-          );
+      // If secret key is valid, auto-accept without showing dialog
+      bool accepted;
+      if (skipConfirmation) {
+        // Auto-accept all files
+        for (final fileInfo in pendingFiles) {
+          fileInfo.isAccepted = true;
+          fileInfo.status = '准备接收...';
+          fileInfo.completer.complete(true);
+        }
+        accepted = true;
+      } else {
+        // Show batch dialog with all files at once
+        // When dialog closes (all files received), save histories in batch
+        accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
+          context: ctx,
+          files: pendingFiles,
+          senderIP: senderIP,
+          senderDeviceName: senderDeviceName,
+          onComplete: () async {
+            // Save all transfer histories for this sender in batch
+            await saveBatchHistories(senderIP);
+          },
+        );
+      }
 
       if (!accepted) {
         LogUtil.iTag(logTag, '用户拒绝接收批量文件');

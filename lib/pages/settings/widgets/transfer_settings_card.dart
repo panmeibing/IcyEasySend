@@ -34,6 +34,14 @@ class TransferSettingsCard extends StatelessWidget {
   final bool enableIPValidation;
   final Function(bool) onIPValidationChanged;
 
+  // Secret key
+  final String deviceSecretKey;
+  final bool isEditingSecretKey;
+  final TextEditingController secretKeyController;
+  final VoidCallback onEditSecretKey;
+  final VoidCallback onSaveSecretKey;
+  final VoidCallback onCancelSecretKey;
+
   const TransferSettingsCard({
     super.key,
     required this.concurrentTransfers,
@@ -57,6 +65,12 @@ class TransferSettingsCard extends StatelessWidget {
     required this.onCancelMaxClipboardSize,
     required this.enableIPValidation,
     required this.onIPValidationChanged,
+    required this.deviceSecretKey,
+    required this.isEditingSecretKey,
+    required this.secretKeyController,
+    required this.onEditSecretKey,
+    required this.onSaveSecretKey,
+    required this.onCancelSecretKey,
   });
 
   @override
@@ -113,6 +127,13 @@ class TransferSettingsCard extends StatelessWidget {
 
             // IP validation toggle
             _buildIPValidationSection(),
+
+            const SizedBox(height: 24),
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+
+            // Secret key setting
+            _buildSecretKeySection(),
           ],
         ),
       ),
@@ -536,6 +557,165 @@ class TransferSettingsCard extends StatelessWidget {
                         ? Colors.grey[700]
                         : const Color(0xFFE65100),
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build secret key section
+  Widget _buildSecretKeySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '本机秘钥',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF212121),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '设置后，其他设备需要提供正确的秘钥才能跳过确认',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(height: 12),
+                  if (isEditingSecretKey)
+                    TextField(
+                      controller: secretKeyController,
+                      decoration: InputDecoration(
+                        hintText: '输入秘钥（留空表示不使用秘钥）',
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      autofocus: true,
+                      obscureText: false,
+                      maxLength: 20,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) {
+                            return Text(
+                              '$currentLength/20',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            );
+                          },
+                    )
+                  else
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: deviceSecretKey.isEmpty
+                            ? Colors.grey.withValues(alpha: 0.1)
+                            : const Color(0xFF2196F3).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: deviceSecretKey.isEmpty
+                              ? Colors.grey
+                              : const Color(0xFF2196F3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            deviceSecretKey.isEmpty
+                                ? Icons.lock_open
+                                : Icons.lock,
+                            size: 20,
+                            color: deviceSecretKey.isEmpty
+                                ? Colors.grey
+                                : const Color(0xFF2196F3),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              deviceSecretKey.isEmpty
+                                  ? '未设置'
+                                  : '●' * deviceSecretKey.length,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: deviceSecretKey.isEmpty
+                                    ? Colors.grey
+                                    : const Color(0xFF2196F3),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (isEditingSecretKey) ...[
+              IconButton(
+                icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
+                onPressed: onSaveSecretKey,
+                tooltip: '保存',
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Color(0xFFE53935)),
+                onPressed: onCancelSecretKey,
+                tooltip: '取消',
+              ),
+            ] else ...[
+              IconButton(
+                icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
+                onPressed: onEditSecretKey,
+                tooltip: '编辑',
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.info_outline,
+                size: 16,
+                color: Color(0xFF1976D2),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '其他设备在发送文件或请求剪切板时，如果提供了正确的秘钥，将自动通过验证，无需手动确认',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                 ),
               ),
             ],

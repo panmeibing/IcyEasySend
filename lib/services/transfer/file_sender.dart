@@ -30,6 +30,7 @@ class FileSender {
     required String transferId,
     required String senderIP,
     String? deviceName,
+    String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
   }) async {
@@ -49,6 +50,7 @@ class FileSender {
         senderIP: senderIP,
         deviceName: deviceName,
         transferId: transferId,
+        secretKey: secretKey,
       );
 
       final responseFuture = request.send();
