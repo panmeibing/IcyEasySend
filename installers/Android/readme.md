@@ -29,3 +29,4 @@ storeFile=../app/icy_easy_send_key.jks
 ```shell
 flutter build apk --release
 ```
+> 等它编译完成之后，它生成`APK`文件的默认路径是`build\app\outputs\flutter-apk\app-release.apk`
