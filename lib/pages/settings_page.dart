@@ -1,7 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -12,6 +8,14 @@ import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/platform_util.dart';
 import '../utils/toast_helper.dart';
+import 'settings/controllers/developer_controller.dart';
+import 'settings/controllers/device_controller.dart';
+import 'settings/controllers/transfer_controller.dart';
+import 'settings/models/settings_state.dart';
+import 'settings/widgets/about_card.dart';
+import 'settings/widgets/device_info_card.dart';
+import 'settings/widgets/server_info_card.dart';
+import 'settings/widgets/transfer_settings_card.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends StatefulWidget {
@@ -24,49 +28,58 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  // Services
   late final PreferencesService _preferencesService;
   late final TransferHistoryService _historyService;
+
+  // Controllers
+  late final DeviceController _deviceController;
+  late final TransferController _transferController;
+  late final DeveloperController _developerController;
+
+  // Text controllers
   final TextEditingController _deviceNameController = TextEditingController();
   final TextEditingController _maxHistoryController = TextEditingController();
   final TextEditingController _maxClipboardSizeController =
       TextEditingController();
 
-  String _deviceName = '';
-  String _deviceModel = '';
-  String? _serverIP;
-  String? _serverPort;
-  bool _isLoading = true;
-  bool _isEditingName = false;
-  int _concurrentTransfers = 5;
-  int _tempConcurrentTransfers = 5; // Temporary value for slider
-  int _maxHistoryItems = AppConstants.defaultMaxHistoryItems;
-  bool _isEditingMaxHistory = false;
-  int _maxClipboardSizeMB = AppConstants.defaultMaxClipboardSize;
-  bool _isEditingMaxClipboardSize = false;
-  bool _enableIPValidation = true; // Whether IP validation is enabled
+  // State
+  late SettingsState _state;
 
+  // Constants
   final int _allowMaxHisCount = AppConstants.allowMaxHistoryItems;
   final int _allowMinHisCount = AppConstants.allowMinHistoryItems;
   final int _maxConcurrentTransfers = AppConstants.maxConcurrentTransfers;
-
-  // Developer mode related
-  int _versionTapCount = 0;
-  DateTime? _lastVersionTapTime;
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize services (can be overridden for testing)
+    // Initialize services
     _preferencesService = PreferencesService();
     _historyService = TransferHistoryService();
 
-    _loadDeviceInfo();
-    _loadServerInfo();
-    _loadConcurrentTransfers();
-    _loadMaxHistoryItems();
-    _loadMaxClipboardSize();
-    _loadIPValidationEnabled();
+    // Initialize controllers
+    _deviceController = DeviceController(_preferencesService);
+    _transferController = TransferController(
+      _preferencesService,
+      _historyService,
+    );
+    _developerController = DeveloperController();
+
+    // Initialize state with default values
+    _state = SettingsState(
+      deviceName: '',
+      deviceModel: '',
+      concurrentTransfers: 5,
+      tempConcurrentTransfers: 5,
+      maxHistoryItems: AppConstants.defaultMaxHistoryItems,
+      maxClipboardSizeMB: AppConstants.defaultMaxClipboardSize,
+      enableIPValidation: true,
+    );
+
+    // Load all settings
+    _loadAllSettings();
 
     // Register network change callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,50 +105,37 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// Load all settings
+  Future<void> _loadAllSettings() async {
+    await Future.wait<void>([
+      _loadDeviceInfo(),
+      _loadConcurrentTransfers(),
+      _loadMaxHistoryItems(),
+      _loadMaxClipboardSize(),
+      _loadIPValidationEnabled(),
+    ]);
+    _loadServerInfo(); // This is synchronous
+  }
+
   /// Load device information
   Future<void> _loadDeviceInfo() async {
     setState(() {
-      _isLoading = true;
+      _state = _state.copyWith(isLoading: true);
     });
 
-    try {
-      // Get device model
-      final deviceInfo = DeviceInfoPlugin();
-      String model = 'Unknown Device';
+    final deviceInfo = await _deviceController.loadDeviceInfo();
+    final deviceModel = deviceInfo['model']!;
+    final deviceName = deviceInfo['name']!;
 
-      if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        model = '${androidInfo.manufacturer} ${androidInfo.model}';
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        model = iosInfo.model;
-      } else if (Platform.isMacOS) {
-        final macInfo = await deviceInfo.macOsInfo;
-        model = macInfo.model;
-      } else if (Platform.isWindows) {
-        final windowsInfo = await deviceInfo.windowsInfo;
-        model = windowsInfo.computerName;
-      } else if (Platform.isLinux) {
-        final linuxInfo = await deviceInfo.linuxInfo;
-        model = linuxInfo.name;
-      }
+    _deviceNameController.text = deviceName;
 
-      _deviceModel = model;
-
-      // Load saved device name or use model as default
-      final savedName = await _preferencesService.getDeviceName();
-      _deviceName = savedName ?? model;
-      _deviceNameController.text = _deviceName;
-
+    if (mounted) {
       setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _deviceModel = 'Unknown Device';
-        _deviceName = 'Unknown Device';
-        _deviceNameController.text = _deviceName;
-        _isLoading = false;
+        _state = _state.copyWith(
+          deviceModel: deviceModel,
+          deviceName: deviceName,
+          isLoading: false,
+        );
       });
     }
   }
@@ -147,8 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final parts = serverAddress.split(':');
       if (parts.length == 2) {
         setState(() {
-          _serverIP = parts[0];
-          _serverPort = parts[1];
+          _state = _state.copyWith(serverIP: parts[0], serverPort: parts[1]);
         });
       }
     }
@@ -156,21 +155,23 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Load concurrent transfers setting
   Future<void> _loadConcurrentTransfers() async {
-    final count = await _preferencesService.getConcurrentTransfers();
+    final count = await _transferController.loadConcurrentTransfers();
     if (mounted) {
       setState(() {
-        _concurrentTransfers = count;
-        _tempConcurrentTransfers = count; // Initialize temp value
+        _state = _state.copyWith(
+          concurrentTransfers: count,
+          tempConcurrentTransfers: count,
+        );
       });
     }
   }
 
   /// Load max history items setting
   Future<void> _loadMaxHistoryItems() async {
-    final count = await _preferencesService.getMaxHistoryItems();
+    final count = await _transferController.loadMaxHistoryItems();
     if (mounted) {
       setState(() {
-        _maxHistoryItems = count;
+        _state = _state.copyWith(maxHistoryItems: count);
         _maxHistoryController.text = count.toString();
       });
     }
@@ -178,10 +179,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Load max clipboard size setting
   Future<void> _loadMaxClipboardSize() async {
-    final sizeMB = await _preferencesService.getMaxClipboardSize();
+    final sizeMB = await _transferController.loadMaxClipboardSize();
     if (mounted) {
       setState(() {
-        _maxClipboardSizeMB = sizeMB;
+        _state = _state.copyWith(maxClipboardSizeMB: sizeMB);
         _maxClipboardSizeController.text = sizeMB.toString();
       });
     }
@@ -189,35 +190,62 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Load IP validation enabled state
   Future<void> _loadIPValidationEnabled() async {
-    final enabled = await _preferencesService.getIPValidationEnabled();
+    final enabled = await _transferController.loadIPValidationEnabled();
     if (mounted) {
       setState(() {
-        _enableIPValidation = enabled;
+        _state = _state.copyWith(enableIPValidation: enabled);
       });
     }
   }
 
-  /// Save IP validation enabled state
-  Future<void> _saveIPValidationEnabled(bool enabled) async {
-    final success = await _preferencesService.saveIPValidationEnabled(enabled);
+  // ========== Device Info Actions ==========
+
+  /// Save device name
+  Future<void> _saveDeviceName() async {
+    final newName = _deviceNameController.text.trim();
+    if (newName.isEmpty) {
+      _showErrorSnackBar('设备名不能为空');
+      return;
+    }
+
+    final success = await _deviceController.saveDeviceName(newName);
     if (success) {
       setState(() {
-        _enableIPValidation = enabled;
+        _state = _state.copyWith(deviceName: newName, isEditingName: false);
       });
-      _showSuccessSnackBar(enabled ? 'IP地址校验已启用' : 'IP地址校验已禁用');
+      _showSuccessSnackBar('设备名已保存');
     } else {
       _showErrorSnackBar('保存失败');
     }
   }
 
+  /// Reset device name to model
+  Future<void> _resetDeviceName() async {
+    final confirmed = await DialogHelper.showConfirmDialog(
+      context,
+      title: '重置设备名',
+      message: '确定要将设备名重置为 "${_state.deviceModel}" 吗？',
+      confirmText: '重置',
+      icon: Icons.refresh,
+      iconColor: Colors.orange,
+    );
+
+    if (confirmed) {
+      _deviceNameController.text = _state.deviceModel;
+      await _saveDeviceName();
+    }
+  }
+
+  // ========== Transfer Settings Actions ==========
+
   /// Show confirmation dialog for concurrent transfers change
   Future<void> _confirmAndSaveConcurrentTransfers(int newCount) async {
     // If value hasn't changed, no need to confirm
-    if (newCount == _concurrentTransfers) {
+    if (newCount == _state.concurrentTransfers) {
       return;
     }
 
-    final additionalInfo = newCount > _concurrentTransfers
+    final additionalInfo = newCount > _state.concurrentTransfers
         ? '增加并发数可能会提高传输速度，但也会增加设备负载'
         : '降低并发数可以减少设备负载，但可能会降低传输速度';
 
@@ -225,7 +253,7 @@ class _SettingsPageState extends State<SettingsPage> {
       context,
       title: '确认修改',
       message:
-          '确定要将并发传输数量从 $_concurrentTransfers 修改为 $newCount 吗？\n\n提示：$additionalInfo',
+          '确定要将并发传输数量从 ${_state.concurrentTransfers} 修改为 $newCount 吗？\n\n提示：$additionalInfo',
       confirmText: '确认修改',
       icon: Icons.settings_suggest,
       iconColor: const Color(0xFF2196F3),
@@ -237,7 +265,9 @@ class _SettingsPageState extends State<SettingsPage> {
       // User cancelled, revert to previous value
       if (mounted) {
         setState(() {
-          _tempConcurrentTransfers = _concurrentTransfers;
+          _state = _state.copyWith(
+            tempConcurrentTransfers: _state.concurrentTransfers,
+          );
         });
       }
     }
@@ -245,10 +275,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save concurrent transfers setting
   Future<void> _saveConcurrentTransfers(int count) async {
-    final success = await _preferencesService.saveConcurrentTransfers(count);
+    final success = await _transferController.saveConcurrentTransfers(count);
     if (success) {
       setState(() {
-        _concurrentTransfers = count;
+        _state = _state.copyWith(concurrentTransfers: count);
       });
       _showSuccessSnackBar('并发传输数量已保存');
     } else {
@@ -276,19 +306,19 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     // If value hasn't changed, no need to confirm
-    if (newCount == _maxHistoryItems) {
+    if (newCount == _state.maxHistoryItems) {
       setState(() {
-        _isEditingMaxHistory = false;
+        _state = _state.copyWith(isEditingMaxHistory: false);
       });
       return;
     }
 
     // Get current history count
-    final history = await _historyService.loadHistory();
-    final currentCount = history.length;
+    final currentCount = await _transferController.getCurrentHistoryCount();
 
     // Build confirmation message
-    String message = '确定要将最大历史记录数从 $_maxHistoryItems 修改为 $newCount 吗？\n\n';
+    String message =
+        '确定要将最大历史记录数从 ${_state.maxHistoryItems} 修改为 $newCount 吗？\n\n';
     message += '当前历史记录数: $currentCount 条\n\n';
 
     if (currentCount > newCount) {
@@ -316,8 +346,8 @@ class _SettingsPageState extends State<SettingsPage> {
       // User cancelled, revert to previous value
       if (mounted) {
         setState(() {
-          _maxHistoryController.text = _maxHistoryItems.toString();
-          _isEditingMaxHistory = false;
+          _maxHistoryController.text = _state.maxHistoryItems.toString();
+          _state = _state.copyWith(isEditingMaxHistory: false);
         });
       }
     }
@@ -325,23 +355,24 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save max history items setting
   Future<void> _saveMaxHistoryItems(int newCount, int currentCount) async {
-    final success = await _preferencesService.saveMaxHistoryItems(newCount);
-    if (success) {
+    final result = await _transferController.saveMaxHistoryItems(
+      newCount,
+      currentCount,
+    );
+
+    if (result['success']) {
       setState(() {
-        _maxHistoryItems = newCount;
-        _isEditingMaxHistory = false;
+        _state = _state.copyWith(
+          maxHistoryItems: newCount,
+          isEditingMaxHistory: false,
+        );
       });
 
-      // If current count exceeds new limit, trim the history
-      if (currentCount > newCount) {
-        final deletedCount = await _historyService.trimHistory(newCount);
-        if (deletedCount > 0) {
-          _showSuccessSnackBar('设置已保存，已删除 $deletedCount 条旧记录');
-          // Trigger history refresh
-          widget.serverManager.refreshHistory();
-        } else {
-          _showSuccessSnackBar('最大历史记录数已保存');
-        }
+      final deletedCount = result['deletedCount'] as int;
+      if (deletedCount > 0) {
+        _showSuccessSnackBar('设置已保存，已删除 $deletedCount 条旧记录');
+        // Trigger history refresh
+        widget.serverManager.refreshHistory();
       } else {
         _showSuccessSnackBar('最大历史记录数已保存');
       }
@@ -373,18 +404,18 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     // If value hasn't changed, no need to confirm
-    if (newSize == _maxClipboardSizeMB) {
+    if (newSize == _state.maxClipboardSizeMB) {
       setState(() {
-        _isEditingMaxClipboardSize = false;
+        _state = _state.copyWith(isEditingMaxClipboardSize: false);
       });
       return;
     }
 
     // Build confirmation message
     String message =
-        '确定要将最大剪切板大小从 $_maxClipboardSizeMB MB 修改为 $newSize MB 吗？\n\n';
+        '确定要将最大剪切板大小从 ${_state.maxClipboardSizeMB} MB 修改为 $newSize MB 吗？\n\n';
 
-    if (newSize < _maxClipboardSizeMB) {
+    if (newSize < _state.maxClipboardSizeMB) {
       message += '⚠️ 提示：降低限制后，超过 $newSize MB 的剪切板内容将无法同步，建议使用文件传输功能。';
     } else {
       message += '提示：增加限制后，可以同步更大的剪切板内容，但可能会影响传输速度。';
@@ -407,8 +438,9 @@ class _SettingsPageState extends State<SettingsPage> {
       // User cancelled, revert to previous value
       if (mounted) {
         setState(() {
-          _maxClipboardSizeController.text = _maxClipboardSizeMB.toString();
-          _isEditingMaxClipboardSize = false;
+          _maxClipboardSizeController.text = _state.maxClipboardSizeMB
+              .toString();
+          _state = _state.copyWith(isEditingMaxClipboardSize: false);
         });
       }
     }
@@ -416,11 +448,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save max clipboard size setting
   Future<void> _saveMaxClipboardSize(int newSize) async {
-    final success = await _preferencesService.saveMaxClipboardSize(newSize);
+    final success = await _transferController.saveMaxClipboardSize(newSize);
     if (success) {
       setState(() {
-        _maxClipboardSizeMB = newSize;
-        _isEditingMaxClipboardSize = false;
+        _state = _state.copyWith(
+          maxClipboardSizeMB: newSize,
+          isEditingMaxClipboardSize: false,
+        );
       });
       _showSuccessSnackBar('最大剪切板大小已保存');
     } else {
@@ -428,78 +462,44 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// Save device name
-  Future<void> _saveDeviceName() async {
-    final newName = _deviceNameController.text.trim();
-    if (newName.isEmpty) {
-      _showErrorSnackBar('设备名不能为空');
-      return;
-    }
-
-    final success = await _preferencesService.saveDeviceName(newName);
+  /// Save IP validation enabled state
+  Future<void> _saveIPValidationEnabled(bool enabled) async {
+    final success = await _transferController.saveIPValidationEnabled(enabled);
     if (success) {
       setState(() {
-        _deviceName = newName;
-        _isEditingName = false;
+        _state = _state.copyWith(enableIPValidation: enabled);
       });
-      _showSuccessSnackBar('设备名已保存');
+      _showSuccessSnackBar(enabled ? 'IP地址校验已启用' : 'IP地址校验已禁用');
     } else {
       _showErrorSnackBar('保存失败');
     }
   }
 
-  /// Reset device name to model
-  Future<void> _resetDeviceName() async {
-    final confirmed = await DialogHelper.showConfirmDialog(
-      context,
-      title: '重置设备名',
-      message: '确定要将设备名重置为 "$_deviceModel" 吗？',
-      confirmText: '重置',
-      icon: Icons.refresh,
-      iconColor: Colors.orange,
-    );
-
-    if (confirmed) {
-      _deviceNameController.text = _deviceModel;
-      await _saveDeviceName();
-    }
-  }
-
-  /// Copy text to clipboard
-  Future<void> _copyToClipboard(String text, String label) async {
-    await Clipboard.setData(ClipboardData(text: text));
-    _showSuccessSnackBar('$label已复制: $text');
-  }
-
-  /// Show success snackbar
-  void _showSuccessSnackBar(String message) {
-    if (mounted) {
-      ToastHelper.showSuccess(context, message);
-    }
-  }
-
-  /// Show error snackbar
-  void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ToastHelper.showError(context, message);
-    }
-  }
+  // ========== Developer Mode Actions ==========
 
   /// Handle version tap for developer mode
   void _handleVersionTap() {
     final now = DateTime.now();
 
     // Reset counter if more than 2 seconds since last tap
-    if (_lastVersionTapTime != null &&
-        now.difference(_lastVersionTapTime!).inSeconds > 2) {
-      _versionTapCount = 0;
+    if (_state.lastVersionTapTime != null &&
+        now.difference(_state.lastVersionTapTime!).inSeconds > 2) {
+      setState(() {
+        _state = _state.copyWith(versionTapCount: 0);
+      });
     }
 
-    _lastVersionTapTime = now;
-    _versionTapCount++;
+    setState(() {
+      _state = _state.copyWith(
+        lastVersionTapTime: now,
+        versionTapCount: _state.versionTapCount + 1,
+      );
+    });
 
-    if (_versionTapCount >= 5) {
-      _versionTapCount = 0;
+    if (_state.versionTapCount >= 5) {
+      setState(() {
+        _state = _state.copyWith(versionTapCount: 0);
+      });
       _showDeveloperInfo();
     }
   }
@@ -511,43 +511,14 @@ class _SettingsPageState extends State<SettingsPage> {
     DialogHelper.showLoadingDialog(context, message: '正在加载开发信息...');
 
     try {
-      // Get paths
-      final downloadDir = await PlatformUtil.getDownloadsDirectory();
+      // Get developer info
+      final devInfo = await _developerController.getDeveloperInfo();
       final logPath = await PlatformUtil.getLoggerFilePath();
-      final historyPath = await PlatformUtil.getHistoryFilePath();
 
       if (!mounted) return;
 
       // Close loading dialog
       Navigator.of(context).pop();
-
-      // Build developer info report
-      String separator = AppConstants.diagInfoSeparator;
-      final buffer = StringBuffer();
-      buffer.writeln(separator * 3);
-      buffer.writeln('开发信息');
-      buffer.writeln(separator * 3);
-      buffer.writeln();
-
-      buffer.writeln('【下载文件路径】');
-      if (downloadDir != null) {
-        buffer.writeln(downloadDir.path);
-      } else {
-        buffer.writeln('无法获取下载路径');
-      }
-      buffer.writeln();
-
-      buffer.writeln('【日志文件路径】');
-      buffer.writeln(logPath);
-      buffer.writeln();
-
-      buffer.writeln('【历史文件路径】');
-      buffer.writeln(historyPath);
-      buffer.writeln();
-
-      buffer.writeln(separator * 3);
-
-      final devInfo = buffer.toString();
 
       // Show developer info dialog
       await DialogHelper.showCustomDialog(
@@ -607,83 +578,55 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  /// Copy log content (last 50 lines)
-  /// Efficiently reads from the end of the file without loading the entire file
+  /// Copy log content
   Future<void> _copyLogContent(String logPath) async {
-    try {
-      final logFile = File(logPath);
+    final result = await _developerController.copyLogContent(logPath);
 
-      if (!await logFile.exists()) {
-        if (mounted) {
-          ToastHelper.showError(context, '日志文件不存在');
-        }
-        return;
-      }
+    if (!mounted) return;
 
-      // Get file size
-      final fileSize = await logFile.length();
-
-      if (fileSize == 0) {
-        if (mounted) {
-          ToastHelper.showWarning(context, '日志文件为空');
-        }
-        return;
-      }
-
-      // Read from the end of file
-      // Estimate: average line length ~100 bytes, so read last 8KB to ensure we get 50+ lines
-      final bytesToRead = fileSize < 8192 ? fileSize : 8192;
-      final startPosition = fileSize - bytesToRead;
-
-      final randomAccessFile = await logFile.open(mode: FileMode.read);
-      await randomAccessFile.setPosition(startPosition);
-      final bytes = await randomAccessFile.read(bytesToRead);
-      await randomAccessFile.close();
-
-      // Decode bytes to string
-      final content = utf8.decode(bytes, allowMalformed: true);
-      final lines = content.split('\n');
-
-      // Remove first incomplete line if we didn't start from beginning
-      if (startPosition > 0 && lines.isNotEmpty) {
-        lines.removeAt(0);
-      }
-
-      // Remove last empty line if exists
-      if (lines.isNotEmpty && lines.last.trim().isEmpty) {
-        lines.removeLast();
-      }
-
-      if (lines.isEmpty) {
-        if (mounted) {
-          ToastHelper.showWarning(context, '日志文件为空');
-        }
-        return;
-      }
-
-      // Get last 50 lines (or all lines if less than 50)
-      final linesToCopy = lines.length > AppConstants.maxReadLogLines
-          ? lines.sublist(lines.length - AppConstants.maxReadLogLines)
-          : lines;
-
-      final logContent = linesToCopy.join('\n');
-      await Clipboard.setData(ClipboardData(text: logContent));
-
-      if (mounted) {
-        ToastHelper.showSuccess(context, '已复制最后${linesToCopy.length}行日志到剪贴板');
-      }
-    } catch (e) {
-      if (mounted) {
-        ToastHelper.showError(context, '读取日志文件失败: $e');
+    if (result['success']) {
+      await Clipboard.setData(ClipboardData(text: result['content']));
+      if (!mounted) return;
+      ToastHelper.showSuccess(context, '已复制最后${result['lineCount']}行日志到剪贴板');
+    } else {
+      final message = result['message'] as String;
+      if (message == '日志文件为空') {
+        ToastHelper.showWarning(context, message);
+      } else {
+        ToastHelper.showError(context, message);
       }
     }
   }
+
+  // ========== Helper Methods ==========
+
+  /// Copy text to clipboard
+  Future<void> _copyToClipboard(String text, String label) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    _showSuccessSnackBar('$label已复制: $text');
+  }
+
+  /// Show success snackbar
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ToastHelper.showSuccess(context, message);
+    }
+  }
+
+  /// Show error snackbar
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ToastHelper.showError(context, message);
+    }
+  }
+
+  // ========== Build Methods ==========
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('设置')),
-      body: _isLoading
+      body: _state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               child: Padding(
@@ -691,1051 +634,95 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildDeviceInfoCard(),
-                    const SizedBox(height: 16),
-                    _buildServerInfoCard(),
-                    const SizedBox(height: 16),
-                    _buildTransferSettingsCard(),
-                    const SizedBox(height: 16),
-                    _buildAboutCard(),
-                  ],
-                ),
-              ),
-            ),
-    );
-  }
-
-  /// Build device information card
-  Widget _buildDeviceInfoCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.phone_android,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  '设备信息',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Device Name
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '设备名',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (_isEditingName)
-                        TextField(
-                          controller: _deviceNameController,
-                          decoration: const InputDecoration(
-                            hintText: '输入设备名',
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                          ),
-                          autofocus: true,
-                        )
-                      else
-                        Text(
-                          _deviceName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF212121),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (_isEditingName) ...[
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                    onPressed: _saveDeviceName,
-                    tooltip: '保存',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                    onPressed: () {
-                      setState(() {
-                        _deviceNameController.text = _deviceName;
-                        _isEditingName = false;
-                      });
-                    },
-                    tooltip: '取消',
-                  ),
-                ] else ...[
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
-                    onPressed: () {
-                      setState(() {
-                        _isEditingName = true;
-                      });
-                    },
-                    tooltip: '编辑',
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      size: 20,
-                      color: Colors.grey[600],
-                    ),
-                    onPressed: _resetDeviceName,
-                    tooltip: '重置为设备型号',
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Device Model
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '设备型号',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _deviceModel,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF616161),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Build server information card
-  Widget _buildServerInfoCard() {
-    final isServerRunning = widget.serverManager.isRunning();
-
-    // When server is running, use Card with white background (consistent with other cards)
-    if (isServerRunning) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.wifi,
-                      color: Color(0xFF2196F3),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    '服务器信息',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              if (_serverIP != null && _serverPort != null) ...[
-                // Server IP
-                _buildInfoRow(
-                  label: '服务器 IP',
-                  value: _serverIP!,
-                  icon: Icons.computer,
-                  onCopy: () => _copyToClipboard(_serverIP!, 'IP地址'),
-                ),
-                const SizedBox(height: 16),
-
-                // Server Port
-                _buildInfoRow(
-                  label: '端口',
-                  value: _serverPort!,
-                  icon: Icons.settings_ethernet,
-                  onCopy: () => _copyToClipboard(_serverPort!, '端口'),
-                ),
-                const SizedBox(height: 16),
-
-                // Server status indicator
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2196F3),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        '服务器运行正常',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF1976D2),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    }
-
-    // When server is not running, use red background Container
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFEBEE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE53935), width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.wifi_off,
-                  color: Color(0xFFC62828),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                '服务器信息',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFC62828),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: const Color(0xFFE53935).withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '服务器未运行',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFFC62828),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build information row with copy button
-  Widget _buildInfoRow({
-    required String label,
-    required String value,
-    required IconData icon,
-    required VoidCallback onCopy,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: Colors.grey[600]),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF212121),
-                ),
-              ),
-            ],
-          ),
-        ),
-        InkWell(
-          onTap: onCopy,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.copy, size: 18, color: Color(0xFF2196F3)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build transfer settings card
-  Widget _buildTransferSettingsCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.settings_suggest,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  '传输设置',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Concurrent transfers setting
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '并发传输数量',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF212121),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '同时传输的文件数量（1-$_maxConcurrentTransfers）',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$_tempConcurrentTransfers',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SliderTheme(
-                  data: SliderThemeData(
-                    activeTrackColor: const Color(0xFF2196F3),
-                    inactiveTrackColor: Colors.grey[300],
-                    thumbColor: const Color(0xFF2196F3),
-                    overlayColor: const Color(
-                      0xFF2196F3,
-                    ).withValues(alpha: 0.2),
-                    trackHeight: 4,
-                  ),
-                  child: Slider(
-                    value: _tempConcurrentTransfers.toDouble(),
-                    min: 1,
-                    max: _maxConcurrentTransfers.toDouble(),
-                    divisions: 9,
-                    label: '$_tempConcurrentTransfers',
-                    onChanged: (value) {
-                      setState(() {
-                        _tempConcurrentTransfers = value.toInt();
-                      });
-                    },
-                    onChangeEnd: (value) {
-                      _confirmAndSaveConcurrentTransfers(value.toInt());
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Color(0xFF1976D2),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '较高的并发数可以更好地利用带宽，但可能增加设备负载',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Max history items setting
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '最大历史记录数',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF212121),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '保存的最大传输记录数量（$_allowMinHisCount-$_allowMaxHisCount}）',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          if (_isEditingMaxHistory)
-                            TextField(
-                              controller: _maxHistoryController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                hintText:
-                                    '输入数量 ($_allowMinHisCount-$_allowMaxHisCount)',
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              autofocus: true,
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF2196F3,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: const Color(0xFF2196F3),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.history,
-                                    size: 20,
-                                    color: Color(0xFF2196F3),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$_maxHistoryItems 条',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2196F3),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_isEditingMaxHistory) ...[
-                      IconButton(
-                        icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                        onPressed: _confirmAndSaveMaxHistoryItems,
-                        tooltip: '保存',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                        onPressed: () {
-                          setState(() {
-                            _maxHistoryController.text = _maxHistoryItems
-                                .toString();
-                            _isEditingMaxHistory = false;
-                          });
-                        },
-                        tooltip: '取消',
-                      ),
-                    ] else ...[
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit,
-                          size: 20,
-                          color: Colors.grey[600],
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isEditingMaxHistory = true;
-                          });
-                        },
-                        tooltip: '编辑',
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Color(0xFF1976D2),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '超过设置数量的旧记录将被自动删除，只保留最新的记录',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Max clipboard size setting
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '最大剪切板大小',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF212121),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '允许同步的最大剪切板大小（${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB）',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          if (_isEditingMaxClipboardSize)
-                            TextField(
-                              controller: _maxClipboardSizeController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                hintText:
-                                    '输入大小 (${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB)',
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              autofocus: true,
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF2196F3,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: const Color(0xFF2196F3),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.content_paste,
-                                    size: 20,
-                                    color: Color(0xFF2196F3),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$_maxClipboardSizeMB MB',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF2196F3),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (_isEditingMaxClipboardSize) ...[
-                      IconButton(
-                        icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                        onPressed: _confirmAndSaveMaxClipboardSize,
-                        tooltip: '保存',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                        onPressed: () {
-                          setState(() {
-                            _maxClipboardSizeController.text =
-                                _maxClipboardSizeMB.toString();
-                            _isEditingMaxClipboardSize = false;
-                          });
-                        },
-                        tooltip: '取消',
-                      ),
-                    ] else ...[
-                      IconButton(
-                        icon: Icon(
-                          Icons.edit,
-                          size: 20,
-                          color: Colors.grey[600],
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isEditingMaxClipboardSize = true;
-                          });
-                        },
-                        tooltip: '编辑',
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.info_outline,
-                        size: 16,
-                        color: Color(0xFF1976D2),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '超过此大小的剪切板内容将无法同步，建议使用文件传输功能',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // IP validation toggle
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'IP地址校验',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF212121),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '校验目标设备IP是否在同一网段',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _enableIPValidation,
-                      onChanged: (value) {
-                        _saveIPValidationEnabled(value);
+                    DeviceInfoCard(
+                      deviceName: _state.deviceName,
+                      deviceModel: _state.deviceModel,
+                      isEditingName: _state.isEditingName,
+                      deviceNameController: _deviceNameController,
+                      onEditPressed: () {
+                        setState(() {
+                          _state = _state.copyWith(isEditingName: true);
+                        });
                       },
-                      activeTrackColor: const Color(0xFF2196F3),
+                      onSavePressed: _saveDeviceName,
+                      onCancelPressed: () {
+                        setState(() {
+                          _deviceNameController.text = _state.deviceName;
+                          _state = _state.copyWith(isEditingName: false);
+                        });
+                      },
+                      onResetPressed: _resetDeviceName,
                     ),
+                    const SizedBox(height: 16),
+                    ServerInfoCard(
+                      isServerRunning: widget.serverManager.isRunning(),
+                      serverIP: _state.serverIP,
+                      serverPort: _state.serverPort,
+                      onCopy: _copyToClipboard,
+                    ),
+                    const SizedBox(height: 16),
+                    TransferSettingsCard(
+                      concurrentTransfers: _state.concurrentTransfers,
+                      tempConcurrentTransfers: _state.tempConcurrentTransfers,
+                      maxConcurrentTransfers: _maxConcurrentTransfers,
+                      onConcurrentTransfersChanged: (value) {
+                        setState(() {
+                          _state = _state.copyWith(
+                            tempConcurrentTransfers: value,
+                          );
+                        });
+                      },
+                      onConcurrentTransfersChangeEnd:
+                          _confirmAndSaveConcurrentTransfers,
+                      maxHistoryItems: _state.maxHistoryItems,
+                      isEditingMaxHistory: _state.isEditingMaxHistory,
+                      allowMaxHisCount: _allowMaxHisCount,
+                      allowMinHisCount: _allowMinHisCount,
+                      maxHistoryController: _maxHistoryController,
+                      onEditMaxHistory: () {
+                        setState(() {
+                          _state = _state.copyWith(isEditingMaxHistory: true);
+                        });
+                      },
+                      onSaveMaxHistory: _confirmAndSaveMaxHistoryItems,
+                      onCancelMaxHistory: () {
+                        setState(() {
+                          _maxHistoryController.text = _state.maxHistoryItems
+                              .toString();
+                          _state = _state.copyWith(isEditingMaxHistory: false);
+                        });
+                      },
+                      maxClipboardSizeMB: _state.maxClipboardSizeMB,
+                      isEditingMaxClipboardSize:
+                          _state.isEditingMaxClipboardSize,
+                      maxClipboardSizeController: _maxClipboardSizeController,
+                      onEditMaxClipboardSize: () {
+                        setState(() {
+                          _state = _state.copyWith(
+                            isEditingMaxClipboardSize: true,
+                          );
+                        });
+                      },
+                      onSaveMaxClipboardSize: _confirmAndSaveMaxClipboardSize,
+                      onCancelMaxClipboardSize: () {
+                        setState(() {
+                          _maxClipboardSizeController.text = _state
+                              .maxClipboardSizeMB
+                              .toString();
+                          _state = _state.copyWith(
+                            isEditingMaxClipboardSize: false,
+                          );
+                        });
+                      },
+                      enableIPValidation: _state.enableIPValidation,
+                      onIPValidationChanged: _saveIPValidationEnabled,
+                    ),
+                    const SizedBox(height: 16),
+                    AboutCard(onVersionTap: _handleVersionTap),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _enableIPValidation
-                        ? const Color(0xFF2196F3).withValues(alpha: 0.1)
-                        : const Color(0xFFFFA726).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _enableIPValidation
-                            ? Icons.info_outline
-                            : Icons.warning_amber_rounded,
-                        size: 16,
-                        color: _enableIPValidation
-                            ? const Color(0xFF1976D2)
-                            : const Color(0xFFF57C00),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _enableIPValidation
-                              ? '启用后会检查目标IP是否在同一网段，可以避免连接错误的设备'
-                              : '禁用后不会检查IP网段，适用于复杂网络环境（如热点、VPN等）',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: _enableIPValidation
-                                ? Colors.grey[700]
-                                : const Color(0xFFE65100),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Build about card
-  Widget _buildAboutCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  '关于',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // App icon and info
-            Row(
-              children: [
-                // App icon
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'lib/images/icon.jpg',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // App info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppConstants.projectName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF212121),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      GestureDetector(
-                        onTap: _handleVersionTap,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.update,
-                              size: 14,
-                              color: Colors.grey[600],
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "版本: ",
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            Text(
-                              AppConstants.version,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.person_outline,
-                            size: 14,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            "作者: ",
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          Text(
-                            AppConstants.author,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '一个简单易用的局域网文件传输工具',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  height: 1.5,
-                ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

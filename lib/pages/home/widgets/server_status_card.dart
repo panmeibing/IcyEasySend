@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../utils/toast_helper.dart';
+import '../../../utils/toast_helper.dart';
 
 /// Server status indicator widget
 class ServerStatusCard extends StatelessWidget {

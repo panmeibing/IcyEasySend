@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../services/clipboard_service.dart';
-import '../../services/preferences_service.dart';
-import '../../services/transfer/health_checker.dart';
-import '../../utils/dialog_helper.dart';
-import '../../utils/log_util.dart';
-import '../../utils/network_util.dart';
-import '../../utils/toast_helper.dart';
+import '../../../services/clipboard_service.dart';
+import '../../../services/preferences_service.dart';
+import '../../../services/transfer/health_checker.dart';
+import '../../../utils/dialog_helper.dart';
+import '../../../utils/log_util.dart';
+import '../../../utils/network_util.dart';
+import '../../../utils/toast_helper.dart';
 
 /// Controller for handling clipboard sync logic
 class ClipboardController {

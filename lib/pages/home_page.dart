@@ -16,13 +16,13 @@ import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
-import 'controllers/clipboard_controller.dart';
-import 'controllers/file_transfer_controller.dart';
-import 'widgets/file_selection_section.dart';
-import 'widgets/ip_input_section.dart';
-import 'widgets/port_input_section.dart';
-import 'widgets/server_status_card.dart';
-import 'widgets/transfer_progress_card.dart';
+import 'home/controllers/clipboard_controller.dart';
+import 'home/controllers/file_transfer_controller.dart';
+import 'home/widgets/file_selection_section.dart';
+import 'home/widgets/ip_input_section.dart';
+import 'home/widgets/port_input_section.dart';
+import 'home/widgets/server_status_card.dart';
+import 'home/widgets/transfer_progress_card.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {

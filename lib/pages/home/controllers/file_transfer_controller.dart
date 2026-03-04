@@ -4,13 +4,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
-import '../../services/file_transfer_service.dart';
-import '../../services/permission_service.dart';
-import '../../services/preferences_service.dart';
-import '../../services/validation_service.dart';
-import '../../utils/dialog_helper.dart';
-import '../../utils/error_messages.dart';
-import '../../utils/log_util.dart';
+import '../../../services/file_transfer_service.dart';
+import '../../../services/permission_service.dart';
+import '../../../services/preferences_service.dart';
+import '../../../services/validation_service.dart';
+import '../../../utils/dialog_helper.dart';
+import '../../../utils/error_messages.dart';
+import '../../../utils/log_util.dart';
 
 /// Controller for handling file transfer logic
 class FileTransferController {

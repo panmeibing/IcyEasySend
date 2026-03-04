@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../utils/format_util.dart';
+import '../../../utils/format_util.dart';
 
 /// Transfer progress indicator widget
 class TransferProgressCard extends StatelessWidget {
