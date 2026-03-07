@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 /// Device information card widget
 class DeviceInfoCard extends StatelessWidget {
   final String deviceName;
@@ -25,6 +27,8 @@ class DeviceInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -46,9 +50,12 @@ class DeviceInfoCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  '设备信息',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                Text(
+                  l10n.deviceNameSetting,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -63,7 +70,7 @@ class DeviceInfoCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '设备名',
+                        l10n.deviceName,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -74,9 +81,9 @@ class DeviceInfoCard extends StatelessWidget {
                       if (isEditingName)
                         TextField(
                           controller: deviceNameController,
-                          decoration: const InputDecoration(
-                            hintText: '输入设备名',
-                            contentPadding: EdgeInsets.symmetric(
+                          decoration: InputDecoration(
+                            hintText: l10n.deviceNameHint,
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 12,
                             ),
@@ -100,18 +107,18 @@ class DeviceInfoCard extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
                     onPressed: onSavePressed,
-                    tooltip: '保存',
+                    tooltip: l10n.confirm,
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Color(0xFFE53935)),
                     onPressed: onCancelPressed,
-                    tooltip: '取消',
+                    tooltip: l10n.cancel,
                   ),
                 ] else ...[
                   IconButton(
                     icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
                     onPressed: onEditPressed,
-                    tooltip: '编辑',
+                    tooltip: l10n.editDeviceName,
                   ),
                   IconButton(
                     icon: Icon(
@@ -120,7 +127,7 @@ class DeviceInfoCard extends StatelessWidget {
                       color: Colors.grey[600],
                     ),
                     onPressed: onResetPressed,
-                    tooltip: '重置为设备型号',
+                    tooltip: l10n.resetDeviceName,
                   ),
                 ],
               ],
@@ -132,7 +139,7 @@ class DeviceInfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '设备型号',
+                  l10n.deviceName,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey[600],

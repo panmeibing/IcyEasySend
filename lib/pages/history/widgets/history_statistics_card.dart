@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../services/transfer_history_service.dart';
 import '../../../utils/format_util.dart';
 
@@ -18,6 +19,7 @@ class HistoryStatisticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
@@ -50,9 +52,9 @@ class HistoryStatisticsCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        '统计信息',
-                        style: TextStyle(
+                      Text(
+                        l10n.statisticsInfo,
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -62,7 +64,7 @@ class HistoryStatisticsCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${statistics.totalTransfers} 次传输',
+                        l10n.transfersCount(statistics.totalTransfers),
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                       const SizedBox(width: 4),
@@ -86,21 +88,24 @@ class HistoryStatisticsCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _buildStatItem(
-                          '总传输',
+                          context,
+                          l10n.totalTransfers,
                           statistics.totalTransfers.toString(),
                           const Color(0xFF2196F3),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
-                          '成功',
+                          context,
+                          l10n.successfulTransfers,
                           statistics.successfulTransfers.toString(),
                           const Color(0xFF4CAF50),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
-                          '失败',
+                          context,
+                          l10n.failedTransfers,
                           statistics.failedTransfers.toString(),
                           const Color(0xFFE53935),
                         ),
@@ -112,21 +117,24 @@ class HistoryStatisticsCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _buildStatItem(
-                          '已发送',
+                          context,
+                          l10n.sentFiles,
                           statistics.sentFiles.toString(),
                           const Color(0xFFFF9800),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
-                          '已接收',
+                          context,
+                          l10n.receivedFiles,
                           statistics.receivedFiles.toString(),
                           const Color(0xFF9C27B0),
                         ),
                       ),
                       Expanded(
                         child: _buildStatItem(
-                          '总大小',
+                          context,
+                          l10n.totalSize,
                           FormatUtil.formatBytes(statistics.totalBytes),
                           const Color(0xFF009688),
                         ),
@@ -142,7 +150,12 @@ class HistoryStatisticsCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
+  Widget _buildStatItem(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     return Column(
       children: [
         Text(

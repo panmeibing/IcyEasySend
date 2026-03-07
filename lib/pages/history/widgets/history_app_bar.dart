@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 /// App bar widget for history page
 class HistoryAppBar extends StatelessWidget {
   final bool hasHistory;
@@ -13,6 +15,7 @@ class HistoryAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -24,10 +27,10 @@ class HistoryAppBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            const Center(
+            Center(
               child: Text(
-                '传输历史',
-                style: TextStyle(
+                l10n.transferHistory,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF212121),
@@ -40,7 +43,7 @@ class HistoryAppBar extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: onClearHistory,
-                  tooltip: '清除历史',
+                  tooltip: l10n.clearHistory,
                   color: const Color(0xFF757575),
                 ),
               ),

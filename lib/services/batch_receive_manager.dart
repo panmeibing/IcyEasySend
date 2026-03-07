@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/constants.dart';
 import '../utils/format_util.dart';
+import '../utils/transfer_status_provider.dart';
 
 /// Information about a file pending receive confirmation
 class PendingFileInfo {
@@ -17,7 +19,7 @@ class PendingFileInfo {
   // Progress tracking
   double progress = 0.0;
   int bytesReceived = 0;
-  String status = '等待确认...';
+  String status = ''; // Will be set based on current language
   bool isAccepted = false;
   bool isCompleted = false;
 
@@ -94,6 +96,16 @@ class BatchReceiveManager {
     final pendingFiles = _pendingFilesBySender[senderIP];
     if (pendingFiles == null || pendingFiles.isEmpty) return;
 
+    // Get localization
+    final l10n = AppLocalizations.of(context);
+
+    // Initialize status for all files if not set
+    for (final file in pendingFiles) {
+      if (file.status.isEmpty) {
+        file.status = l10n.waitingForConfirmation;
+      }
+    }
+
     // Create a global key for the dialog state
     final dialogKey = GlobalKey<_BatchReceiveDialogState>();
     _activeDialogKeys[senderIP] = dialogKey;
@@ -113,7 +125,7 @@ class BatchReceiveManager {
             for (final fileInfo in pendingFiles) {
               if (!fileInfo.completer.isCompleted) {
                 fileInfo.isAccepted = true;
-                fileInfo.status = '准备接收...';
+                fileInfo.status = l10n.preparingToReceive;
                 fileInfo.completer.complete(true);
               }
             }
@@ -123,7 +135,7 @@ class BatchReceiveManager {
             for (final fileInfo in pendingFiles) {
               if (!fileInfo.completer.isCompleted) {
                 fileInfo.isAccepted = false;
-                fileInfo.status = '已拒绝';
+                fileInfo.status = l10n.rejected;
                 fileInfo.isCompleted = true;
                 fileInfo.completer.complete(false);
               }
@@ -163,6 +175,8 @@ class BatchReceiveManager {
     int bytesReceived,
     int totalBytes,
   ) {
+    final statusProvider = TransferStatusProvider();
+
     // Find the file info
     for (final files in _pendingFilesBySender.values) {
       for (final fileInfo in files) {
@@ -170,10 +184,10 @@ class BatchReceiveManager {
           fileInfo.progress = progress;
           fileInfo.bytesReceived = bytesReceived;
           if (progress >= 1.0) {
-            fileInfo.status = '接收完成';
+            fileInfo.status = statusProvider.receiveComplete;
             fileInfo.isCompleted = true;
           } else {
-            fileInfo.status = '接收中... ${(progress * 100).toStringAsFixed(1)}%';
+            fileInfo.status = statusProvider.receivingProgress(progress);
           }
 
           // Notify the dialog to update if it's active
@@ -264,8 +278,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
         // If already accepted, auto-accept the new file
         if (_isAccepted) {
+          final l10n = AppLocalizations.of(context);
           fileInfo.isAccepted = true;
-          fileInfo.status = '准备接收...';
+          fileInfo.status = l10n.preparingToReceive;
           fileInfo.completer.complete(true);
         }
       });
@@ -363,6 +378,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _handleReject() {
+    final l10n = AppLocalizations.of(context);
+
     // Cancel all timers
     _countdownTimer?.cancel();
     _countdownTimer = null;
@@ -373,7 +390,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     for (final fileInfo in _displayedFiles) {
       if (!fileInfo.completer.isCompleted) {
         fileInfo.isAccepted = false;
-        fileInfo.status = '已拒绝';
+        fileInfo.status = l10n.rejected;
         fileInfo.isCompleted = true;
         fileInfo.completer.complete(false);
       }
@@ -396,6 +413,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final totalSize = _getTotalSize();
     final fileCount = _displayedFiles.length;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -412,7 +430,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                _isAccepted ? '正在接收 $fileCount 个文件' : '接收 $fileCount 个文件',
+                _isAccepted
+                    ? l10n.receivingFiles(fileCount)
+                    : l10n.receiveFilesCount(fileCount),
                 style: const TextStyle(fontSize: 18),
               ),
             ),
@@ -427,7 +447,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
               // Sender info
               if (widget.senderDeviceName != null) ...[
                 Text(
-                  '发送者: ${widget.senderDeviceName}',
+                  '${l10n.sender}: ${widget.senderDeviceName}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -439,21 +459,21 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                   style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                 ),
               ] else ...[
-                Text('发送者 IP: ${widget.senderIP}'),
+                Text('${l10n.sender} IP: ${widget.senderIP}'),
               ],
               const SizedBox(height: 8),
 
               // Total size
               Text(
-                '总大小: ${FormatUtil.formatBytes(totalSize)}',
+                '${l10n.totalSizeBatch}: ${FormatUtil.formatBytes(totalSize)}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
 
               // File list
-              const Text(
-                '文件列表:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                '${l10n.fileList}:',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
 
@@ -538,7 +558,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '所有文件接收完成！',
+                        l10n.allFilesReceiveComplete,
                         style: TextStyle(
                           color: Colors.green[700],
                           fontSize: 14,
@@ -562,7 +582,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '正在接收文件...',
+                        l10n.receivingFiles2,
                         style: TextStyle(color: Colors.blue[700], fontSize: 14),
                       ),
                     ],
@@ -571,7 +591,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
               ] else ...[
                 // Timeout warning (only show when not accepted)
                 Text(
-                  '是否接收这些文件？($_remainingSeconds 秒后自动拒绝)',
+                  l10n.autoRejectCountdown(_remainingSeconds),
                   style: TextStyle(
                     color: _remainingSeconds <= 10
                         ? Colors.red
@@ -586,10 +606,13 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         actions: _isAccepted
             ? null // Hide buttons when files are being received
             : <Widget>[
-                TextButton(onPressed: _handleReject, child: const Text('全部拒绝')),
+                TextButton(
+                  onPressed: _handleReject,
+                  child: Text(l10n.rejectAll),
+                ),
                 ElevatedButton(
                   onPressed: _handleAccept,
-                  child: const Text('全部接受'),
+                  child: Text(l10n.acceptAll),
                 ),
               ],
       ),

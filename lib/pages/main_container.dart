@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/http_server_manager.dart';
+import '../services/language_service.dart';
 import '../services/sharing_intent_service.dart';
 import 'history_page.dart';
 import 'home_page.dart';
@@ -10,11 +12,13 @@ import 'settings_page.dart';
 class MainContainer extends StatefulWidget {
   final HTTPServerManager serverManager;
   final SharingIntentService sharingIntentService;
+  final LanguageService languageService;
 
   const MainContainer({
     super.key,
     required this.serverManager,
     required this.sharingIntentService,
+    required this.languageService,
   });
 
   @override
@@ -50,6 +54,8 @@ class _MainContainerState extends State<MainContainer> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -60,7 +66,10 @@ class _MainContainerState extends State<MainContainer> {
             sharingIntentService: widget.sharingIntentService,
           ),
           HistoryPage(key: _historyPageKey),
-          SettingsPage(serverManager: widget.serverManager),
+          SettingsPage(
+            serverManager: widget.serverManager,
+            languageService: widget.languageService,
+          ),
         ],
       ),
       bottomNavigationBar: Container(
@@ -84,10 +93,19 @@ class _MainContainerState extends State<MainContainer> {
               _homePageKey.currentState?.reloadIPValidationSetting();
             }
           },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: '主页'),
-            BottomNavigationBarItem(icon: Icon(Icons.history), label: '历史记录'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: '设置'),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home),
+              label: l10n.navHome,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.history),
+              label: l10n.navHistory,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.settings),
+              label: l10n.navSettings,
+            ),
           ],
         ),
       ),

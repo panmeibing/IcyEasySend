@@ -59,7 +59,8 @@ class DialogHelper {
   static Future<void> showErrorDialog(
     BuildContext context, {
     required String message,
-    String title = '错误',
+    required String title,
+    required String confirmText,
   }) async {
     return showDialog<void>(
       context: context,
@@ -71,7 +72,7 @@ class DialogHelper {
             children: [
               const Icon(Icons.error_outline, color: Colors.red),
               const SizedBox(width: 12),
-              Text(title),
+              Expanded(child: Text(title)),
             ],
           ),
           content: SizedBox(
@@ -81,7 +82,7 @@ class DialogHelper {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('确定'),
+              child: Text(confirmText),
             ),
           ],
         );
@@ -93,7 +94,8 @@ class DialogHelper {
   static Future<void> showSuccessDialog(
     BuildContext context, {
     required String message,
-    String title = '成功',
+    required String title,
+    required String confirmText,
   }) async {
     return showDialog<void>(
       context: context,
@@ -105,7 +107,7 @@ class DialogHelper {
             children: [
               const Icon(Icons.check_circle_outline, color: Colors.green),
               const SizedBox(width: 12),
-              Text(title),
+              Expanded(child: Text(title)),
             ],
           ),
           content: SizedBox(
@@ -115,7 +117,7 @@ class DialogHelper {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('确定'),
+              child: Text(confirmText),
             ),
           ],
         );
@@ -127,7 +129,8 @@ class DialogHelper {
   static Future<void> showInfoDialog(
     BuildContext context, {
     required String message,
-    String title = '提示',
+    required String title,
+    required String confirmText,
   }) async {
     return showDialog<void>(
       context: context,
@@ -138,7 +141,7 @@ class DialogHelper {
             children: [
               const Icon(Icons.info_outline, color: Colors.blue),
               const SizedBox(width: 12),
-              Text(title),
+              Expanded(child: Text(title)),
             ],
           ),
           content: SizedBox(
@@ -148,7 +151,7 @@ class DialogHelper {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('确定'),
+              child: Text(confirmText),
             ),
           ],
         );

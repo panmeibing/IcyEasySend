@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../models/transfer_history.dart';
 
 /// Filter type for history records
@@ -24,25 +25,29 @@ class HistoryFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           _buildFilterChip(
-            label: '全部',
+            context,
+            label: l10n.filterAll,
             filter: HistoryFilter.all,
             count: history.length,
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
-            label: '已发送',
+            context,
+            label: l10n.filterSent,
             filter: HistoryFilter.sent,
             count: history.where((item) => !item.isReceived).length,
             icon: Icons.upload,
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
-            label: '已接收',
+            context,
+            label: l10n.filterReceived,
             filter: HistoryFilter.received,
             count: history.where((item) => item.isReceived).length,
             icon: Icons.download,
@@ -53,7 +58,8 @@ class HistoryFilterChips extends StatelessWidget {
   }
 
   /// Build a single filter chip
-  Widget _buildFilterChip({
+  Widget _buildFilterChip(
+    BuildContext context, {
     required String label,
     required HistoryFilter filter,
     required int count,

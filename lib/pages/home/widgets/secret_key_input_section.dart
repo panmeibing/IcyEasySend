@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/dialog_helper.dart';
 
 /// Secret key input section widget
@@ -19,50 +20,52 @@ class SecretKeyInputSection extends StatelessWidget {
 
   /// Show help dialog with secret key information
   void _showHelpDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     DialogHelper.showCustomDialog(
       context,
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.help_outline, color: Color(0xFF2196F3)),
-          SizedBox(width: 8),
-          Text('关于秘钥'),
+          const Icon(Icons.help_outline, color: Color(0xFF2196F3)),
+          const SizedBox(width: 8),
+          Text(l10n.aboutSecretKey),
         ],
       ),
-      content: const SingleChildScrollView(
+      content: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '秘钥功能说明',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              l10n.secretKeyFeatureTitle,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
-              '如果目标设备设置了秘钥，输入正确的秘钥后可以跳过确认框，直接传输文件或同步剪切板。',
-              style: TextStyle(fontSize: 14),
+              l10n.secretKeyFeatureDesc,
+              style: const TextStyle(fontSize: 14),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
-              '使用步骤：',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              l10n.secretKeyUsageSteps,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
-              '1. 目标设备在设置页面中设置本机秘钥\n'
-              '2. 在此输入框中输入目标设备的秘钥\n'
-              '3. 发送文件或请求剪切板时，如果秘钥正确，对方会自动接受',
-              style: TextStyle(fontSize: 14),
+              '${l10n.secretKeyUsageStep1}\n${l10n.secretKeyUsageStep2}\n${l10n.secretKeyUsageStep3}',
+              style: const TextStyle(fontSize: 14),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.security, size: 16, color: Color(0xFF2196F3)),
-                SizedBox(width: 8),
+                const Icon(Icons.security, size: 16, color: Color(0xFF2196F3)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '提示：留空则使用传统的手动确认方式',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF1976D2)),
+                    l10n.secretKeyTip,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1976D2),
+                    ),
                   ),
                 ),
               ],
@@ -73,7 +76,7 @@ class SecretKeyInputSection extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('知道了'),
+          child: Text(l10n.gotIt),
         ),
       ],
     );
@@ -81,12 +84,13 @@ class SecretKeyInputSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '目标设备秘钥（可选）',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          l10n.targetDeviceSecretKey,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -96,7 +100,7 @@ class SecretKeyInputSection extends StatelessWidget {
                 controller: controller,
                 focusNode: focusNode,
                 decoration: InputDecoration(
-                  hintText: '正确的秘钥可跳过对方确认',
+                  hintText: l10n.secretKeyHint,
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.vpn_key),
                   suffixIcon: Row(
@@ -105,7 +109,7 @@ class SecretKeyInputSection extends StatelessWidget {
                       IconButton(
                         onPressed: () => _showHelpDialog(context),
                         icon: const Icon(Icons.help_outline),
-                        tooltip: '秘钥说明',
+                        tooltip: l10n.secretKeyDescription,
                         iconSize: 20,
                         color: Colors.grey[600],
                       ),
@@ -132,7 +136,7 @@ class SecretKeyInputSection extends StatelessWidget {
                   ? onClear
                   : null,
               icon: const Icon(Icons.clear),
-              tooltip: '清空秘钥',
+              tooltip: l10n.clearSecretKey,
               style: IconButton.styleFrom(
                 backgroundColor: Colors.grey.shade50,
                 foregroundColor: Colors.grey.shade700,

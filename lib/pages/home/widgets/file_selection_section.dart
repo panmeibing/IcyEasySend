@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
 
+import '../../../l10n/app_localizations.dart';
+
 /// File selection section widget
 class FileSelectionSection extends StatelessWidget {
   final List<File> selectedFiles;
@@ -22,23 +24,24 @@ class FileSelectionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '选择文件',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          l10n.selectFiles,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         ElevatedButton.icon(
           onPressed: isEnabled ? onSelectFiles : null,
           icon: const Icon(Icons.folder_open),
-          label: const Text('选择文件'),
+          label: Text(l10n.selectFiles),
         ),
         if (selectedFiles.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            '已选择 ${selectedFiles.length} 个文件',
+            l10n.filesSelected(selectedFiles.length),
             style: const TextStyle(
               color: Colors.green,
               fontWeight: FontWeight.bold,

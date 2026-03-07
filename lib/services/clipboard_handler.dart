@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 import 'package:shelf/shelf.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/clipboard_data_model.dart';
 import '../services/clipboard_service.dart';
 import '../services/preferences_service.dart';
@@ -59,7 +60,11 @@ class ClipboardHandler {
         body = jsonDecode(bodyString) as Map<String, dynamic>;
       } catch (e) {
         LogUtil.wTag(logTag, '无效的JSON格式: $bodyString');
-        return _buildErrorResponse('无效的JSON格式');
+        final ctx = contextGetter?.call();
+        final errorMsg = ctx != null && ctx.mounted
+            ? AppLocalizations.of(ctx).invalidJsonFormat
+            : 'Invalid JSON format';
+        return _buildErrorResponse(errorMsg);
       }
 
       // 提取参数
@@ -79,7 +84,7 @@ class ClipboardHandler {
 
       if (ctx == null || !ctx.mounted) {
         LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-        return _buildErrorResponse('服务器内部错误');
+        return _buildErrorResponse('Server internal error');
       }
 
       // Check if secret key matches
@@ -96,9 +101,10 @@ class ClipboardHandler {
           // Show toast notification instead of dialog
           final currentCtx = contextGetter?.call();
           if (currentCtx != null && currentCtx.mounted) {
+            final l10n = AppLocalizations.of(currentCtx);
             ToastHelper.showSuccess(
               currentCtx,
-              '$requesterDeviceName 使用秘钥验证通过，自动分享剪切板',
+              l10n.clipboardSharedWithSecretKey(requesterDeviceName),
             );
           }
         } else {
@@ -111,6 +117,9 @@ class ClipboardHandler {
       if (skipConfirmation) {
         userAccepted = true;
       } else {
+        if (!ctx.mounted) {
+          return _buildRejectedResponse();
+        }
         userAccepted = await _showClipboardRequestDialog(
           ctx,
           requesterDeviceName,
@@ -218,12 +227,17 @@ class ClipboardHandler {
 
   /// 构建成功响应
   Response _buildSuccessResponse(ClipboardDataModel data) {
+    final ctx = contextGetter?.call();
+    final message = ctx != null && ctx.mounted
+        ? AppLocalizations.of(ctx).clipboardContentSuccess
+        : 'Successfully retrieved clipboard content';
+
     return Response(
       200,
       body: jsonEncode({
         'accepted': true,
         'clipboardData': data.toJson(),
-        'message': '成功获取剪切板内容',
+        'message': message,
       }),
       headers: {'Content-Type': 'application/json'},
     );
@@ -231,30 +245,46 @@ class ClipboardHandler {
 
   /// 构建拒绝响应
   Response _buildRejectedResponse() {
+    final ctx = contextGetter?.call();
+    final message = ctx != null && ctx.mounted
+        ? AppLocalizations.of(ctx).clipboardRequestRejected
+        : 'User rejected clipboard request';
+
     return Response(
       200,
-      body: jsonEncode({'accepted': false, 'message': '用户拒绝了剪切板请求'}),
+      body: jsonEncode({'accepted': false, 'message': message}),
       headers: {'Content-Type': 'application/json'},
     );
   }
 
   /// 构建剪切板为空的响应
   Response _buildEmptyClipboardResponse() {
+    final ctx = contextGetter?.call();
+    final message = ctx != null && ctx.mounted
+        ? AppLocalizations.of(ctx).clipboardEmpty
+        : 'Clipboard is empty';
+
     return Response(
       200,
-      body: jsonEncode({'accepted': false, 'message': '剪切板为空'}),
+      body: jsonEncode({'accepted': false, 'message': message}),
       headers: {'Content-Type': 'application/json'},
     );
   }
 
   /// 构建内容过大的响应
   Response _buildContentTooLargeResponse(double actualSizeMB, int maxSizeMB) {
+    final ctx = contextGetter?.call();
+    final message = ctx != null && ctx.mounted
+        ? AppLocalizations.of(
+            ctx,
+          ).clipboardContentTooLarge(actualSizeMB, maxSizeMB)
+        : 'Clipboard content too large (${actualSizeMB.toStringAsFixed(2)} MB), exceeds recipient device limit ($maxSizeMB MB). Please use file transfer instead.';
+
     return Response(
       413, // Payload Too Large
       body: jsonEncode({
         'accepted': false,
-        'message':
-            '剪切板内容过大 (${actualSizeMB.toStringAsFixed(2)} MB)，超过对方设备的限制 ($maxSizeMB MB)。建议使用文件传输功能。',
+        'message': message,
         'actualSizeMB': actualSizeMB,
         'maxSizeMB': maxSizeMB,
       }),
@@ -326,13 +356,14 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final l10n = AppLocalizations.of(context);
 
     return AlertDialog(
       title: Row(
         children: [
           Icon(Icons.content_paste, color: Colors.blue[700]),
           const SizedBox(width: 12),
-          const Expanded(child: Text('剪切板请求')),
+          Expanded(child: Text(l10n.clipboardRequest)),
         ],
       ),
       content: SizedBox(
@@ -342,12 +373,12 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '设备 "${widget.requesterDeviceName}" 请求获取您的剪切板内容',
+              l10n.clipboardRequestFrom(widget.requesterDeviceName),
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 16),
             Text(
-              '是否允许？',
+              l10n.allowClipboardRequest,
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
@@ -360,21 +391,21 @@ class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              '$_countdown 秒后自动拒绝',
+              l10n.autoRejectIn(_countdown),
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: widget.onReject, child: const Text('拒绝')),
+        TextButton(onPressed: widget.onReject, child: Text(l10n.reject)),
         ElevatedButton(
           onPressed: widget.onAccept,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.blue[700],
             foregroundColor: Colors.white,
           ),
-          child: const Text('允许'),
+          child: Text(l10n.allow),
         ),
       ],
     );

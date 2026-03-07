@@ -11,6 +11,7 @@ import '../../utils/http_helper.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
 import '../../utils/operation_result.dart';
+import '../../utils/transfer_status_provider.dart';
 import '../preferences_service.dart';
 import '../validation_service.dart';
 import 'file_sender.dart' as sender;
@@ -26,6 +27,7 @@ class BatchTransferManager {
   final PreferencesService _preferencesService;
   final TransferRequestBuilder _requestBuilder;
   final TransferHistoryManager _historyManager;
+  final TransferStatusProvider _statusProvider;
 
   final String logTag = LogTags.transfer;
 
@@ -36,12 +38,14 @@ class BatchTransferManager {
     PreferencesService? preferencesService,
     TransferRequestBuilder? requestBuilder,
     TransferHistoryManager? historyManager,
+    TransferStatusProvider? statusProvider,
   }) : _healthChecker = healthChecker ?? HealthChecker(),
        _fileSender = fileSender ?? sender.FileSender(),
        _validationService = validationService ?? ValidationService(),
        _preferencesService = preferencesService ?? PreferencesService(),
        _requestBuilder = requestBuilder ?? TransferRequestBuilder(),
-       _historyManager = historyManager ?? TransferHistoryManager();
+       _historyManager = historyManager ?? TransferHistoryManager(),
+       _statusProvider = statusProvider ?? TransferStatusProvider();
 
   /// Send multiple files with batch confirmation
   Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
@@ -68,20 +72,20 @@ class BatchTransferManager {
 
     try {
       // Step 1: Health check
-      onStatusChange?.call('正在检查目标设备...');
+      onStatusChange?.call(_statusProvider.checkingTargetDevice);
       final healthResult = await _healthChecker.checkHealth(targetIP);
       if (!healthResult.isSuccess) {
         for (final file in files) {
           final fileName = path.basename(file.path);
           results[fileName] = OperationResult.failure(
-            '目标设备不可用\n错误: ${healthResult.errorMessage}',
+            _statusProvider.targetDeviceError(healthResult.errorMessage ?? ''),
           );
         }
         return results;
       }
 
       // Step 2: Prepare sender info
-      onStatusChange?.call('准备传输信息...');
+      onStatusChange?.call(_statusProvider.preparingTransferInfo);
       final senderIP = await NetworkUtil.getLocalIPAddress();
       String? deviceName = await _preferencesService.getDeviceName();
       if (deviceName == null || deviceName.isEmpty) {
@@ -119,7 +123,9 @@ class BatchTransferManager {
       }
 
       // Step 4: Send batch confirmation request
-      onStatusChange?.call('等待接收方确认 ${fileList.length} 个文件...');
+      onStatusChange?.call(
+        _statusProvider.waitingForReceiverConfirmFiles(fileList.length),
+      );
 
       final confirmUrl = _requestBuilder.buildBatchConfirmationUrl(targetIP);
       final confirmBody = jsonEncode({
@@ -167,7 +173,9 @@ class BatchTransferManager {
       if (!HttpHelper.isSuccessResponse(confirmResponse)) {
         final errorMsg = HttpHelper.extractErrorMessage(
           confirmResponse,
-          '接收方拒绝接收\n状态码: ${confirmResponse.statusCode}',
+          _statusProvider.receiverRejectedWithStatus(
+            confirmResponse.statusCode,
+          ),
         );
         LogUtil.eTag(logTag, errorMsg);
 
@@ -195,7 +203,9 @@ class BatchTransferManager {
       final confirmData = parseResult.data!;
 
       if (confirmData['accepted'] != true) {
-        final errorMsg = confirmData['message'] as String? ?? '接收方拒绝接收';
+        final errorMsg =
+            confirmData['message'] as String? ??
+            _statusProvider.receiverRejected;
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = OperationResult.failure(
             errorMsg,
@@ -303,11 +313,11 @@ class BatchTransferManager {
 
       final transferId = transferIds[fileName];
       if (transferId == null) {
-        return OperationResult.failure('未找到传输ID');
+        return OperationResult.failure(_statusProvider.transferIdNotFound);
       }
 
       onStatusChange?.call(
-        '正在传输文件 ${fileIndex + 1}/${files.length}: $fileName',
+        _statusProvider.transferringFile(fileIndex + 1, files.length, fileName),
       );
 
       final result = await _fileSender.sendFileWithTransferId(

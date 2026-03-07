@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../services/clipboard_service.dart';
 import '../../../services/preferences_service.dart';
 import '../../../services/transfer/health_checker.dart';
@@ -42,9 +43,13 @@ class ClipboardController {
     required VoidCallback onError,
   }) async {
     try {
+      final l10n = AppLocalizations.of(context);
       // Show loading dialog
       if (context.mounted) {
-        DialogHelper.showLoadingDialog(context, message: '正在检查目标设备...');
+        DialogHelper.showLoadingDialog(
+          context,
+          message: l10n.checkingTargetDevice,
+        );
       }
 
       // Step 1: Health check
@@ -64,8 +69,9 @@ class ClipboardController {
         if (context.mounted) {
           await DialogHelper.showErrorDialog(
             context,
-            message: '目标设备不可用\n错误: ${healthResult.errorMessage}',
-            title: '连接失败',
+            message: l10n.targetDeviceError(healthResult.errorMessage ?? ''),
+            title: l10n.connectionFailed,
+            confirmText: l10n.confirm,
           );
         }
         onError();
@@ -77,7 +83,10 @@ class ClipboardController {
       // Update loading message
       if (context.mounted) {
         Navigator.of(context).pop();
-        DialogHelper.showLoadingDialog(context, message: '正在请求剪切板...');
+        DialogHelper.showLoadingDialog(
+          context,
+          message: l10n.requestingClipboard,
+        );
       }
 
       // Step 2: Get device name for the request
@@ -100,14 +109,14 @@ class ClipboardController {
         if (context.mounted) {
           // Get clipboard data type
           final data = result.data;
-          String successMessage = '剪切板同步成功';
+          String successMessage = l10n.clipboardSyncSuccess;
 
           // Show different message based on type
           if (data != null) {
             if (data.type.name == 'text') {
-              successMessage = '文本剪切板同步成功';
+              successMessage = l10n.textClipboardSyncSuccess;
             } else if (data.type.name == 'file') {
-              successMessage = '文件剪切板同步成功\n可在应用或文件管理器中粘贴';
+              successMessage = l10n.fileClipboardSyncSuccess;
             }
           }
 
@@ -122,8 +131,9 @@ class ClipboardController {
         if (context.mounted) {
           await DialogHelper.showErrorDialog(
             context,
-            message: result.errorMessage ?? '剪切板同步失败',
-            title: '同步失败',
+            message: result.errorMessage ?? l10n.clipboardSyncFailed,
+            title: l10n.syncFailed,
+            confirmText: l10n.confirm,
           );
         }
         onError();
@@ -133,10 +143,12 @@ class ClipboardController {
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pop();
 
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: '请求剪切板时发生错误: $e',
-          title: '错误',
+          message: l10n.clipboardRequestError(e.toString()),
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
       onError();

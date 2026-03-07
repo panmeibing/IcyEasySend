@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
 
 /// About card widget
@@ -10,6 +11,7 @@ class AboutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -31,9 +33,12 @@ class AboutCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  '关于',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                Text(
+                  l10n.about,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -91,7 +96,7 @@ class AboutCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              "版本: ",
+                              "${l10n.version}: ",
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey[600],
@@ -117,7 +122,7 @@ class AboutCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "作者: ",
+                            "${l10n.author}: ",
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[600],
@@ -148,7 +153,7 @@ class AboutCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '一个简单易用的局域网文件传输工具',
+                l10n.appDescription,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[700],

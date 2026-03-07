@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 /// Server information card widget
 class ServerInfoCard extends StatelessWidget {
   final bool isServerRunning;
@@ -17,6 +19,8 @@ class ServerInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     // When server is running, use Card with white background
     if (isServerRunning) {
       return Card(
@@ -40,9 +44,12 @@ class ServerInfoCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    '服务器信息',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  Text(
+                    l10n.network,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -51,19 +58,21 @@ class ServerInfoCard extends StatelessWidget {
               if (serverIP != null && serverPort != null) ...[
                 // Server IP
                 _buildInfoRow(
-                  label: '服务器 IP',
+                  context: context,
+                  label: l10n.ipAddress,
                   value: serverIP!,
                   icon: Icons.computer,
-                  onCopy: () => onCopy(serverIP!, 'IP地址'),
+                  onCopy: () => onCopy(serverIP!, l10n.ipAddress),
                 ),
                 const SizedBox(height: 16),
 
                 // Server Port
                 _buildInfoRow(
-                  label: '端口',
+                  context: context,
+                  label: l10n.port,
                   value: serverPort!,
                   icon: Icons.settings_ethernet,
-                  onCopy: () => onCopy(serverPort!, '端口'),
+                  onCopy: () => onCopy(serverPort!, l10n.port),
                 ),
                 const SizedBox(height: 16),
 
@@ -85,9 +94,9 @@ class ServerInfoCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
-                        '服务器运行正常',
-                        style: TextStyle(
+                      Text(
+                        l10n.serverRunning,
+                        style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF1976D2),
                           fontWeight: FontWeight.w500,
@@ -129,9 +138,9 @@ class ServerInfoCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                '服务器信息',
-                style: TextStyle(
+              Text(
+                l10n.network,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFFC62828),
@@ -149,9 +158,9 @@ class ServerInfoCard extends StatelessWidget {
                   color: const Color(0xFFE53935).withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '服务器未运行',
-                  style: TextStyle(
+                Text(
+                  l10n.serverStopped,
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Color(0xFFC62828),
                     fontWeight: FontWeight.w500,
@@ -167,6 +176,7 @@ class ServerInfoCard extends StatelessWidget {
 
   /// Build information row with copy button
   Widget _buildInfoRow({
+    required BuildContext context,
     required String label,
     required String value,
     required IconData icon,

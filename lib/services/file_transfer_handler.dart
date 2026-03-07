@@ -237,6 +237,16 @@ class FileTransferHandler {
         }
         accepted = true;
       } else {
+        // Check if context is still mounted before showing dialog
+        if (!ctx.mounted) {
+          LogUtil.wTag(logTag, 'Context已销毁，拒绝批量确认请求');
+          return Response(
+            400,
+            body: jsonEncode({'accepted': false, 'message': 'Context已销毁'}),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
+        
         // Show batch dialog with all files at once
         // When dialog closes (all files received), save histories in batch
         accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(

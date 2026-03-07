@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../models/transfer_history.dart';
 
 /// History list item widget
@@ -17,6 +18,7 @@ class HistoryListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final icon = item.isReceived ? Icons.download : Icons.upload;
     final iconColor = item.isReceived
         ? const Color(0xFF4CAF50)
@@ -56,7 +58,7 @@ class HistoryListItem extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
-            '${item.isReceived ? '来自' : '发送至'}: $peerDisplay',
+            '${item.isReceived ? l10n.from : l10n.sentTo}: $peerDisplay',
             style: TextStyle(fontSize: 12, color: Colors.grey[600]),
           ),
         ),
@@ -67,51 +69,58 @@ class HistoryListItem extends StatelessWidget {
             const SizedBox(width: 4),
             PopupMenuButton<String>(
               icon: Icon(Icons.more_vert, color: Colors.grey[600]),
-              tooltip: '更多操作',
+              tooltip: l10n.moreActions,
               onSelected: onMenuAction,
               itemBuilder: (context) => [
                 // Only show "Open File" and "Open Folder" for received files with saved path
                 if (item.isReceived &&
                     item.savedPath != null &&
                     item.success) ...[
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'open_file',
                     child: Row(
                       children: [
-                        Icon(Icons.open_in_new, size: 18),
-                        SizedBox(width: 12),
-                        Text('打开文件'),
+                        const Icon(Icons.open_in_new, size: 18),
+                        const SizedBox(width: 12),
+                        Text(l10n.openFile),
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'open_folder',
                     child: Row(
                       children: [
-                        Icon(Icons.folder_open, size: 18),
-                        SizedBox(width: 12),
-                        Text('打开所在文件夹'),
+                        const Icon(Icons.folder_open, size: 18),
+                        const SizedBox(width: 12),
+                        Text(l10n.openFolder),
                       ],
                     ),
                   ),
                 ],
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'view_details',
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline, size: 18),
-                      SizedBox(width: 12),
-                      Text('查看详情'),
+                      const Icon(Icons.info_outline, size: 18),
+                      const SizedBox(width: 12),
+                      Text(l10n.viewDetails),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('删除记录', style: TextStyle(color: Colors.red)),
+                      const Icon(
+                        Icons.delete_outline,
+                        size: 18,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        l10n.deleteRecord,
+                        style: const TextStyle(color: Colors.red),
+                      ),
                     ],
                   ),
                 ),

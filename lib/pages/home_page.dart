@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:path/path.dart' as path;
 
+import '../l10n/app_localizations.dart';
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../services/sharing_intent_service.dart';
@@ -169,7 +170,10 @@ class HomePageState extends State<HomePage> {
   void _onNetworkChanged() {
     if (mounted) {
       _updateServerStatus();
-      ToastHelper.showSuccess(context, '网络已变化，服务器地址已更新');
+      ToastHelper.showSuccess(
+        context,
+        AppLocalizations.of(context).networkChanged,
+      );
     }
   }
 
@@ -204,13 +208,13 @@ class HomePageState extends State<HomePage> {
     final portText = _portController.text.trim();
     setState(() {
       if (portText.isEmpty) {
-        _portErrorMessage = '端口不能为空';
+        _portErrorMessage = AppLocalizations.of(context).portCannotBeEmpty;
       } else {
         final port = int.tryParse(portText);
         if (port == null) {
-          _portErrorMessage = '端口必须是数字';
+          _portErrorMessage = AppLocalizations.of(context).portMustBeNumber;
         } else if (port < 1 || port > 65535) {
-          _portErrorMessage = '端口范围: 1-65535';
+          _portErrorMessage = AppLocalizations.of(context).portRange;
         } else {
           _portErrorMessage = null;
           _saveCurrentPort();
@@ -280,7 +284,10 @@ class HomePageState extends State<HomePage> {
       await _loadIPHistory();
 
       if (mounted) {
-        ToastHelper.showSuccess(context, '已删除 IP: $ip');
+        ToastHelper.showSuccess(
+          context,
+          AppLocalizations.of(context).ipDeleted(ip),
+        );
       }
     }
   }
@@ -406,7 +413,7 @@ class HomePageState extends State<HomePage> {
                             ? _requestClipboard
                             : null,
                         icon: const Icon(Icons.content_paste),
-                        label: const Text('同步对方剪切板'),
+                        label: Text(AppLocalizations.of(context).syncClipboard),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           foregroundColor: Colors.blue,
@@ -448,10 +455,12 @@ class HomePageState extends State<HomePage> {
                             : const Icon(Icons.send),
                         label: Text(
                           isSending
-                              ? '发送中...'
+                              ? AppLocalizations.of(context).sending
                               : selectedFiles.length > 1
-                              ? '发送 ${selectedFiles.length} 个文件'
-                              : '发送文件',
+                              ? AppLocalizations.of(
+                                  context,
+                                ).filesCount(selectedFiles.length)
+                              : AppLocalizations.of(context).sendFile,
                         ),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -510,7 +519,7 @@ class HomePageState extends State<HomePage> {
                         Icon(Icons.file_download, size: 64, color: Colors.blue),
                         const SizedBox(height: 16),
                         Text(
-                          '松开鼠标以添加文件',
+                          AppLocalizations.of(context).releaseToAdd,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -581,12 +590,18 @@ class HomePageState extends State<HomePage> {
     widget.sharingIntentService.clearSharedFiles();
 
     if (!isServerRunning) {
-      ToastHelper.showWarning(context, '服务器未运行，无法接收分享的文件');
+      ToastHelper.showWarning(
+        context,
+        AppLocalizations.of(context).serverNotRunning,
+      );
       return;
     }
 
     if (isSending) {
-      ToastHelper.showWarning(context, '正在发送文件，请稍后再试');
+      ToastHelper.showWarning(
+        context,
+        AppLocalizations.of(context).sendingInProgress,
+      );
       return;
     }
 
@@ -606,7 +621,10 @@ class HomePageState extends State<HomePage> {
         selectedFiles.addAll(validFiles);
       });
 
-      ToastHelper.showSuccess(context, '已添加 ${validFiles.length} 个分享的文件');
+      ToastHelper.showSuccess(
+        context,
+        AppLocalizations.of(context).filesAdded(validFiles.length),
+      );
 
       _scrollToBottom();
     }
@@ -661,18 +679,20 @@ class HomePageState extends State<HomePage> {
           setState(() {
             _fileProgress[fileIndex] = progress;
             final fileName = path.basename(selectedFiles[fileIndex].path);
+            final l10n = AppLocalizations.of(context);
 
             if (progress < 1.0) {
-              _fileStatus[fileIndex] =
-                  '传输中 ${(progress * 100).toStringAsFixed(1)}%';
+              _fileStatus[fileIndex] = l10n.transferringProgress(
+                progress * 100,
+              );
               _transferStatus =
-                  '[${fileIndex + 1}/${selectedFiles.length}] $fileName: 传输中...';
+                  '[${fileIndex + 1}/${selectedFiles.length}] $fileName: ${l10n.transferring}...';
             } else {
               if (!_completedFileIndices.contains(fileIndex)) {
                 _completedFileIndices.add(fileIndex);
                 _completedFilesCount++;
               }
-              _fileStatus[fileIndex] = '✓ 发送成功';
+              _fileStatus[fileIndex] = l10n.sendSuccess;
             }
           });
         },
@@ -692,7 +712,7 @@ class HomePageState extends State<HomePage> {
             _transferStartTime = DateTime.now();
             _transferSpeed = 0.0;
             _estimatedTimeRemaining = null;
-            _transferStatus = '准备发送...';
+            _transferStatus = AppLocalizations.of(context).preparingSend;
             _fileProgress.clear();
             _fileStatus.clear();
             _completedFileIndices.clear();
@@ -764,7 +784,10 @@ class HomePageState extends State<HomePage> {
     if (!mounted) return;
 
     // Show loading dialog (don't await it)
-    DialogHelper.showLoadingDialog(context, message: '正在运行网络诊断...');
+    DialogHelper.showLoadingDialog(
+      context,
+      message: AppLocalizations.of(context).runningDiagnostics,
+    );
 
     try {
       String? diagTargetIP;
@@ -794,21 +817,22 @@ class HomePageState extends State<HomePage> {
       }
 
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         String separator = AppConstants.diagInfoSeparator;
         final reportHeader = StringBuffer();
         reportHeader.writeln(separator * 3);
-        reportHeader.writeln('目标设备信息');
+        reportHeader.writeln(l10n.targetDeviceInfo);
         reportHeader.writeln(separator * 3);
         if (diagTargetIP != null) {
-          reportHeader.writeln('IP 地址: $diagTargetIP');
+          reportHeader.writeln('${l10n.ipAddress}: $diagTargetIP');
           reportHeader.writeln(
-            '端口: ${diagTargetPort ?? AppConstants.defaultPort}',
+            '${l10n.port}: ${diagTargetPort ?? AppConstants.defaultPort}',
           );
           reportHeader.writeln(
-            '完整地址: ${NetworkUtil.buildHttpUrl(diagTargetIP, "", targetPort: diagTargetPort ?? AppConstants.defaultPort)}',
+            '${l10n.fullAddress}: ${NetworkUtil.buildHttpUrl(diagTargetIP, "", targetPort: diagTargetPort ?? AppConstants.defaultPort)}',
           );
         } else {
-          reportHeader.writeln('未设置目标设备');
+          reportHeader.writeln(l10n.targetNotSet);
         }
         reportHeader.writeln(separator * 3);
         reportHeader.writeln();
@@ -817,11 +841,11 @@ class HomePageState extends State<HomePage> {
 
         await DialogHelper.showCustomDialog(
           context,
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.network_check, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('网络诊断报告'),
+              const Icon(Icons.network_check, color: Colors.blue),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.diagnosticsReport)),
             ],
           ),
           content: SingleChildScrollView(
@@ -834,16 +858,16 @@ class HomePageState extends State<HomePage> {
             TextButton(
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: fullReport));
-                ToastHelper.showSuccess(context, '诊断报告已复制到剪贴板');
+                ToastHelper.showSuccess(context, l10n.reportCopied);
               },
-              child: const Text('复制'),
+              child: Text(l10n.copy),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _enableFocusNodes();
               },
-              child: const Text('关闭'),
+              child: Text(l10n.close),
             ),
           ],
         );
@@ -852,7 +876,10 @@ class HomePageState extends State<HomePage> {
       if (mounted) {
         Navigator.of(context).pop();
         _enableFocusNodes();
-        ToastHelper.showError(context, '运行诊断时出错: $e');
+        ToastHelper.showError(
+          context,
+          '${AppLocalizations.of(context).error}: $e',
+        );
       }
     }
   }

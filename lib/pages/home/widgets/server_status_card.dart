@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/toast_helper.dart';
 
 /// Server status indicator widget
@@ -16,6 +17,7 @@ class ServerStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // Parse IP and port from serverAddress
     String? ip;
     String? port;
@@ -58,7 +60,7 @@ class ServerStatusCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Text(
-                isServerRunning ? '服务器运行中' : '服务器已停止',
+                isServerRunning ? l10n.serverRunning : l10n.serverStopped,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -78,7 +80,7 @@ class ServerStatusCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '本机IP',
+                        l10n.localIP,
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[600],
@@ -126,7 +128,7 @@ class ServerStatusCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '端口',
+                      l10n.port,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -157,7 +159,10 @@ class ServerStatusCard extends StatelessWidget {
     await Clipboard.setData(ClipboardData(text: text));
 
     if (context.mounted) {
-      ToastHelper.showSuccess(context, 'IP地址已复制: $text');
+      ToastHelper.showSuccess(
+        context,
+        AppLocalizations.of(context).ipCopied(text),
+      );
     }
   }
 }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
+import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
 import 'services/http_server_manager.dart';
+import 'services/language_service.dart';
 import 'services/permission_service.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
-import 'utils/error_messages.dart';
 import 'utils/log_util.dart';
 import 'utils/toast_helper.dart';
 
@@ -37,6 +39,7 @@ class _MyAppState extends State<MyApp> {
   late final HTTPServerManager _serverManager;
   late final PermissionService _permissionService;
   late final SharingIntentService _sharingIntentService;
+  final LanguageService _languageService = LanguageService();
   bool _isInitialized = false;
 
   @override
@@ -61,13 +64,16 @@ class _MyAppState extends State<MyApp> {
   /// Initialize the app: request permissions and start HTTP server
   ///
   Future<void> _initializeApp() async {
-    // Step 1: Request necessary permissions
+    // Step 1: Initialize language service
+    await _languageService.initialize();
+
+    // Step 2: Request necessary permissions
     await _requestPermissions();
 
-    // Step 2: Initialize the HTTP server
+    // Step 3: Initialize the HTTP server
     await _initializeServer();
 
-    // Step 3: Initialize sharing intent service
+    // Step 4: Initialize sharing intent service
     _sharingIntentService.initialize();
   }
 
@@ -85,9 +91,10 @@ class _MyAppState extends State<MyApp> {
         // User can still use the app, but will be prompted again when needed
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
+            final l10n = AppLocalizations.of(context);
             ToastHelper.showWarning(
               context,
-              result.errorMessage ?? '某些权限未授予，部分功能可能受限',
+              result.errorMessage ?? l10n.permissionWarning,
               duration: const Duration(seconds: 5),
             );
 
@@ -95,12 +102,13 @@ class _MyAppState extends State<MyApp> {
             if (result.permanentlyDenied) {
               Future.delayed(const Duration(milliseconds: 500), () async {
                 if (mounted) {
+                  final l10n = AppLocalizations.of(context);
                   final confirmed = await DialogHelper.showConfirmDialog(
                     context,
-                    title: '权限被拒绝',
-                    message: '某些权限已被永久拒绝，请在设置中手动开启',
-                    confirmText: '打开设置',
-                    cancelText: '取消',
+                    title: l10n.permissionPermanentlyDenied,
+                    message: l10n.permissionWarning,
+                    confirmText: l10n.openSettings,
+                    cancelText: l10n.cancel,
                     icon: Icons.settings,
                     iconColor: Colors.orange,
                   );
@@ -126,9 +134,12 @@ class _MyAppState extends State<MyApp> {
         // Show error dialog if server fails to start
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (mounted) {
+            final l10n = AppLocalizations.of(context);
             await DialogHelper.showErrorDialog(
               context,
-              message: result.errorMessage ?? ErrorMessages.serverUnknownError,
+              message: result.errorMessage ?? l10n.serverUnknownError,
+              title: l10n.error,
+              confirmText: l10n.confirm,
             );
           }
         });
@@ -138,15 +149,49 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: AppConstants.projectName,
-      theme: _buildModernTheme(),
-      home: _isInitialized
-          ? MainContainer(
-              serverManager: _serverManager,
-              sharingIntentService: _sharingIntentService,
-            )
-          : const Scaffold(body: Center(child: CircularProgressIndicator())),
+    return ListenableBuilder(
+      listenable: _languageService,
+      builder: (context, child) {
+        return MaterialApp(
+          title: AppConstants.projectName,
+          theme: _buildModernTheme(),
+          locale: _languageService.locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          localeResolutionCallback: (locale, supportedLocales) {
+            // If user has set a language preference, use it
+            if (_languageService.locale != null) {
+              return _languageService.locale;
+            }
+
+            // Otherwise, try to match system locale
+            if (locale != null) {
+              for (var supportedLocale in supportedLocales) {
+                if (supportedLocale.languageCode == locale.languageCode) {
+                  return supportedLocale;
+                }
+              }
+            }
+
+            // Default to English if system language is not supported
+            return const Locale('en', 'US');
+          },
+          home: _isInitialized
+              ? MainContainer(
+                  serverManager: _serverManager,
+                  sharingIntentService: _sharingIntentService,
+                  languageService: _languageService,
+                )
+              : const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+        );
+      },
     );
   }
 

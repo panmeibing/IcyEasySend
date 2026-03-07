@@ -75,8 +75,8 @@ Icy Easy Send is a LAN file transfer tool built with Flutter, enabling fast and 
 
 ### Requirements
 
-- Flutter SDK: 3.10.4 or higher
-- Dart SDK: 3.10.4 or higher
+- Flutter SDK: 3.41.2 or higher
+- Dart SDK: 3.11.0 or higher
 - Platform-specific development environment:
   - Android: Android Studio / Android SDK
   - iOS: Xcode (macOS only)
@@ -223,7 +223,7 @@ lib/
 
 ### Core Technology Stack
 
-- **UI Framework**: Flutter 3.10.4+
+- **UI Framework**: Flutter 3.41.2+
 - **HTTP Server**: shelf + shelf_router
 - **Network Communication**: http + connectivity_plus
 - **File Operations**: file_picker + path_provider
@@ -321,7 +321,113 @@ LogUtil.eTag('TAG', 'This is an error log', error, stackTrace);
 5. Write unit tests
 6. Update documentation
 
----
+### Adding a New Language
+
+The application supports internationalization (i18n). To add a new language, follow these steps:
+
+#### 1. Create Translation Files
+
+Create a new translation file in `lib/l10n/`:
+
+```dart
+// lib/l10n/app_localizations_<language_code>.dart
+// Example: app_localizations_ja.dart for Japanese
+
+import 'app_localizations.dart';
+
+class AppLocalizationsJa extends AppLocalizations {
+  @override
+  String get appName => 'アプリ名';
+  
+  @override
+  String get home => 'ホーム';
+  
+  // ... implement all abstract methods from AppLocalizations
+}
+```
+
+#### 2. Update Provider Classes
+
+Update the following provider classes to support the new language:
+
+**a. Error Message Provider** (`lib/utils/error_message_provider.dart`):
+```dart
+String get networkConnectionFailed => getMessage({
+  'zh': '无法连接到目标设备',
+  'en': 'Unable to connect to target device',
+  'ja': 'ターゲットデバイスに接続できません',  // Add new language
+});
+```
+
+**b. Transfer Status Provider** (`lib/utils/transfer_status_provider.dart`):
+```dart
+String get checkingTargetDevice => getMessage({
+  'zh': '正在检查目标设备...',
+  'en': 'Checking target device...',
+  'ja': 'ターゲットデバイスを確認中...',  // Add new language
+});
+```
+
+**c. Network Diagnostics Provider** (`lib/utils/network_diagnostics_provider.dart`):
+```dart
+String get networkDiagnosticsReport => getMessage({
+  'zh': '网络诊断报告',
+  'en': 'Network Diagnostics Report',
+  'ja': 'ネットワーク診断レポート',  // Add new language
+});
+```
+
+#### 3. Register the New Language
+
+Update `lib/l10n/app_localizations.dart` to register the new locale:
+
+```dart
+@override
+Future<AppLocalizations> load(Locale locale) async {
+  if (locale.languageCode == 'zh') {
+    if (locale.countryCode == 'HK') {
+      return AppLocalizationsZhHk();
+    }
+    return AppLocalizationsZh();
+  }
+  switch (locale.languageCode) {
+    case 'ko':
+      return AppLocalizationsKo();
+  // add a new language
+    case 'ja':
+      return AppLocalizationsJa();
+  }
+}
+```
+
+#### 4. Update Language Service
+
+Update `lib/services/language_service.dart` to add the new language configuration:
+
+```dart
+static const Map<String, LanguageConfig> _supportedLanguages = {
+  'system': LanguageConfig(
+    code: 'system',
+    displayName: 'System Default / 跟随系统',
+    locale: Locale('en', 'US'),
+  ),
+  'zh': LanguageConfig(
+    code: 'zh',
+    displayName: '简体中文',
+    locale: Locale('zh', 'CN'),
+  ),
+  'en': LanguageConfig(
+    code: 'en',
+    displayName: 'English',
+    locale: Locale('en', 'US'),
+  ),
+  'ja': LanguageConfig(  // Add new language - only need to add here!
+    code: 'ja',
+    displayName: '日本語',
+    locale: Locale('ja', 'JP'),
+  ),
+};
+```
 
 ## 📦 Dependencies
 

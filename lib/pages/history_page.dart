@@ -6,6 +6,7 @@ import 'package:open_file_manager/open_file_manager.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/transfer_history.dart';
 import '../services/transfer_history_service.dart';
 import '../utils/dialog_helper.dart';
@@ -69,11 +70,13 @@ class HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _clearHistory() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '清除历史记录',
-      message: '确定要清除所有传输历史记录吗？此操作无法撤销。',
-      confirmText: '清除',
+      title: l10n.clearHistoryTitle,
+      message: l10n.clearHistoryMessage,
+      confirmText: l10n.confirm,
+      cancelText: l10n.cancel,
       icon: Icons.delete_sweep,
       iconColor: Colors.red,
     );
@@ -137,6 +140,7 @@ class HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildHistoryList() {
+    final l10n = AppLocalizations.of(context);
     final filteredHistory = _filteredHistory;
 
     if (filteredHistory.isEmpty) {
@@ -147,7 +151,7 @@ class HistoryPageState extends State<HistoryPage> {
             Icon(Icons.filter_list_off, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 12),
             Text(
-              '没有符合条件的记录',
+              l10n.noFilteredRecords,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
@@ -187,14 +191,15 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Open the file
   Future<void> _openFile(TransferHistory item) async {
+    final l10n = AppLocalizations.of(context);
     if (item.savedPath == null) {
-      _showErrorSnackBar('文件路径不存在');
+      _showErrorSnackBar(l10n.filePathNotExist);
       return;
     }
 
     final file = File(item.savedPath!);
     if (!await file.exists()) {
-      _showErrorSnackBar('文件不存在，可能已被删除');
+      _showErrorSnackBar(l10n.fileNotExist);
       return;
     }
 
@@ -202,25 +207,26 @@ class HistoryPageState extends State<HistoryPage> {
       if (Platform.isAndroid || Platform.isIOS) {
         final result = await OpenFilex.open(item.savedPath!);
         if (result.type != ResultType.done) {
-          _showErrorSnackBar('无法打开文件: ${result.message}');
+          _showErrorSnackBar(l10n.cannotOpenFileWithMessage(result.message));
         }
       } else {
         final uri = Uri.file(item.savedPath!);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
         } else {
-          _showErrorSnackBar('无法打开文件');
+          _showErrorSnackBar(l10n.cannotOpenFile);
         }
       }
     } catch (e) {
-      _showErrorSnackBar('打开文件失败: $e');
+      _showErrorSnackBar('${l10n.openFileFailed}: $e');
     }
   }
 
   /// Open the folder containing the file
   Future<void> _openFolder(TransferHistory item) async {
+    final l10n = AppLocalizations.of(context);
     if (item.savedPath == null) {
-      _showErrorSnackBar('文件路径不存在');
+      _showErrorSnackBar(l10n.filePathNotExist);
       return;
     }
 
@@ -228,7 +234,7 @@ class HistoryPageState extends State<HistoryPage> {
     final directory = file.parent;
 
     if (!await directory.exists()) {
-      _showErrorSnackBar('文件夹不存在');
+      _showErrorSnackBar(l10n.folderNotExist);
       return;
     }
 
@@ -270,11 +276,11 @@ class HistoryPageState extends State<HistoryPage> {
                 folderType: AndroidFolderType.recent,
               ),
             );
-            _showErrorSnackBar('已打开最近文件，请手动查找');
+            _showErrorSnackBar(l10n.recentFilesOpened);
           }
         }
       } else if (Platform.isIOS) {
-        _showErrorSnackBar('iOS 不支持直接打开文件夹');
+        _showErrorSnackBar(l10n.iosNoFolderSupport);
       } else if (Platform.isWindows) {
         final result = await Process.run('cmd', [
           '/c',
@@ -283,33 +289,35 @@ class HistoryPageState extends State<HistoryPage> {
           directory.path,
         ], runInShell: true);
         if (result.exitCode != 0) {
-          _showErrorSnackBar('无法打开文件夹');
+          _showErrorSnackBar(l10n.cannotOpenFolder);
         }
       } else if (Platform.isMacOS) {
         final result = await Process.run('open', ['-R', item.savedPath!]);
         if (result.exitCode != 0) {
-          _showErrorSnackBar('无法打开文件夹');
+          _showErrorSnackBar(l10n.cannotOpenFolder);
         }
       } else {
         final uri = Uri.file(directory.path);
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri);
         } else {
-          _showErrorSnackBar('无法打开文件夹');
+          _showErrorSnackBar(l10n.cannotOpenFolder);
         }
       }
     } catch (e) {
-      _showErrorSnackBar('打开文件夹失败: $e');
+      _showErrorSnackBar('${l10n.openFolderFailed}: $e');
     }
   }
 
   /// Delete a single record
   Future<void> _deleteRecord(TransferHistory item) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '删除记录',
-      message: '确定要删除 "${item.fileName}" 的传输记录吗？\n\n注意：这只会删除记录，不会删除文件本身。',
-      confirmText: '删除',
+      title: l10n.deleteRecordTitle,
+      message: l10n.deleteRecordMessage(item.fileName),
+      confirmText: l10n.confirm,
+      cancelText: l10n.cancel,
       icon: Icons.delete_outline,
       iconColor: Colors.red,
     );
@@ -319,7 +327,7 @@ class HistoryPageState extends State<HistoryPage> {
       await _loadHistory();
 
       if (mounted) {
-        ToastHelper.showSuccess(context, '记录已删除');
+        ToastHelper.showSuccess(context, l10n.recordDeleted);
       }
     }
   }
@@ -333,6 +341,7 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Show detail dialog for a transfer history item
   void _showDetailDialog(TransferHistory item) {
+    final l10n = AppLocalizations.of(context);
     DialogHelper.showCustomDialog(
       context,
       title: Row(
@@ -345,7 +354,7 @@ class HistoryPageState extends State<HistoryPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              item.isReceived ? '接收记录' : '发送记录',
+              item.isReceived ? l10n.receiveRecord : l10n.sendRecord,
               style: const TextStyle(fontSize: 18),
             ),
           ),
@@ -361,34 +370,44 @@ class HistoryPageState extends State<HistoryPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildDetailRow('文件名', item.fileName),
+            _buildDetailRow(l10n.fileName, item.fileName),
             const Divider(height: 20),
-            _buildDetailRow('文件大小', FormatUtil.formatBytes(item.fileSize)),
+            _buildDetailRow(
+              l10n.fileSize,
+              FormatUtil.formatBytes(item.fileSize),
+            ),
             const Divider(height: 20),
             if (item.peerDeviceName != null) ...[
               _buildDetailRow(
-                item.isReceived ? '来自设备' : '发送至设备',
+                item.isReceived ? l10n.fromDevice : l10n.toDevice,
                 item.peerDeviceName!,
               ),
               const Divider(height: 20),
-              _buildDetailRow('设备 IP', item.peerIP),
+              _buildDetailRow(l10n.deviceIP, item.peerIP),
             ] else ...[
-              _buildDetailRow(item.isReceived ? '来自设备' : '发送至设备', item.peerIP),
+              _buildDetailRow(
+                item.isReceived ? l10n.fromDevice : l10n.toDevice,
+                item.peerIP,
+              ),
             ],
             const Divider(height: 20),
             _buildDetailRow(
-              '传输时间',
+              l10n.transferTime,
               FormatUtil.formatFullDateTime(item.timestamp),
             ),
             const Divider(height: 20),
             _buildDetailRow(
-              '传输状态',
-              item.success ? '成功' : '失败',
+              l10n.transferStatus,
+              item.success ? l10n.statusSuccess : l10n.statusFailed,
               valueColor: item.success ? Colors.green : Colors.red,
             ),
             if (item.isReceived && item.savedPath != null) ...[
               const Divider(height: 20),
-              _buildDetailRow('保存位置', item.savedPath!, copyable: true),
+              _buildDetailRow(
+                l10n.savedLocation,
+                item.savedPath!,
+                copyable: true,
+              ),
             ],
           ],
         ),
@@ -396,7 +415,7 @@ class HistoryPageState extends State<HistoryPage> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('关闭'),
+          child: Text(l10n.close),
         ),
       ],
     );
@@ -409,6 +428,7 @@ class HistoryPageState extends State<HistoryPage> {
     Color? valueColor,
     bool copyable = false,
   }) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -441,7 +461,7 @@ class HistoryPageState extends State<HistoryPage> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _copyPathToClipboard(value),
-                  tooltip: '复制',
+                  tooltip: l10n.copy,
                   color: Colors.blue,
                 ),
               ),
@@ -456,7 +476,7 @@ class HistoryPageState extends State<HistoryPage> {
     await Clipboard.setData(ClipboardData(text: path));
 
     if (mounted) {
-      ToastHelper.showSuccess(context, '路径已复制到剪贴板');
+      ToastHelper.showSuccess(context, AppLocalizations.of(context).pathCopied);
     }
   }
 }

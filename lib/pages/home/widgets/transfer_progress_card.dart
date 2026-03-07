@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/format_util.dart';
 
 /// Transfer progress indicator widget
@@ -27,6 +28,7 @@ class TransferProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -40,9 +42,12 @@ class TransferProgressCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '传输进度',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              Text(
+                l10n.transferring,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               if (totalFilesCount > 1) ...[
                 Container(
@@ -117,21 +122,21 @@ class TransferProgressCard extends StatelessWidget {
           if (totalBytes > 0) ...[
             const SizedBox(height: 12),
             Text(
-              '已传输: ${FormatUtil.formatBytes(bytesTransferred)} / ${FormatUtil.formatBytes(totalBytes)}',
+              '${l10n.transferred}: ${FormatUtil.formatBytes(bytesTransferred)} / ${FormatUtil.formatBytes(totalBytes)}',
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             ),
           ],
           if (transferSpeed > 0) ...[
             const SizedBox(height: 6),
             Text(
-              '传输速度: ${FormatUtil.formatSpeed(transferSpeed)}',
+              '${l10n.transferSpeed}: ${FormatUtil.formatSpeed(transferSpeed)}',
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             ),
           ],
           if (estimatedTimeRemaining != null) ...[
             const SizedBox(height: 6),
             Text(
-              '剩余时间: ${FormatUtil.formatDuration(estimatedTimeRemaining!)}',
+              '${l10n.remainingTime}: ${FormatUtil.formatDuration(estimatedTimeRemaining!)}',
               style: TextStyle(fontSize: 12, color: Colors.grey[700]),
             ),
           ],

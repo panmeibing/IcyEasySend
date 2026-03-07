@@ -75,8 +75,8 @@ Icy Easy Send 是一款基于 Flutter 开发的局域网文件传输工具，支
 
 ### 环境要求
 
-- Flutter SDK: 3.10.4 或更高版本
-- Dart SDK: 3.10.4 或更高版本
+- Flutter SDK: 3.41.2 或更高版本
+- Dart SDK: 3.11.0 或更高版本
 - 对应平台的开发环境：
   - Android: Android Studio / Android SDK
   - iOS: Xcode (仅 macOS)
@@ -223,7 +223,7 @@ lib/
 
 ### 核心技术栈
 
-- **UI 框架**: Flutter 3.10.4+
+- **UI 框架**: Flutter 3.41.2+
 - **HTTP 服务器**: shelf + shelf_router
 - **网络通信**: http + connectivity_plus
 - **文件操作**: file_picker + path_provider
@@ -321,7 +321,113 @@ LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
 5. 编写单元测试
 6. 更新文档
 
----
+### 添加新语言
+
+应用支持国际化（i18n）。要添加新语言，请按照以下步骤操作：
+
+#### 1. 创建翻译文件
+
+在 `lib/l10n/` 目录下创建新的翻译文件：
+
+```dart
+// lib/l10n/app_localizations_<语言代码>.dart
+// 示例：app_localizations_ja.dart 用于日语
+
+import 'app_localizations.dart';
+
+class AppLocalizationsJa extends AppLocalizations {
+  @override
+  String get appName => 'アプリ名';
+  
+  @override
+  String get home => 'ホーム';
+  
+  // ... 实现 AppLocalizations 中的所有抽象方法
+}
+```
+
+#### 2. 更新 Provider 类
+
+更新以下 provider 类以支持新语言：
+
+**a. 错误消息提供者** (`lib/utils/error_message_provider.dart`)：
+```dart
+String get networkConnectionFailed => getMessage({
+  'zh': '无法连接到目标设备',
+  'en': 'Unable to connect to target device',
+  'ja': 'ターゲットデバイスに接続できません',  // 添加新语言
+});
+```
+
+**b. 传输状态提供者** (`lib/utils/transfer_status_provider.dart`)：
+```dart
+String get checkingTargetDevice => getMessage({
+  'zh': '正在检查目标设备...',
+  'en': 'Checking target device...',
+  'ja': 'ターゲットデバイスを確認中...',  // 添加新语言
+});
+```
+
+**c. 网络诊断提供者** (`lib/utils/network_diagnostics_provider.dart`)：
+```dart
+String get networkDiagnosticsReport => getMessage({
+  'zh': '网络诊断报告',
+  'en': 'Network Diagnostics Report',
+  'ja': 'ネットワーク診断レポート',  // 添加新语言
+});
+```
+
+#### 3. 注册新语言
+
+更新 `lib/l10n/app_localizations.dart` 以注册新的语言环境：
+
+```dart
+@override
+Future<AppLocalizations> load(Locale locale) async {
+  if (locale.languageCode == 'zh') {
+    if (locale.countryCode == 'HK') {
+      return AppLocalizationsZhHk();
+    }
+    return AppLocalizationsZh();
+  }
+  switch (locale.languageCode) {
+    case 'ko':
+      return AppLocalizationsKo();
+  // 添加新语言
+    case 'ja':
+      return AppLocalizationsJa();
+  }
+}
+```
+
+#### 4. 更新语言服务
+
+更新 `lib/services/language_service.dart` 以添加新的语言配置：
+
+```dart
+static const Map<String, LanguageConfig> _supportedLanguages = {
+  'system': LanguageConfig(
+    code: 'system',
+    displayName: 'System Default / 跟随系统',
+    locale: Locale('en', 'US'),
+  ),
+  'zh': LanguageConfig(
+    code: 'zh',
+    displayName: '简体中文',
+    locale: Locale('zh', 'CN'),
+  ),
+  'en': LanguageConfig(
+    code: 'en',
+    displayName: 'English',
+    locale: Locale('en', 'US'),
+  ),
+  'ja': LanguageConfig(  // 添加新语言 - 只需要在这里添加！
+    code: 'ja',
+    displayName: '日本語',
+    locale: Locale('ja', 'JP'),
+  ),
+};
+```
 
 ## 📦 依赖项
 

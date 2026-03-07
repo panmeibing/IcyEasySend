@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
 import '../services/http_server_manager.dart';
+import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import '../services/transfer_history_service.dart';
 import '../utils/constants.dart';
@@ -10,18 +12,25 @@ import '../utils/platform_util.dart';
 import '../utils/toast_helper.dart';
 import 'settings/controllers/developer_controller.dart';
 import 'settings/controllers/device_controller.dart';
+import 'settings/controllers/general_controller.dart';
 import 'settings/controllers/transfer_controller.dart';
 import 'settings/models/settings_state.dart';
 import 'settings/widgets/about_card.dart';
 import 'settings/widgets/device_info_card.dart';
+import 'settings/widgets/general_settings_card.dart';
 import 'settings/widgets/server_info_card.dart';
 import 'settings/widgets/transfer_settings_card.dart';
 
 /// Settings page for app configuration
 class SettingsPage extends StatefulWidget {
   final HTTPServerManager serverManager;
+  final LanguageService languageService;
 
-  const SettingsPage({super.key, required this.serverManager});
+  const SettingsPage({
+    super.key,
+    required this.serverManager,
+    required this.languageService,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -34,6 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   // Controllers
   late final DeviceController _deviceController;
+  late final GeneralController _generalController;
   late final TransferController _transferController;
   late final DeveloperController _developerController;
 
@@ -62,6 +72,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
     // Initialize controllers
     _deviceController = DeviceController(_preferencesService);
+    _generalController = GeneralController(
+      languageService: widget.languageService,
+    );
     _transferController = TransferController(
       _preferencesService,
       _historyService,
@@ -216,9 +229,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save device name
   Future<void> _saveDeviceName() async {
+    final l10n = AppLocalizations.of(context);
     final newName = _deviceNameController.text.trim();
     if (newName.isEmpty) {
-      _showErrorSnackBar('设备名不能为空');
+      _showErrorSnackBar(l10n.deviceNameCannotBeEmpty);
       return;
     }
 
@@ -227,19 +241,21 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _state = _state.copyWith(deviceName: newName, isEditingName: false);
       });
-      _showSuccessSnackBar('设备名已保存');
+      _showSuccessSnackBar(l10n.deviceNameSaved);
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
   /// Reset device name to model
   Future<void> _resetDeviceName() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '重置设备名',
-      message: '确定要将设备名重置为 "${_state.deviceModel}" 吗？',
-      confirmText: '重置',
+      title: l10n.resetDeviceName,
+      message: l10n.resetDeviceNameConfirm(_state.deviceModel),
+      confirmText: l10n.reset,
+      cancelText: l10n.cancel,
       icon: Icons.refresh,
       iconColor: Colors.orange,
     );
@@ -254,21 +270,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Show confirmation dialog for concurrent transfers change
   Future<void> _confirmAndSaveConcurrentTransfers(int newCount) async {
+    final l10n = AppLocalizations.of(context);
     // If value hasn't changed, no need to confirm
     if (newCount == _state.concurrentTransfers) {
       return;
     }
 
-    final additionalInfo = newCount > _state.concurrentTransfers
-        ? '增加并发数可能会提高传输速度，但也会增加设备负载'
-        : '降低并发数可以减少设备负载，但可能会降低传输速度';
-
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '确认修改',
-      message:
-          '确定要将并发传输数量从 ${_state.concurrentTransfers} 修改为 $newCount 吗？\n\n提示：$additionalInfo',
-      confirmText: '确认修改',
+      title: l10n.confirmChange,
+      message: l10n.concurrentTransfersChange(
+        _state.concurrentTransfers,
+        newCount,
+      ),
+      confirmText: l10n.confirmChange,
+      cancelText: l10n.cancel,
       icon: Icons.settings_suggest,
       iconColor: const Color(0xFF2196F3),
     );
@@ -289,33 +305,37 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save concurrent transfers setting
   Future<void> _saveConcurrentTransfers(int count) async {
+    final l10n = AppLocalizations.of(context);
     final success = await _transferController.saveConcurrentTransfers(count);
     if (success) {
       setState(() {
         _state = _state.copyWith(concurrentTransfers: count);
       });
-      _showSuccessSnackBar('并发传输数量已保存');
+      _showSuccessSnackBar(l10n.concurrentTransfersSaved);
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
   /// Confirm and save max history items
   Future<void> _confirmAndSaveMaxHistoryItems() async {
+    final l10n = AppLocalizations.of(context);
     final newCountText = _maxHistoryController.text.trim();
     if (newCountText.isEmpty) {
-      _showErrorSnackBar('请输入有效的数字');
+      _showErrorSnackBar(l10n.enterValidNumber);
       return;
     }
 
     final newCount = int.tryParse(newCountText);
     if (newCount == null) {
-      _showErrorSnackBar('请输入有效的数字');
+      _showErrorSnackBar(l10n.enterValidNumber);
       return;
     }
 
     if (newCount < _allowMinHisCount || newCount > _allowMaxHisCount) {
-      _showErrorSnackBar('历史记录数量范围: $_allowMinHisCount-$_allowMaxHisCount');
+      _showErrorSnackBar(
+        l10n.historyCountRange(_allowMinHisCount, _allowMaxHisCount),
+      );
       return;
     }
 
@@ -331,25 +351,25 @@ class _SettingsPageState extends State<SettingsPage> {
     final currentCount = await _transferController.getCurrentHistoryCount();
 
     // Build confirmation message
-    String message =
-        '确定要将最大历史记录数从 ${_state.maxHistoryItems} 修改为 $newCount 吗？\n\n';
-    message += '当前历史记录数: $currentCount 条\n\n';
+    String message = l10n.maxHistoryChange(_state.maxHistoryItems, newCount);
+    message += l10n.currentHistoryCount(currentCount);
 
     if (currentCount > newCount) {
       final deleteCount = currentCount - newCount;
-      message += '⚠️ 警告：当前保存的历史记录数 ($currentCount) 大于设置的数量 ($newCount)。\n\n';
-      message += '只会保留最新的 $newCount 条记录，超过的 $deleteCount 条旧记录将被删除。';
+      message += l10n.historyWarning;
+      message += l10n.historyDeleteWarning(currentCount, newCount, deleteCount);
     } else {
-      message += '提示：新的设置将在下次保存历史记录时生效。';
+      message += l10n.historyHint;
     }
 
     if (!mounted) return;
 
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '确认修改',
+      title: l10n.confirmChange,
       message: message,
-      confirmText: '确认修改',
+      confirmText: l10n.confirmChange,
+      cancelText: l10n.cancel,
       icon: Icons.history,
       iconColor: const Color(0xFF2196F3),
     );
@@ -369,6 +389,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save max history items setting
   Future<void> _saveMaxHistoryItems(int newCount, int currentCount) async {
+    final l10n = AppLocalizations.of(context);
     final result = await _transferController.saveMaxHistoryItems(
       newCount,
       currentCount,
@@ -384,35 +405,39 @@ class _SettingsPageState extends State<SettingsPage> {
 
       final deletedCount = result['deletedCount'] as int;
       if (deletedCount > 0) {
-        _showSuccessSnackBar('设置已保存，已删除 $deletedCount 条旧记录');
+        _showSuccessSnackBar(l10n.historyDeleted(deletedCount));
         // Trigger history refresh
         widget.serverManager.refreshHistory();
       } else {
-        _showSuccessSnackBar('最大历史记录数已保存');
+        _showSuccessSnackBar(l10n.maxHistorySaved);
       }
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
   /// Confirm and save max clipboard size
   Future<void> _confirmAndSaveMaxClipboardSize() async {
+    final l10n = AppLocalizations.of(context);
     final newSizeText = _maxClipboardSizeController.text.trim();
     if (newSizeText.isEmpty) {
-      _showErrorSnackBar('请输入有效的数字');
+      _showErrorSnackBar(l10n.enterValidNumber);
       return;
     }
 
     final newSize = int.tryParse(newSizeText);
     if (newSize == null) {
-      _showErrorSnackBar('请输入有效的数字');
+      _showErrorSnackBar(l10n.enterValidNumber);
       return;
     }
 
     if (newSize < AppConstants.minClipboardSizeMB ||
         newSize > AppConstants.maxClipboardSizeMB) {
       _showErrorSnackBar(
-        '剪切板大小范围: ${AppConstants.minClipboardSizeMB}-${AppConstants.maxClipboardSizeMB} MB',
+        l10n.clipboardSizeRange(
+          AppConstants.minClipboardSizeMB,
+          AppConstants.maxClipboardSizeMB,
+        ),
       );
       return;
     }
@@ -426,22 +451,25 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     // Build confirmation message
-    String message =
-        '确定要将最大剪切板大小从 ${_state.maxClipboardSizeMB} MB 修改为 $newSize MB 吗？\n\n';
+    String message = l10n.maxClipboardSizeChange(
+      _state.maxClipboardSizeMB,
+      newSize,
+    );
 
     if (newSize < _state.maxClipboardSizeMB) {
-      message += '⚠️ 提示：降低限制后，超过 $newSize MB 的剪切板内容将无法同步，建议使用文件传输功能。';
+      message += l10n.clipboardSizeDecreaseHint;
     } else {
-      message += '提示：增加限制后，可以同步更大的剪切板内容，但可能会影响传输速度。';
+      message += l10n.clipboardSizeIncreaseHint;
     }
 
     if (!mounted) return;
 
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '确认修改',
+      title: l10n.confirmChange,
       message: message,
-      confirmText: '确认修改',
+      confirmText: l10n.confirmChange,
+      cancelText: l10n.cancel,
       icon: Icons.content_paste,
       iconColor: const Color(0xFF2196F3),
     );
@@ -462,6 +490,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Save max clipboard size setting
   Future<void> _saveMaxClipboardSize(int newSize) async {
+    final l10n = AppLocalizations.of(context);
     final success = await _transferController.saveMaxClipboardSize(newSize);
     if (success) {
       setState(() {
@@ -470,27 +499,31 @@ class _SettingsPageState extends State<SettingsPage> {
           isEditingMaxClipboardSize: false,
         );
       });
-      _showSuccessSnackBar('最大剪切板大小已保存');
+      _showSuccessSnackBar(l10n.maxClipboardSizeSaved);
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
   /// Save IP validation enabled state
   Future<void> _saveIPValidationEnabled(bool enabled) async {
+    final l10n = AppLocalizations.of(context);
     final success = await _transferController.saveIPValidationEnabled(enabled);
     if (success) {
       setState(() {
         _state = _state.copyWith(enableIPValidation: enabled);
       });
-      _showSuccessSnackBar(enabled ? 'IP地址校验已启用' : 'IP地址校验已禁用');
+      _showSuccessSnackBar(
+        enabled ? l10n.ipValidationEnabled : l10n.ipValidationDisabled,
+      );
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
   /// Save device secret key
   Future<void> _saveDeviceSecretKey() async {
+    final l10n = AppLocalizations.of(context);
     final newKey = _secretKeyController.text.trim();
 
     final success = await _preferencesService.saveDeviceSecretKey(newKey);
@@ -502,12 +535,12 @@ class _SettingsPageState extends State<SettingsPage> {
         );
       });
       if (newKey.isEmpty) {
-        _showSuccessSnackBar('设备秘钥已清空');
+        _showSuccessSnackBar(l10n.deviceSecretKeyCleared);
       } else {
-        _showSuccessSnackBar('设备秘钥已保存');
+        _showSuccessSnackBar(l10n.deviceSecretKeySaved);
       }
     } else {
-      _showErrorSnackBar('保存失败');
+      _showErrorSnackBar(l10n.saveFailed);
     }
   }
 
@@ -542,9 +575,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Show developer information dialog
   Future<void> _showDeveloperInfo() async {
+    final l10n = AppLocalizations.of(context);
     // Show loading dialog
     if (!mounted) return;
-    DialogHelper.showLoadingDialog(context, message: '正在加载开发信息...');
+    DialogHelper.showLoadingDialog(context, message: l10n.loadingDevInfo);
 
     try {
       // Get developer info
@@ -559,11 +593,11 @@ class _SettingsPageState extends State<SettingsPage> {
       // Show developer info dialog
       await DialogHelper.showCustomDialog(
         context,
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.developer_mode, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('开发信息'),
+            const Icon(Icons.developer_mode, color: Colors.orange),
+            const SizedBox(width: 8),
+            Text(l10n.devInfo),
           ],
         ),
         content: SingleChildScrollView(
@@ -579,7 +613,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ElevatedButton.icon(
                 onPressed: () => _copyLogContent(logPath),
                 icon: const Icon(Icons.copy, size: 18),
-                label: const Text('复制日志'),
+                label: Text(l10n.copyLog),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -594,28 +628,29 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: devInfo));
-              ToastHelper.showSuccess(context, '开发信息已复制到剪贴板');
+              ToastHelper.showSuccess(context, l10n.copied);
             },
-            child: const Text('复制'),
+            child: Text(l10n.copy),
           ),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('关闭'),
+            child: Text(l10n.close),
           ),
         ],
       );
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();
-        ToastHelper.showError(context, '加载开发信息时出错: $e');
+        ToastHelper.showError(context, '${l10n.error}: $e');
       }
     }
   }
 
   /// Copy log content
   Future<void> _copyLogContent(String logPath) async {
+    final l10n = AppLocalizations.of(context);
     final result = await _developerController.copyLogContent(logPath);
 
     if (!mounted) return;
@@ -623,10 +658,10 @@ class _SettingsPageState extends State<SettingsPage> {
     if (result['success']) {
       await Clipboard.setData(ClipboardData(text: result['content']));
       if (!mounted) return;
-      ToastHelper.showSuccess(context, '已复制最后${result['lineCount']}行日志到剪贴板');
+      ToastHelper.showSuccess(context, l10n.logCopied(result['lineCount']));
     } else {
       final message = result['message'] as String;
-      if (message == '日志文件为空') {
+      if (message == l10n.logFileEmpty) {
         ToastHelper.showWarning(context, message);
       } else {
         ToastHelper.showError(context, message);
@@ -638,8 +673,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Copy text to clipboard
   Future<void> _copyToClipboard(String text, String label) async {
+    final l10n = AppLocalizations.of(context);
     await Clipboard.setData(ClipboardData(text: text));
-    _showSuccessSnackBar('$label已复制: $text');
+    _showSuccessSnackBar(l10n.labelCopied(label, text));
   }
 
   /// Show success snackbar
@@ -660,8 +696,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: _state.isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -688,6 +726,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         });
                       },
                       onResetPressed: _resetDeviceName,
+                    ),
+                    const SizedBox(height: 16),
+                    GeneralSettingsCard(
+                      currentLanguage: _generalController
+                          .getCurrentLanguageCode(),
+                      onLanguageTap: () => _showLanguageDialog(l10n),
                     ),
                     const SizedBox(height: 16),
                     ServerInfoCard(
@@ -774,6 +818,70 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
+    );
+  }
+
+  /// Show language selection dialog
+  Future<void> _showLanguageDialog(AppLocalizations l10n) async {
+    final currentLanguage = _generalController.getCurrentLanguageCode();
+    String? selectedLanguage = currentLanguage;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Get all supported languages from LanguageService
+            final supportedLanguages = LanguageService.getSupportedLanguages();
+
+            return AlertDialog(
+              title: Text(l10n.language),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: supportedLanguages.entries.map((entry) {
+                      final languageCode = entry.key;
+                      final languageConfig = entry.value;
+
+                      return RadioListTile<String>(
+                        title: Text(languageConfig.displayName),
+                        value: languageCode,
+                        // ignore: deprecated_member_use
+                        groupValue: selectedLanguage,
+                        // ignore: deprecated_member_use
+                        onChanged: (value) {
+                          setState(() {
+                            selectedLanguage = value;
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(l10n.cancel),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (selectedLanguage != null &&
+                        selectedLanguage != currentLanguage) {
+                      _generalController.setLanguage(selectedLanguage!);
+                      _showSuccessSnackBar(l10n.saved);
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(l10n.confirm),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

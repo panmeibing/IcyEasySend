@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
 
 /// Port input section widget
@@ -22,12 +23,13 @@ class PortInputSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '目标设备端口',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          l10n.targetDevicePort,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -37,7 +39,7 @@ class PortInputSection extends StatelessWidget {
                 controller: controller,
                 focusNode: focusNode,
                 decoration: InputDecoration(
-                  hintText: '默认: ${AppConstants.defaultPort}',
+                  hintText: '${l10n.portHint}: ${AppConstants.defaultPort}',
                   border: const OutlineInputBorder(),
                   errorText: errorMessage,
                   prefixIcon: const Icon(Icons.settings_ethernet),
@@ -54,7 +56,7 @@ class PortInputSection extends StatelessWidget {
             IconButton(
               onPressed: isEnabled ? onReset : null,
               icon: const Icon(Icons.refresh),
-              tooltip: '重置为默认端口 (${AppConstants.defaultPort})',
+              tooltip: l10n.resetToDefaultPort(AppConstants.defaultPort),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.grey.shade50,
                 foregroundColor: Colors.grey.shade700,

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
+import '../../../l10n/app_localizations.dart';
 import '../../../services/file_transfer_service.dart';
 import '../../../services/permission_service.dart';
 import '../../../services/preferences_service.dart';
@@ -48,11 +49,14 @@ class FileTransferController {
                 permissionResult.errorMessage,
               );
             } else {
+              final l10n = AppLocalizations.of(context);
               await DialogHelper.showErrorDialog(
                 context,
                 message:
                     permissionResult.errorMessage ??
-                    ErrorMessages.permissionDenied,
+                    AppLocalizations.of(context).permissionDenied,
+                title: l10n.error,
+                confirmText: l10n.confirm,
               );
             }
           }
@@ -85,9 +89,12 @@ class FileTransferController {
 
         // Show error for invalid files
         if (invalidFileNames.isNotEmpty && context.mounted) {
+          final l10n = AppLocalizations.of(context);
           await DialogHelper.showErrorDialog(
             context,
-            message: '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
+            message: l10n.invalidFilesMessage(invalidFileNames.join('\n')),
+            title: l10n.error,
+            confirmText: l10n.confirm,
           );
         }
 
@@ -97,17 +104,23 @@ class FileTransferController {
       return [];
     } on FileSystemException {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: ErrorMessages.fileAccessError,
+          message: l10n.fileAccessError,
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
       return [];
     } catch (e) {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: ErrorMessages.fileError(e.toString()),
+          message: l10n.fileError(e.toString()),
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
       return [];
@@ -136,18 +149,24 @@ class FileTransferController {
 
       // Show error for invalid files
       if (invalidFileNames.isNotEmpty && context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: '以下文件无效或无法访问:\n${invalidFileNames.join('\n')}',
+          message: l10n.invalidFilesMessage(invalidFileNames.join('\n')),
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
 
       return validFiles;
     } catch (e) {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: ErrorMessages.fileError(e.toString()),
+          message: l10n.fileError(e.toString()),
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
       return [];
@@ -181,7 +200,8 @@ class FileTransferController {
     onTransferStart();
 
     try {
-      onStatusChange('等待接收方确认...');
+      final l10n = AppLocalizations.of(context);
+      onStatusChange(l10n.waitingForReceiverConfirmation);
 
       final results = await _fileTransferService.sendFilesWithBatchConfirm(
         targetIP: targetAddress,
@@ -209,12 +229,15 @@ class FileTransferController {
 
       // Show summary message
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         if (failureCount == 0) {
           await DialogHelper.showSuccessDialog(
             context,
             message: successCount == 1
-                ? '文件发送成功！'
-                : '发送 $successCount 个文件发送成功！',
+                ? l10n.fileSendSuccess
+                : l10n.filesSendSuccess(successCount),
+            title: l10n.success,
+            confirmText: l10n.confirm,
           );
 
           // Save the IP address and port for next time
@@ -223,14 +246,21 @@ class FileTransferController {
         } else if (successCount == 0) {
           await DialogHelper.showErrorDialog(
             context,
-            message: '所有文件发送失败\n失败的文件:\n${failedFiles.join('\n')}',
+            message:
+                '${l10n.allFilesSendFailed}\n${l10n.failedFiles}:\n${failedFiles.join('\n')}',
+            title: l10n.error,
+            confirmText: l10n.confirm,
           );
         } else {
           await DialogHelper.showInfoDialog(
             context,
-            title: '传输完成',
-            message:
-                '成功: $successCount 个文件\n失败: $failureCount 个文件\n\n失败的文件:\n${failedFiles.join('\n')}',
+            title: l10n.transferComplete,
+            message: l10n.transferSummary(
+              successCount,
+              failureCount,
+              failedFiles.join('\n'),
+            ),
+            confirmText: l10n.confirm,
           );
 
           await _preferencesService.saveLastUsedIP(targetIP);
@@ -239,23 +269,32 @@ class FileTransferController {
       }
     } on SocketException {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: ErrorMessages.networkConnectionFailed,
+          message: l10n.networkConnectionFailed,
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
     } on FileSystemException {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
           message: ErrorMessages.fileAccessError,
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
     } catch (e) {
       if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
         await DialogHelper.showErrorDialog(
           context,
-          message: ErrorMessages.unexpectedError(e.toString()),
+          message: l10n.unexpectedError(e.toString()),
+          title: l10n.error,
+          confirmText: l10n.confirm,
         );
       }
     } finally {
@@ -270,12 +309,13 @@ class FileTransferController {
   ) async {
     if (!context.mounted) return;
 
+    final l10n = AppLocalizations.of(context);
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: '需要权限',
-      message: message ?? '需要存储权限才能选择文件。请在设置中手动开启权限。',
-      confirmText: '打开设置',
-      cancelText: '取消',
+      title: l10n.permissionRequired,
+      message: message ?? l10n.storagePermissionMessage,
+      confirmText: l10n.openSettings,
+      cancelText: l10n.cancel,
       icon: Icons.settings,
       iconColor: Colors.orange,
     );

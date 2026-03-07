@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/app_localizations.dart';
+
 /// IP address input section widget
 class IPInputSection extends StatefulWidget {
   final TextEditingController controller;
@@ -86,12 +88,13 @@ class _IPInputSectionState extends State<IPInputSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          '目标设备 IP 地址',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Text(
+          l10n.targetDeviceIP,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Row(
@@ -102,7 +105,7 @@ class _IPInputSectionState extends State<IPInputSection> {
                 controller: widget.controller,
                 focusNode: widget.focusNode,
                 decoration: InputDecoration(
-                  hintText: '例如: 192.168.1.100',
+                  hintText: l10n.ipHint,
                   border: const OutlineInputBorder(),
                   errorText: widget.errorMessage,
                   errorMaxLines: 10,
@@ -112,7 +115,7 @@ class _IPInputSectionState extends State<IPInputSection> {
                       if (_hasText)
                         IconButton(
                           icon: const Icon(Icons.clear),
-                          tooltip: '清空',
+                          tooltip: l10n.clear,
                           onPressed: () {
                             widget.controller.clear();
                           },
@@ -120,7 +123,7 @@ class _IPInputSectionState extends State<IPInputSection> {
                       if (widget.ipHistory.isNotEmpty)
                         PopupMenuButton<String>(
                           icon: const Icon(Icons.history),
-                          tooltip: '历史记录',
+                          tooltip: l10n.history,
                           onSelected: widget.onIPSelected,
                           itemBuilder: (BuildContext context) {
                             return widget.ipHistory.map((String ip) {
@@ -162,7 +165,7 @@ class _IPInputSectionState extends State<IPInputSection> {
             IconButton(
               onPressed: widget.isEnabled ? widget.onDiagnostics : null,
               icon: const Icon(Icons.network_check),
-              tooltip: '网络诊断',
+              tooltip: l10n.networkDiagnostics,
               style: IconButton.styleFrom(
                 backgroundColor: Colors.blue.shade50,
                 foregroundColor: Colors.blue,

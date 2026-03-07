@@ -4,6 +4,7 @@ import 'package:icy_easy_send/utils/constants.dart';
 
 import 'http_helper.dart';
 import 'log_util.dart';
+import 'network_diagnostics_provider.dart';
 import 'network_util.dart';
 
 /// Network diagnostics utility to help troubleshoot connection issues
@@ -169,50 +170,67 @@ class DiagnosticsReport {
 
   @override
   String toString() {
+    final provider = NetworkDiagnosticsProvider();
     String separator = AppConstants.diagInfoSeparator;
     final buffer = StringBuffer();
-    buffer.writeln('$separator 网络诊断报告 $separator');
+    buffer.writeln(
+      '$separator ${provider.networkDiagnosticsReport} $separator',
+    );
     buffer.writeln();
 
-    buffer.writeln('本地网络接口:');
+    buffer.writeln('${provider.localNetworkInterfaces}:');
     if (localInterfaces.isEmpty) {
-      buffer.writeln('  ❌ 未找到有效的网络接口');
+      buffer.writeln('  ❌ ${provider.noValidNetworkInterface}');
     } else {
       for (var interface in localInterfaces) {
         buffer.writeln('  ✅ ${interface.name}: ${interface.address}');
         if (interface.isPrivateNetwork) {
-          buffer.writeln('     (私有网络地址)');
+          buffer.writeln('     (${provider.privateNetworkAddress})');
         }
       }
     }
     buffer.writeln();
 
     if (targetReachable != null) {
-      buffer.writeln('目标设备可达性:');
-      buffer.writeln(targetReachable! ? '  ✅ 可以连接到目标设备' : '  ❌ 无法连接到目标设备');
+      buffer.writeln('${provider.targetDeviceReachability}:');
+      buffer.writeln(
+        targetReachable!
+            ? '  ✅ ${provider.canConnectToTarget}'
+            : '  ❌ ${provider.cannotConnectToTarget}',
+      );
       buffer.writeln();
     }
 
     if (healthCheckResult != null) {
-      buffer.writeln('健康检查测试:');
+      buffer.writeln('${provider.healthCheckTest}:');
       if (healthCheckResult!.success) {
-        buffer.writeln('  ✅ 健康检查成功');
-        buffer.writeln('  状态码: ${healthCheckResult!.statusCode}');
-        buffer.writeln('  响应: ${healthCheckResult!.responseBody}');
+        buffer.writeln('  ✅ ${provider.healthCheckSuccess}');
+        buffer.writeln(
+          '  ${provider.statusCode}: ${healthCheckResult!.statusCode}',
+        );
+        buffer.writeln(
+          '  ${provider.response}: ${healthCheckResult!.responseBody}',
+        );
       } else {
-        buffer.writeln('  ❌ 健康检查失败');
+        buffer.writeln('  ❌ ${provider.healthCheckFailed}');
         if (healthCheckResult!.statusCode != null) {
-          buffer.writeln('  状态码: ${healthCheckResult!.statusCode}');
+          buffer.writeln(
+            '  ${provider.statusCode}: ${healthCheckResult!.statusCode}',
+          );
         }
         if (healthCheckResult!.error != null) {
-          buffer.writeln('  错误: ${healthCheckResult!.error}');
+          buffer.writeln('  ${provider.error}: ${healthCheckResult!.error}');
         }
       }
       buffer.writeln();
     }
 
-    buffer.writeln('互联网连接:');
-    buffer.writeln(hasInternetConnection ? '  ✅ 有互联网连接' : '  ❌ 无互联网连接');
+    buffer.writeln('${provider.internetConnection}:');
+    buffer.writeln(
+      hasInternetConnection
+          ? '  ✅ ${provider.hasInternetConnection}'
+          : '  ❌ ${provider.noInternetConnection}',
+    );
     buffer.writeln();
 
     buffer.writeln(separator * 3);
