@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)
-![Flutter](https://img.shields.io/badge/Flutter-3.10.4+-02569B?logo=flutter)
+![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
@@ -19,7 +19,7 @@ An efficient, cross-platform LAN file transfer application
 
 ## 📖 Introduction
 
-Icy Easy Send is a LAN file transfer tool built with Flutter, enabling fast and secure file transfers and clipboard synchronization between multiple devices on the same local network. No internet connection required, no account registration needed - ready to use out of the box.
+Icy Easy Send is a local area network file transfer tool developed based on Flutter, supporting fast and secure file transfers and clipboard content synchronization between multiple devices within the same local area network. No internet connection or account registration is required, and it can be used immediately after opening.
 
 ### Why Choose Icy Easy Send?
 
@@ -507,7 +507,7 @@ This project is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) 
 
 ## 👨‍💻 Author
 
-**冰冷的希望 (Cold Hope)**
+**冰冷的希望 (Icy Hope)**
 
 ---
 
