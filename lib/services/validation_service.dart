@@ -429,17 +429,22 @@ class ValidationService {
       // 这是一个简化的检查方法，不能精确获取可用空间
       // 但可以验证是否至少有写入权限
 
+      // 生成唯一的临时文件名，避免并发冲突
+      // 使用微秒级时间戳 + 随机数确保唯一性
+      final timestamp = DateTime.now().microsecondsSinceEpoch;
+      final random = DateTime.now().millisecondsSinceEpoch % 10000;
       final testFile = File(
-        path.join(
-          directory.path,
-          '.storage_test_${DateTime.now().millisecondsSinceEpoch}',
-        ),
+        path.join(directory.path, '.storage_test_${timestamp}_$random'),
       );
 
       try {
         // 尝试创建测试文件
         await testFile.create();
-        await testFile.delete();
+
+        // 确保文件存在后再删除
+        if (await testFile.exists()) {
+          await testFile.delete();
+        }
 
         LogUtil.dTag(logTag, '桌面平台存储空间检查: 目录可写，假设有足够空间');
 
@@ -454,7 +459,17 @@ class ValidationService {
         LogUtil.dTag(logTag, '桌面平台存储空间验证通过（降级方案）');
         return OperationResult.success();
       } catch (e) {
-        LogUtil.eTag(logTag, '无法在目标目录创建文件: $e');
+        LogUtil.eTag(logTag, '无法在目标目录创建或删除测试文件: $e');
+
+        // 尝试清理可能残留的测试文件
+        try {
+          if (await testFile.exists()) {
+            await testFile.delete();
+          }
+        } catch (cleanupError) {
+          LogUtil.wTag(logTag, '清理测试文件失败: $cleanupError');
+        }
+
         return OperationResult.failure('无法写入下载目录，请检查权限');
       }
     } catch (e, stackTrace) {

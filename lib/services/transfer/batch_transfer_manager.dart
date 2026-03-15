@@ -302,7 +302,7 @@ class BatchTransferManager {
       }
     }
 
-    // Function to send a single file
+    // Function to send a single file with timeout protection
     Future<OperationResult<TransferData>> sendFile(int fileIndex) async {
       final file = files[fileIndex];
       final fileName = path.basename(file.path);
@@ -320,30 +320,58 @@ class BatchTransferManager {
         _statusProvider.transferringFile(fileIndex + 1, files.length, fileName),
       );
 
-      final result = await _fileSender.sendFileWithTransferId(
-        targetIP: targetIP,
-        file: file,
-        transferId: transferId,
-        senderIP: senderIP,
-        deviceName: deviceName,
-        secretKey: secretKey,
-        onProgress: (progress, bytes, total) {
-          fileProgress[fileIndex] = progress;
-          fileBytes[fileIndex] = bytes;
-          onFileProgress?.call(fileIndex, progress, bytes, total);
+      try {
+        // Add timeout protection for each file transfer
+        final fileSize = await file.length();
+        // Calculate timeout: base timeout + time based on file size (1 second per MB)
+        final timeoutDuration = Duration(
+          seconds:
+              AppConstants.requestTimeout +
+              (fileSize ~/ AppConstants.bytesPerMB),
+        );
 
-          int overallBytes = 0;
-          for (final entry in fileBytes.entries) {
-            overallBytes += entry.value;
-          }
-          final overallProgress = totalBytes > 0
-              ? overallBytes / totalBytes
-              : 0.0;
-          onProgress?.call(overallProgress, overallBytes, totalBytes);
-        },
-      );
+        final result = await _fileSender
+            .sendFileWithTransferId(
+              targetIP: targetIP,
+              file: file,
+              transferId: transferId,
+              senderIP: senderIP,
+              deviceName: deviceName,
+              secretKey: secretKey,
+              onProgress: (progress, bytes, total) {
+                fileProgress[fileIndex] = progress;
+                fileBytes[fileIndex] = bytes;
+                onFileProgress?.call(fileIndex, progress, bytes, total);
 
-      return result;
+                int overallBytes = 0;
+                for (final entry in fileBytes.entries) {
+                  overallBytes += entry.value;
+                }
+                final overallProgress = totalBytes > 0
+                    ? overallBytes / totalBytes
+                    : 0.0;
+                onProgress?.call(overallProgress, overallBytes, totalBytes);
+              },
+            )
+            .timeout(
+              timeoutDuration,
+              onTimeout: () {
+                LogUtil.wTag(
+                  logTag,
+                  'File transfer timeout for $fileName after ${timeoutDuration.inSeconds} seconds',
+                );
+                return OperationResult.failure(
+                  '文件传输超时 (${timeoutDuration.inSeconds}秒)',
+                );
+              },
+            );
+
+        return result;
+      } catch (e) {
+        // Catch any unexpected errors to prevent Future from hanging
+        LogUtil.eTag(logTag, 'Unexpected error sending file $fileName: $e');
+        return OperationResult.failure('文件传输失败: ${e.toString()}');
+      }
     }
 
     // Process files with concurrent control
@@ -356,13 +384,26 @@ class BatchTransferManager {
       for (int j = i; j < batchEnd; j++) {
         final fileIndex = validFileIndices[j];
         batch.add(
-          sendFile(fileIndex).then((result) {
-            final fileName = path.basename(files[fileIndex].path);
-            results[fileName] = result;
-          }),
+          sendFile(fileIndex)
+              .then((result) {
+                final fileName = path.basename(files[fileIndex].path);
+                results[fileName] = result;
+              })
+              .catchError((error) {
+                // Ensure errors are caught and stored in results
+                final fileName = path.basename(files[fileIndex].path);
+                LogUtil.eTag(
+                  logTag,
+                  'Error in batch transfer for $fileName: $error',
+                );
+                results[fileName] = OperationResult.failure(
+                  '传输失败: ${error.toString()}',
+                );
+              }),
         );
       }
 
+      // Wait for all files in this batch to complete (success or failure)
       await Future.wait(batch, eagerError: false);
     }
   }

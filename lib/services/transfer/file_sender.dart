@@ -35,15 +35,27 @@ class FileSender {
     onProgress,
   }) async {
     final fileName = path.basename(file.path);
-    final fileSize = await file.length();
+    int fileSize = 0;
+
+    try {
+      fileSize = await file.length();
+    } catch (e) {
+      LogUtil.eTag(
+        logTag,
+        'Failed to get file size for $fileName: ${e.toString()}',
+      );
+      return OperationResult.failure('无法读取文件大小: ${e.toString()}');
+    }
 
     LogUtil.iTag(
       logTag,
       "sendFileWithTransferId() transferId: [$transferId], targetIP: [$targetIP], fileSize: [$fileSize], fileName: [$fileName]",
     );
 
+    http.StreamedRequest? request;
+
     try {
-      final request = _requestBuilder.buildTransferRequest(
+      request = _requestBuilder.buildTransferRequest(
         targetIP: targetIP,
         fileName: fileName,
         fileSize: fileSize,
@@ -76,13 +88,28 @@ class FileSender {
         targetIP: targetIP,
         deviceName: deviceName,
       );
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
+      LogUtil.eTag(logTag, 'Timeout sending file $fileName: ${e.toString()}');
       return OperationResult.failure('文件传输超时');
     } on SocketException catch (e) {
-      LogUtil.eTag(logTag, e.toString());
+      LogUtil.eTag(
+        logTag,
+        'Socket error sending file $fileName: ${e.toString()}',
+      );
       return OperationResult.failure('网络连接失败\n错误: ${e.message}');
-    } catch (e) {
-      LogUtil.eTag(logTag, e.toString());
+    } on FileSystemException catch (e) {
+      LogUtil.eTag(logTag, 'File system error for $fileName: ${e.toString()}');
+      return OperationResult.failure('文件访问错误: ${e.message}');
+    } on http.ClientException catch (e) {
+      LogUtil.eTag(logTag, 'HTTP client error for $fileName: ${e.toString()}');
+      return OperationResult.failure('网络请求失败: ${e.message}');
+    } catch (e, stackTrace) {
+      LogUtil.eTag(
+        logTag,
+        'Unexpected error sending file $fileName: ${e.toString()}',
+        e,
+        stackTrace,
+      );
       return OperationResult.failure(
         ErrorMessages.unexpectedError(e.toString()),
       );
@@ -98,7 +125,7 @@ class FileSender {
     onProgress,
   }) async {
     int bytesSent = 0;
-    final fileStream = file.openRead();
+    Stream<List<int>>? fileStream;
 
     try {
       // Handle empty files (0 bytes)
@@ -108,6 +135,8 @@ class FileSender {
         await request.sink.close();
         return;
       }
+
+      fileStream = file.openRead();
 
       await for (final chunk in fileStream) {
         request.sink.add(chunk);
@@ -119,11 +148,15 @@ class FileSender {
 
       await request.sink.close();
     } catch (e) {
-      LogUtil.eTag(logTag, e.toString());
+      LogUtil.eTag(logTag, 'Error streaming file data: ${e.toString()}');
       try {
         await request.sink.close();
-      } catch (_) {
+      } catch (closeError) {
         // Ignore close errors
+        LogUtil.wTag(
+          logTag,
+          'Error closing request sink: ${closeError.toString()}',
+        );
       }
       rethrow;
     }

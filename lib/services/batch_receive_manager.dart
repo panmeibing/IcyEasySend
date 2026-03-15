@@ -202,6 +202,28 @@ class BatchReceiveManager {
     }
   }
 
+  /// Mark a transfer as failed
+  void markTransferFailed(String transferId, String errorMessage) {
+    // Find the file info
+    for (final files in _pendingFilesBySender.values) {
+      for (final fileInfo in files) {
+        if (fileInfo.transferId == transferId) {
+          fileInfo.progress = 0.0;
+          fileInfo.status = '失败: $errorMessage';
+          fileInfo.isCompleted = true;
+
+          // Notify the dialog to update if it's active
+          final senderIP = fileInfo.senderIP;
+          if (_activeDialogKeys.containsKey(senderIP)) {
+            final dialogKey = _activeDialogKeys[senderIP];
+            dialogKey?.currentState?._notifyProgressUpdate();
+          }
+          return;
+        }
+      }
+    }
+  }
+
   /// Get pending files for a sender
   List<PendingFileInfo>? getPendingFiles(String senderIP) {
     return _pendingFilesBySender[senderIP];
@@ -497,7 +519,11 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                           Icons.insert_drive_file,
                           size: 20,
                           color: file.isAccepted
-                              ? (file.isCompleted ? Colors.green : Colors.blue)
+                              ? (file.isCompleted
+                                    ? (file.status.startsWith('失败')
+                                          ? Colors.red
+                                          : Colors.green)
+                                    : Colors.blue)
                               : Colors.grey,
                         ),
                         title: Text(
@@ -521,7 +547,11 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                                 value: file.progress,
                                 backgroundColor: Colors.grey[300],
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  file.isCompleted ? Colors.green : Colors.blue,
+                                  file.isCompleted
+                                      ? (file.status.startsWith('失败')
+                                            ? Colors.red
+                                            : Colors.green)
+                                      : Colors.blue,
                                 ),
                                 minHeight: 3,
                               ),
@@ -531,7 +561,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: file.isCompleted
-                                      ? Colors.green
+                                      ? (file.status.startsWith('失败')
+                                            ? Colors.red
+                                            : Colors.green)
                                       : Colors.blue[700],
                                 ),
                               ),

@@ -246,7 +246,7 @@ class FileTransferHandler {
             headers: {'Content-Type': 'application/json'},
           );
         }
-        
+
         // Show batch dialog with all files at once
         // When dialog closes (all files received), save histories in batch
         accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
@@ -452,6 +452,13 @@ class FileTransferHandler {
           LogTags.transfer,
           '文件接收失败: $fileName, 原因=${receiveResult.errorMessage}',
         );
+
+        // Notify batch receive manager about the failure
+        _batchReceiveManager.markTransferFailed(
+          transferId,
+          receiveResult.errorMessage ?? '未知错误',
+        );
+
         return Response(
           500,
           body: jsonEncode({
