@@ -125,10 +125,12 @@ class HomePageState extends State<HomePage> {
     // Add listeners
     _ipController.addListener(_validateIPAddress);
     _portController.addListener(_validatePort);
+    _secretKeyController.addListener(_saveTargetSecretKey);
 
     // Load preferences
     _loadLastUsedIP();
     _loadLastUsedPort();
+    _loadLastUsedTargetSecretKey();
     _loadIPHistory();
     _loadIPValidationEnabled();
 
@@ -238,6 +240,22 @@ class HomePageState extends State<HomePage> {
     if (mounted) {
       _portController.text = lastPort.toString();
       _validatePort();
+    }
+  }
+
+  /// Load the last used target device secret key from preferences
+  Future<void> _loadLastUsedTargetSecretKey() async {
+    final lastSecretKey = await _preferencesService.getTargetDeviceSecretKey();
+    if (lastSecretKey != null && lastSecretKey.isNotEmpty && mounted) {
+      _secretKeyController.text = lastSecretKey;
+    }
+  }
+
+  /// Save the current target device secret key to preferences
+  Future<void> _saveTargetSecretKey() async {
+    final secretKey = _secretKeyController.text.trim();
+    if (secretKey.isNotEmpty) {
+      await _preferencesService.saveTargetDeviceSecretKey(secretKey);
     }
   }
 
@@ -401,8 +419,11 @@ class HomePageState extends State<HomePage> {
                         controller: _secretKeyController,
                         focusNode: _secretKeyFocusNode,
                         isEnabled: isServerRunning,
-                        onClear: () {
+                        onClear: () async {
                           _secretKeyController.clear();
+                          // Clear the cached secret key
+                          await _preferencesService
+                              .clearTargetDeviceSecretKey();
                         },
                       ),
                       const SizedBox(height: 24),

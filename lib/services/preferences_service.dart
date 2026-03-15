@@ -18,6 +18,7 @@ class PreferencesService {
   static const String _keyMaxClipboardSize = 'max_clipboard_size';
   static const String _keyEnableIPValidation = 'enable_ip_validation';
   static const String _keyDeviceSecretKey = 'device_secret_key';
+  static const String _keyTargetDeviceSecretKey = 'target_device_secret_key';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -366,6 +367,45 @@ class PreferencesService {
       return prefs.getString(_keyDeviceSecretKey);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Save target device secret key
+  ///
+  /// Parameters:
+  /// - [secretKey]: The target device secret key to save
+  Future<bool> saveTargetDeviceSecretKey(String secretKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyTargetDeviceSecretKey, secretKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get target device secret key
+  ///
+  /// Returns the saved target device secret key, or null if none exists
+  Future<String?> getTargetDeviceSecretKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_keyTargetDeviceSecretKey);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Clear target device secret key
+  ///
+  /// Returns true if successful, false otherwise
+  Future<bool> clearTargetDeviceSecretKey() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyTargetDeviceSecretKey);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 }
