@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
@@ -19,7 +19,9 @@ An efficient, cross-platform LAN file transfer application
 
 ## 📖 Introduction
 
-Icy Easy Send is a local area network file transfer tool developed based on Flutter, supporting fast and secure file transfers and clipboard content synchronization between multiple devices within the same local area network. No internet connection or account registration is required, and it can be used immediately after opening.
+Icy Easy Send is a local area network file transfer tool developed based on Flutter, supporting fast and secure file
+transfers and clipboard content synchronization between multiple devices within the same local area network. No internet
+connection or account registration is required, and it can be used immediately after opening.
 
 ### Why Choose Icy Easy Send?
 
@@ -37,37 +39,37 @@ Icy Easy Send is a local area network file transfer tool developed based on Flut
 ### Core Functionality
 
 - **File Transfer**
-  - Support for single or batch file transfers
-  - Real-time display of transfer progress, speed, and remaining time
-  - Automatic handling of filename conflicts
-  - Support for large file transfers (up to 20GB)
-  - Configurable concurrent transfer count (1-10 files simultaneously)
+    - Support for single or batch file transfers
+    - Real-time display of transfer progress, speed, and remaining time
+    - Automatic handling of filename conflicts
+    - Support for large file transfers (up to 20GB)
+    - Configurable concurrent transfer count (1-10 files simultaneously)
 
 - **Clipboard Synchronization**
-  - Cross-device text content synchronization
-  - File URI synchronization support
-  - Image format support (PNG, JPEG, BMP)
-  - Configurable clipboard size limit (1-10MB)
+    - Cross-device text content synchronization
+    - File URI synchronization support
+    - Image format support (PNG, JPEG, BMP)
+    - Configurable clipboard size limit (1-10MB)
 
 - **User Experience**
-  - Drag and drop file support (desktop platforms)
-  - Share files from other apps to this application
-  - IP address history
-  - Real-time IP address validation
-  - Network status monitoring and auto-reconnection
+    - Drag and drop file support (desktop platforms)
+    - Share files from other apps to this application
+    - IP address history
+    - Real-time IP address validation
+    - Network status monitoring and auto-reconnection
 
 - **Transfer History**
-  - Complete transfer history records
-  - Filter by type (All/Sent/Received)
-  - Transfer statistics
-  - Quick open file or folder
-  - Configurable history retention count
+    - Complete transfer history records
+    - Filter by type (All/Sent/Received)
+    - Transfer statistics
+    - Quick open file or folder
+    - Configurable history retention count
 
 - **Network Diagnostics**
-  - Built-in network diagnostic tools
-  - Network connection status detection
-  - Port availability testing
-  - Target device reachability check
+    - Built-in network diagnostic tools
+    - Network connection status detection
+    - Port availability testing
+    - Target device reachability check
 
 ---
 
@@ -78,21 +80,23 @@ Icy Easy Send is a local area network file transfer tool developed based on Flut
 - Flutter SDK: 3.41.2 or higher
 - Dart SDK: 3.11.0 or higher
 - Platform-specific development environment:
-  - Android: Android Studio / Android SDK
-  - iOS: Xcode (macOS only)
-  - Windows: Visual Studio 2022
-  - macOS: Xcode
-  - Linux: Relevant development toolchain
+    - Android: Android Studio / Android SDK
+    - iOS: Xcode (macOS only)
+    - Windows: Visual Studio 2022
+    - macOS: Xcode
+    - Linux: Relevant development toolchain
 
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd icy_easy_send
 ```
 
 2. **Install dependencies**
+
 ```bash
 flutter pub get
 ```
@@ -145,30 +149,30 @@ flutter build linux --release
 ### Basic Workflow
 
 1. **Launch Application**
-   - The HTTP server starts automatically when the app launches
-   - View your device's IP address and port number at the top of the home page
+    - The HTTP server starts automatically when the app launches
+    - View your device's IP address and port number at the top of the home page
 
 2. **Send Files**
-   - Enter the receiver's IP address in the "Target IP" input field
-   - Click the "Select Files" button to choose files (or drag and drop files directly)
-   - Click the "Send" button
-   - Transfer begins after receiver confirms
+    - Enter the receiver's IP address in the "Target IP" input field
+    - Click the "Select Files" button to choose files (or drag and drop files directly)
+    - Click the "Send" button
+    - Transfer begins after receiver confirms
 
 3. **Receive Files**
-   - Keep the application running
-   - A confirmation dialog appears when someone sends you files
-   - Review the file list and click "Receive"
-   - Files are automatically saved to the downloads folder
+    - Keep the application running
+    - A confirmation dialog appears when someone sends you files
+    - Review the file list and click "Receive"
+    - Files are automatically saved to the downloads folder
 
 4. **Sync Clipboard**
-   - Enter the target device's IP address
-   - Click the "Sync Remote Clipboard" button on the home page
-   - After the other party confirms, their clipboard content syncs to your device
+    - Enter the target device's IP address
+    - Click the "Sync Remote Clipboard" button on the home page
+    - After the other party confirms, their clipboard content syncs to your device
 
 5. **View History**
-   - Switch to the "History" tab
-   - View all transfer records
-   - Filter, open files, or delete records
+    - Switch to the "History" tab
+    - View all transfer records
+    - Filter, open files, or delete records
 
 ### Advanced Settings
 
@@ -303,13 +307,26 @@ The project uses a custom logging utility `LogUtil`:
 import 'package:icy_easy_send/utils/log_util.dart';
 
 // Info log
-LogUtil.iTag('TAG', 'This is an info log');
+LogUtil.iTag
+('TAG
+'
+,
+'This is an info log
+'
+);
 
 // Warning log
 LogUtil.wTag('TAG', 'This is a warning log');
 
 // Error log
-LogUtil.eTag('TAG', 'This is an error log', error, stackTrace);
+LogUtil.eTag('TAG', '
+This is an error log
+'
+,
+error
+,
+stackTrace
+);
 ```
 
 ### Adding New Features
@@ -338,11 +355,11 @@ import 'app_localizations.dart';
 class AppLocalizationsJa extends AppLocalizations {
   @override
   String get appName => 'アプリ名';
-  
+
   @override
   String get home => 'ホーム';
-  
-  // ... implement all abstract methods from AppLocalizations
+
+// ... implement all abstract methods from AppLocalizations
 }
 ```
 
@@ -351,30 +368,36 @@ class AppLocalizationsJa extends AppLocalizations {
 Update the following provider classes to support the new language:
 
 **a. Error Message Provider** (`lib/utils/error_message_provider.dart`):
+
 ```dart
-String get networkConnectionFailed => getMessage({
-  'zh': '无法连接到目标设备',
-  'en': 'Unable to connect to target device',
-  'ja': 'ターゲットデバイスに接続できません',  // Add new language
-});
+String get networkConnectionFailed =>
+    getMessage({
+      'zh': '无法连接到目标设备',
+      'en': 'Unable to connect to target device',
+      'ja': 'ターゲットデバイスに接続できません', // Add new language
+    });
 ```
 
 **b. Transfer Status Provider** (`lib/utils/transfer_status_provider.dart`):
+
 ```dart
-String get checkingTargetDevice => getMessage({
-  'zh': '正在检查目标设备...',
-  'en': 'Checking target device...',
-  'ja': 'ターゲットデバイスを確認中...',  // Add new language
-});
+String get checkingTargetDevice =>
+    getMessage({
+      'zh': '正在检查目标设备...',
+      'en': 'Checking target device...',
+      'ja': 'ターゲットデバイスを確認中...', // Add new language
+    });
 ```
 
 **c. Network Diagnostics Provider** (`lib/utils/network_diagnostics_provider.dart`):
+
 ```dart
-String get networkDiagnosticsReport => getMessage({
-  'zh': '网络诊断报告',
-  'en': 'Network Diagnostics Report',
-  'ja': 'ネットワーク診断レポート',  // Add new language
-});
+String get networkDiagnosticsReport =>
+    getMessage({
+      'zh': '网络诊断报告',
+      'en': 'Network Diagnostics Report',
+      'ja': 'ネットワーク診断レポート', // Add new language
+    });
 ```
 
 #### 3. Register the New Language
@@ -405,6 +428,7 @@ Future<AppLocalizations> load(Locale locale) async {
 Update `lib/services/language_service.dart` to add the new language configuration:
 
 ```dart
+
 static const Map<String, LanguageConfig> _supportedLanguages = {
   'system': LanguageConfig(
     code: 'system',
@@ -421,7 +445,7 @@ static const Map<String, LanguageConfig> _supportedLanguages = {
     displayName: 'English',
     locale: Locale('en', 'US'),
   ),
-  'ja': LanguageConfig(  // Add new language - only need to add here!
+  'ja': LanguageConfig( // Add new language - only need to add here!
     code: 'ja',
     displayName: '日本語',
     locale: Locale('ja', 'JP'),
@@ -433,22 +457,23 @@ static const Map<String, LanguageConfig> _supportedLanguages = {
 
 ### Main Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| shelf | ^1.4.2 | HTTP server framework |
-| shelf_router | ^1.1.4 | Routing management |
-| http | ^1.2.2 | HTTP client |
-| file_picker | ^10.3.8 | File selection |
-| path_provider | ^2.1.5 | Path access |
-| permission_handler | ^12.0.1 | Permission management |
-| shared_preferences | ^2.3.3 | Local storage |
-| device_info_plus | ^11.5.0 | Device information |
-| connectivity_plus | ^7.0.0 | Network monitoring |
-| super_clipboard | ^0.9.1 | Clipboard operations |
-| desktop_drop | ^0.7.0 | Drag and drop support |
-| flutter_sharing_intent | ^2.0.4 | Sharing intent |
+| Package                | Version | Purpose               |
+|------------------------|---------|-----------------------|
+| shelf                  | ^1.4.2  | HTTP server framework |
+| shelf_router           | ^1.1.4  | Routing management    |
+| http                   | ^1.2.2  | HTTP client           |
+| file_picker            | ^10.3.8 | File selection        |
+| path_provider          | ^2.1.5  | Path access           |
+| permission_handler     | ^12.0.1 | Permission management |
+| shared_preferences     | ^2.3.3  | Local storage         |
+| device_info_plus       | ^11.5.0 | Device information    |
+| connectivity_plus      | ^7.0.0  | Network monitoring    |
+| super_clipboard        | ^0.9.1  | Clipboard operations  |
+| desktop_drop           | ^0.7.0  | Drag and drop support |
+| flutter_sharing_intent | ^2.0.4  | Sharing intent        |
 
-For complete dependency list, see [pubspec.yaml](pubspec.yaml) (versions listed here may be outdated, please refer to the configuration file)
+For complete dependency list, see [pubspec.yaml](pubspec.yaml) (versions listed here may be outdated, please refer to
+the configuration file)
 
 ---
 

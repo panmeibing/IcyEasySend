@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.9-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
@@ -37,37 +37,37 @@ Icy Easy Send 是一款基于 Flutter 开发的局域网文件传输工具，支
 ### 核心功能
 
 - **文件传输**
-  - 支持单个或批量文件传输
-  - 实时显示传输进度、速度和剩余时间
-  - 自动处理文件名冲突
-  - 支持大文件传输（最大 20GB）
-  - 可配置并发传输数量（1-10 个文件同时传输）
+    - 支持单个或批量文件传输
+    - 实时显示传输进度、速度和剩余时间
+    - 自动处理文件名冲突
+    - 支持大文件传输（最大 20GB）
+    - 可配置并发传输数量（1-10 个文件同时传输）
 
 - **剪切板同步**
-  - 跨设备同步文本内容
-  - 支持文件 URI 同步
-  - 支持图片格式（PNG、JPEG、BMP）
-  - 可配置剪切板大小限制（1-10MB）
+    - 跨设备同步文本内容
+    - 支持文件 URI 同步
+    - 支持图片格式（PNG、JPEG、BMP）
+    - 可配置剪切板大小限制（1-10MB）
 
 - **用户体验**
-  - 拖放文件支持（桌面平台）
-  - 从其他应用分享文件到本应用
-  - IP 地址历史记录
-  - 实时 IP 地址验证
-  - 网络状态监听和自动重连
+    - 拖放文件支持（桌面平台）
+    - 从其他应用分享文件到本应用
+    - IP 地址历史记录
+    - 实时 IP 地址验证
+    - 网络状态监听和自动重连
 
 - **历史记录**
-  - 完整的传输历史记录
-  - 按类型筛选（全部/已发送/已接收）
-  - 传输统计信息
-  - 快速打开文件或文件夹
-  - 可配置历史记录保留数量
+    - 完整的传输历史记录
+    - 按类型筛选（全部/已发送/已接收）
+    - 传输统计信息
+    - 快速打开文件或文件夹
+    - 可配置历史记录保留数量
 
 - **网络诊断**
-  - 内置网络诊断工具
-  - 检测网络连接状态
-  - 端口可用性测试
-  - 目标设备可达性检查
+    - 内置网络诊断工具
+    - 检测网络连接状态
+    - 端口可用性测试
+    - 目标设备可达性检查
 
 ---
 
@@ -78,21 +78,23 @@ Icy Easy Send 是一款基于 Flutter 开发的局域网文件传输工具，支
 - Flutter SDK: 3.41.2 或更高版本
 - Dart SDK: 3.11.0 或更高版本
 - 对应平台的开发环境：
-  - Android: Android Studio / Android SDK
-  - iOS: Xcode (仅 macOS)
-  - Windows: Visual Studio 2022
-  - macOS: Xcode
-  - Linux: 相关开发工具链
+    - Android: Android Studio / Android SDK
+    - iOS: Xcode (仅 macOS)
+    - Windows: Visual Studio 2022
+    - macOS: Xcode
+    - Linux: 相关开发工具链
 
 ### 安装步骤
 
 1. **克隆项目**
+
 ```bash
 git clone <repository-url>
 cd icy_easy_send
 ```
 
 2. **安装依赖**
+
 ```bash
 flutter pub get
 ```
@@ -145,20 +147,20 @@ flutter build linux --release
 ### 基本使用流程
 
 1. **启动应用**
-   - 应用启动后会自动启动 HTTP 服务器
-   - 在主页顶部可以看到本机的 IP 地址和端口号
+    - 应用启动后会自动启动 HTTP 服务器
+    - 在主页顶部可以看到本机的 IP 地址和端口号
 
 2. **发送文件**
-   - 在"目标 IP"输入框中输入接收方的 IP 地址
-   - 点击"选择文件"按钮选择要发送的文件（或直接拖放文件）
-   - 点击"发送"按钮
-   - 接收方确认后开始传输
+    - 在"目标 IP"输入框中输入接收方的 IP 地址
+    - 点击"选择文件"按钮选择要发送的文件（或直接拖放文件）
+    - 点击"发送"按钮
+    - 接收方确认后开始传输
 
 3. **接收文件**
-   - 保持应用运行
-   - 当有人向你发送文件时，会弹出确认对话框
-   - 查看文件列表并点击"接收"
-   - 文件会自动保存到下载文件夹
+    - 保持应用运行
+    - 当有人向你发送文件时，会弹出确认对话框
+    - 查看文件列表并点击"接收"
+    - 文件会自动保存到下载文件夹
 
 4. **同步剪切板**
     - 输入目标设备的 IP 地址
@@ -166,9 +168,9 @@ flutter build linux --release
     - 对方确认后，其剪切板内容会同步到你的设备
 
 5. **查看历史**
-   - 切换到"历史"标签页
-   - 查看所有传输记录
-   - 可以筛选、打开文件或删除记录
+    - 切换到"历史"标签页
+    - 查看所有传输记录
+    - 可以筛选、打开文件或删除记录
 
 ### 高级设置
 
@@ -303,13 +305,28 @@ open coverage/html/index.html
 import 'package:icy_easy_send/utils/log_util.dart';
 
 // 信息日志
-LogUtil.iTag('TAG', '这是一条信息日志');
+LogUtil.iTag
+('TAG
+'
+,
+'
+这是一条信息日
+志
+'
+);
 
 // 警告日志
 LogUtil.wTag('TAG', '这是一条警告日志');
 
 // 错误日志
-LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
+LogUtil.eTag('TAG', '
+这是一条错误日志
+'
+,
+error
+,
+stackTrace
+);
 ```
 
 ### 添加新功能
@@ -338,11 +355,11 @@ import 'app_localizations.dart';
 class AppLocalizationsJa extends AppLocalizations {
   @override
   String get appName => 'アプリ名';
-  
+
   @override
   String get home => 'ホーム';
-  
-  // ... 实现 AppLocalizations 中的所有抽象方法
+
+// ... 实现 AppLocalizations 中的所有抽象方法
 }
 ```
 
@@ -351,30 +368,36 @@ class AppLocalizationsJa extends AppLocalizations {
 更新以下 provider 类以支持新语言：
 
 **a. 错误消息提供者** (`lib/utils/error_message_provider.dart`)：
+
 ```dart
-String get networkConnectionFailed => getMessage({
-  'zh': '无法连接到目标设备',
-  'en': 'Unable to connect to target device',
-  'ja': 'ターゲットデバイスに接続できません',  // 添加新语言
-});
+String get networkConnectionFailed =>
+    getMessage({
+      'zh': '无法连接到目标设备',
+      'en': 'Unable to connect to target device',
+      'ja': 'ターゲットデバイスに接続できません', // 添加新语言
+    });
 ```
 
 **b. 传输状态提供者** (`lib/utils/transfer_status_provider.dart`)：
+
 ```dart
-String get checkingTargetDevice => getMessage({
-  'zh': '正在检查目标设备...',
-  'en': 'Checking target device...',
-  'ja': 'ターゲットデバイスを確認中...',  // 添加新语言
-});
+String get checkingTargetDevice =>
+    getMessage({
+      'zh': '正在检查目标设备...',
+      'en': 'Checking target device...',
+      'ja': 'ターゲットデバイスを確認中...', // 添加新语言
+    });
 ```
 
 **c. 网络诊断提供者** (`lib/utils/network_diagnostics_provider.dart`)：
+
 ```dart
-String get networkDiagnosticsReport => getMessage({
-  'zh': '网络诊断报告',
-  'en': 'Network Diagnostics Report',
-  'ja': 'ネットワーク診断レポート',  // 添加新语言
-});
+String get networkDiagnosticsReport =>
+    getMessage({
+      'zh': '网络诊断报告',
+      'en': 'Network Diagnostics Report',
+      'ja': 'ネットワーク診断レポート', // 添加新语言
+    });
 ```
 
 #### 3. 注册新语言
@@ -405,6 +428,7 @@ Future<AppLocalizations> load(Locale locale) async {
 更新 `lib/services/language_service.dart` 以添加新的语言配置：
 
 ```dart
+
 static const Map<String, LanguageConfig> _supportedLanguages = {
   'system': LanguageConfig(
     code: 'system',
@@ -421,7 +445,7 @@ static const Map<String, LanguageConfig> _supportedLanguages = {
     displayName: 'English',
     locale: Locale('en', 'US'),
   ),
-  'ja': LanguageConfig(  // 添加新语言 - 只需要在这里添加！
+  'ja': LanguageConfig( // 添加新语言 - 只需要在这里添加！
     code: 'ja',
     displayName: '日本語',
     locale: Locale('ja', 'JP'),
@@ -433,20 +457,20 @@ static const Map<String, LanguageConfig> _supportedLanguages = {
 
 ### 主要依赖
 
-| 依赖包 | 版本 | 用途 |
-|--------|------|------|
-| shelf | ^1.4.2 | HTTP 服务器框架 |
-| shelf_router | ^1.1.4 | 路由管理 |
-| http | ^1.2.2 | HTTP 客户端 |
-| file_picker | ^10.3.8 | 文件选择 |
-| path_provider | ^2.1.5 | 路径获取 |
-| permission_handler | ^12.0.1 | 权限管理 |
-| shared_preferences | ^2.3.3 | 本地存储 |
-| device_info_plus | ^11.5.0 | 设备信息 |
-| connectivity_plus | ^7.0.0 | 网络监听 |
-| super_clipboard | ^0.9.1 | 剪切板操作 |
-| desktop_drop | ^0.7.0 | 拖放支持 |
-| flutter_sharing_intent | ^2.0.4 | 分享意图 |
+| 依赖包                    | 版本      | 用途         |
+|------------------------|---------|------------|
+| shelf                  | ^1.4.2  | HTTP 服务器框架 |
+| shelf_router           | ^1.1.4  | 路由管理       |
+| http                   | ^1.2.2  | HTTP 客户端   |
+| file_picker            | ^10.3.8 | 文件选择       |
+| path_provider          | ^2.1.5  | 路径获取       |
+| permission_handler     | ^12.0.1 | 权限管理       |
+| shared_preferences     | ^2.3.3  | 本地存储       |
+| device_info_plus       | ^11.5.0 | 设备信息       |
+| connectivity_plus      | ^7.0.0  | 网络监听       |
+| super_clipboard        | ^0.9.1  | 剪切板操作      |
+| desktop_drop           | ^0.7.0  | 拖放支持       |
+| flutter_sharing_intent | ^2.0.4  | 分享意图       |
 
 完整依赖列表请查看 [pubspec.yaml](pubspec.yaml)（此处列出的版本可能已经过时，请以配置文件为主）
 
