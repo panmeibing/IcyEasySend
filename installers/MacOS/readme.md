@@ -19,14 +19,51 @@ flutter build macos --release
 
 ### 2.2 签名
 
-```shell
-# 请将 IcyEasySend.app 替换为你实际的应用名称
-# 请将 "IcyHope" 替换为你刚才设置的证书名称（如果名字里有空格，必须加双引号）
+**方式一：使用自动化签名脚本（推荐）**
 
-codesign --deep --force --verify --verbose \
---sign "IcyHope" \
+创建签名脚本 `installers/macOS/sign_app.sh`：
+
+使用方法：
+
+```bash
+# 1. 给脚本添加执行权限
+chmod +x installers/macOS/sign_app.sh
+
+# 2. 修改脚本中的 SIGNING_IDENTITY 为你的证书名称
+
+# 3. 执行签名
+cd installers/macOS
+./sign_app.sh
+```
+
+**方式二：手动签名命令**
+
+如果不想使用脚本，可以手动执行：
+
+```shell
+# 请将 "IcyHope" 替换为你的证书名称
+
+codesign --deep --force --sign "IcyHope" \
+--entitlements macos/Runner/Release.entitlements \
+--options runtime \
+--timestamp \
+build/macos/Build/Products/Release/IcyEasySend.app
+
+# 验证签名和权限
+codesign --verify --deep --strict --verbose=2 \
+build/macos/Build/Products/Release/IcyEasySend.app
+
+# 查看应用的 entitlements（确保权限正确）
+codesign -d --entitlements - \
 build/macos/Build/Products/Release/IcyEasySend.app
 ```
+
+> **重要说明**：
+> - ✅ **自动化脚本会自动读取 entitlements 文件**，无需手动指定权限
+> - ✅ 当项目添加新权限时，只需更新 `macos/Runner/Release.entitlements` 文件
+> - ✅ 脚本会验证签名和权限配置，确保不会遗漏
+> - ✅ `--timestamp` 参数添加时间戳，使签名长期有效
+> - ⚠️ 如果是 Debug 版本，将脚本中的 `Release.entitlements` 改为 `DebugProfile.entitlements`
 
 ## 3.生成 dmg 文件
 
@@ -70,7 +107,7 @@ https://github.com/LinusU/node-appdmg?tab=readme-ov-file#specification
 npm install -g appdmg
 cd installers/macOS
 mkdir Output
-appdmg config.json Output/IcyEasySend-installer.dmg
+appdmg config.json Output/IcyEasySend-macOS-v1.1.0.dmg
 ```
 
 
