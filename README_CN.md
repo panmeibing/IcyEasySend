@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
@@ -301,32 +301,17 @@ open coverage/html/index.html
 
 项目使用自定义的日志工具 `LogUtil`：
 
-```dart
+```
 import 'package:icy_easy_send/utils/log_util.dart';
 
 // 信息日志
-LogUtil.iTag
-('TAG
-'
-,
-'
-这是一条信息日
-志
-'
-);
+LogUtil.iTag('TAG','这是一条信息日志');
 
 // 警告日志
 LogUtil.wTag('TAG', '这是一条警告日志');
 
 // 错误日志
-LogUtil.eTag('TAG', '
-这是一条错误日志
-'
-,
-error
-,
-stackTrace
-);
+LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
 ```
 
 ### 添加新功能

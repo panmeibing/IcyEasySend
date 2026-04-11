@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
@@ -303,30 +303,17 @@ open coverage/html/index.html
 
 The project uses a custom logging utility `LogUtil`:
 
-```dart
+```
 import 'package:icy_easy_send/utils/log_util.dart';
 
 // Info log
-LogUtil.iTag
-('TAG
-'
-,
-'This is an info log
-'
-);
+LogUtil.iTag('TAG', 'This is an info log');
 
 // Warning log
 LogUtil.wTag('TAG', 'This is a warning log');
 
 // Error log
-LogUtil.eTag('TAG', '
-This is an error log
-'
-,
-error
-,
-stackTrace
-);
+LogUtil.eTag('TAG', 'This is an error log', error, stackTrace);
 ```
 
 ### Adding New Features
