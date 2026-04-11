@@ -55,11 +55,15 @@ class BatchReceiveManager {
   /// This is the preferred method when sending multiple files
   ///
   /// The onComplete callback is called after the dialog closes (all files received or rejected)
+  /// 
+  /// If autoAccept is true, the dialog will automatically accept all files immediately
+  /// but still show progress (used for secret key authentication)
   Future<bool> requestBatchReceiveConfirmation({
     required BuildContext context,
     required List<PendingFileInfo> files,
     required String senderIP,
     String? senderDeviceName,
+    bool autoAccept = false,
     Future<void> Function()? onComplete,
   }) async {
     if (files.isEmpty) return false;
@@ -73,10 +77,10 @@ class BatchReceiveManager {
 
     // Show dialog immediately with all files
     // Don't await here, let it run in background
-    _showBatchDialog(context, senderIP, onComplete);
+    _showBatchDialog(context, senderIP, autoAccept, onComplete);
 
     // Wait for all files to be confirmed or rejected
-    // This will block until user clicks accept or reject
+    // This will block until user clicks accept or reject (or auto-accept)
     final results = await Future.wait(
       files.map((file) => file.completer.future),
     );
@@ -89,6 +93,7 @@ class BatchReceiveManager {
   Future<void> _showBatchDialog(
     BuildContext context,
     String senderIP,
+    bool autoAccept,
     Future<void> Function()? onComplete,
   ) async {
     if (!context.mounted) return;
@@ -120,6 +125,7 @@ class BatchReceiveManager {
           senderIP: senderIP,
           senderDeviceName: pendingFiles.first.senderDeviceName,
           pendingFiles: pendingFiles,
+          autoAccept: autoAccept,  // Pass autoAccept flag
           onAccept: () {
             // User accepted, update status and complete futures
             for (final fileInfo in pendingFiles) {
@@ -257,6 +263,7 @@ class _BatchReceiveDialog extends StatefulWidget {
   final String senderIP;
   final String? senderDeviceName;
   final List<PendingFileInfo> pendingFiles;
+  final bool autoAccept;
   final VoidCallback onAccept;
   final VoidCallback onReject;
 
@@ -265,6 +272,7 @@ class _BatchReceiveDialog extends StatefulWidget {
     required this.senderIP,
     this.senderDeviceName,
     required this.pendingFiles,
+    this.autoAccept = false,
     required this.onAccept,
     required this.onReject,
   });
@@ -288,7 +296,20 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   void initState() {
     super.initState();
     _displayedFiles = List.from(widget.pendingFiles);
-    _startCountdown();
+    
+    // If autoAccept is true, automatically accept after a short delay
+    if (widget.autoAccept) {
+      // Auto-accept immediately but give UI time to render
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && !_isAccepted) {
+          _handleAccept();
+        }
+      });
+    } else {
+      // Start countdown only if not auto-accepting
+      _startCountdown();
+    }
+    
     _startProgressUpdates();
   }
 

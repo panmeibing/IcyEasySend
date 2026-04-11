@@ -24,6 +24,16 @@ class FileSender {
   ///
   /// Note: This method does NOT save transfer history.
   /// The caller is responsible for collecting results and saving history in batch.
+  ///
+  /// Progress reporting semantics:
+  ///   0%–99% → data is being written to the OS TCP send buffer (streaming phase)
+  ///   99%    → all data has been handed to the OS; waiting for the receiver to
+  ///            finish writing and acknowledge via HTTP 200
+  ///   100%   → receiver confirmed successful receipt (HTTP 200 OK received)
+  ///
+  /// This prevents the classic race condition where the sender hits 100% while the
+  /// receiver has not yet started, because [request.sink.add] only puts bytes into
+  /// the OS send buffer — not into the receiver's disk.
   Future<OperationResult<TransferData>> sendFileWithTransferId({
     required String targetIP,
     required File file,
@@ -67,11 +77,20 @@ class FileSender {
 
       final responseFuture = request.send();
 
+      // Stream file bytes into the request body.
+      // Progress is capped at 99% here — the remaining 1% is awarded only after
+      // the receiver sends HTTP 200, ensuring both sides finish at roughly the
+      // same time from the user's perspective.
       await _streamFileData(
         file: file,
         fileSize: fileSize,
         request: request,
         onProgress: onProgress,
+      );
+
+      LogUtil.dTag(
+        logTag,
+        'All bytes handed to OS TCP buffer for $fileName; waiting for receiver ACK...',
       );
 
       final streamedResponse = await _waitForServerResponse(
@@ -80,7 +99,7 @@ class FileSender {
       );
 
       final responseBody = await streamedResponse.stream.bytesToString();
-      return await _handleTransferResponse(
+      final result = await _handleTransferResponse(
         statusCode: streamedResponse.statusCode,
         responseBody: responseBody,
         fileName: fileName,
@@ -88,6 +107,15 @@ class FileSender {
         targetIP: targetIP,
         deviceName: deviceName,
       );
+
+      // Report 100% only after the receiver has confirmed success.
+      // For failures, leave progress at the last streamed value so the UI can
+      // show an error state instead of a misleading "complete" bar.
+      if (result.isSuccess) {
+        onProgress?.call(1.0, fileSize, fileSize);
+      }
+
+      return result;
     } on TimeoutException catch (e) {
       LogUtil.eTag(logTag, 'Timeout sending file $fileName: ${e.toString()}');
       return OperationResult.failure('文件传输超时');
@@ -116,7 +144,17 @@ class FileSender {
     }
   }
 
-  /// Stream file data to server with progress tracking
+  /// Stream file data into the HTTP request body with progress tracking.
+  ///
+  /// **Important**: progress is intentionally capped at [_kStreamingProgressCap]
+  /// (99%). The final 1% is only emitted by the caller ([sendFileWithTransferId])
+  /// after a successful HTTP 200 response from the receiver. This is necessary
+  /// because [request.sink.add] merely hands bytes to the OS TCP send buffer;
+  /// the actual on-wire transfer (and the receiver writing to disk) happens
+  /// asynchronously afterwards. Without this cap the sender would show 100%
+  /// while the receiver has not yet started.
+  static const double _kStreamingProgressCap = 0.99;
+
   Future<void> _streamFileData({
     required File file,
     required int fileSize,
@@ -128,10 +166,10 @@ class FileSender {
     Stream<List<int>>? fileStream;
 
     try {
-      // Handle empty files (0 bytes)
+      // Handle empty files (0 bytes): skip streaming, report 0% here and let
+      // the caller report 100% after the server ACK.
       if (fileSize == 0) {
-        // For empty files, immediately report 100% progress
-        onProgress?.call(1.0, 0, 0);
+        onProgress?.call(0.0, 0, 0);
         await request.sink.close();
         return;
       }
@@ -142,8 +180,11 @@ class FileSender {
         request.sink.add(chunk);
         bytesSent += chunk.length;
 
-        final progress = bytesSent / fileSize;
-        onProgress?.call(progress, bytesSent, fileSize);
+        // Cap at 99% — the remaining 1% is awarded by the caller once the
+        // receiver has confirmed successful receipt via HTTP 200.
+        final rawProgress = bytesSent / fileSize;
+        final cappedProgress = rawProgress * _kStreamingProgressCap;
+        onProgress?.call(cappedProgress, bytesSent, fileSize);
       }
 
       await request.sink.close();

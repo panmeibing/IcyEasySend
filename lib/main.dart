@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:icy_easy_send/utils/constants.dart';
+import 'dart:io';
 
 import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
+import 'services/cache_cleanup_service.dart';
 import 'services/http_server_manager.dart';
 import 'services/language_service.dart';
 import 'services/permission_service.dart';
@@ -24,6 +26,15 @@ void main() async {
     LogTags.ui,
     '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
   );
+
+  // Clean up cache on Android startup to prevent storage issues
+  if (Platform.isAndroid) {
+    LogUtil.iTag(LogTags.system, '应用启动时清理缓存');
+    final cacheCleanupService = CacheCleanupService();
+    cacheCleanupService.cleanupFilePickerCache().catchError((e) {
+      LogUtil.wTag(LogTags.system, '启动时清理缓存失败: $e');
+    });
+  }
 
   runApp(const MyApp());
 }

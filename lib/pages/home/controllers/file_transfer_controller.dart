@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../../l10n/app_localizations.dart';
+import '../../../services/cache_cleanup_service.dart';
 import '../../../services/file_transfer_service.dart';
 import '../../../services/permission_service.dart';
 import '../../../services/preferences_service.dart';
@@ -19,6 +20,7 @@ class FileTransferController {
   final FileTransferService _fileTransferService;
   final PermissionService _permissionService;
   final PreferencesService _preferencesService;
+  final CacheCleanupService _cacheCleanupService;
   final String logTag = LogTags.transfer;
 
   FileTransferController({
@@ -26,10 +28,12 @@ class FileTransferController {
     FileTransferService? fileTransferService,
     PermissionService? permissionService,
     PreferencesService? preferencesService,
+    CacheCleanupService? cacheCleanupService,
   }) : _validationService = validationService ?? ValidationService(),
        _fileTransferService = fileTransferService ?? FileTransferService(),
        _permissionService = permissionService ?? PermissionService(),
-       _preferencesService = preferencesService ?? PreferencesService();
+       _preferencesService = preferencesService ?? PreferencesService(),
+       _cacheCleanupService = cacheCleanupService ?? CacheCleanupService();
 
   /// Select multiple files using the file picker
   Future<List<File>> selectFiles(BuildContext context) async {
@@ -65,24 +69,34 @@ class FileTransferController {
       }
 
       // Open file picker with multiple selection enabled
+      // withReadStream: true 避免在Android上缓存整个文件
+      // withData: false 不读取文件字节数据到内存
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         allowMultiple: true,
+        withReadStream: true, // 使用流式读取，避免缓存
+        withData: false, // 不加载文件数据到内存
       );
 
       if (result != null && result.files.isNotEmpty) {
         final List<File> validFiles = [];
         final List<String> invalidFileNames = [];
 
-        // Validate each selected file
+        // Validate each selected file (use async validation for Android compatibility)
         for (final platformFile in result.files) {
           if (platformFile.path != null) {
+            LogUtil.dTag(logTag, '选择的文件路径: ${platformFile.path}');
+            LogUtil.dTag(logTag, '选择的文件名: ${platformFile.name}');
+            
             final file = File(platformFile.path!);
-            final validationResult = _validationService.validateFile(file);
+            // Use async validation to handle Android content URIs properly
+            final validationResult = await _validationService.validateFileAsync(file);
 
             if (validationResult.isValid) {
               validFiles.add(file);
+              LogUtil.dTag(logTag, '文件验证通过，添加到列表: ${platformFile.name}');
             } else {
               invalidFileNames.add(platformFile.name);
+              LogUtil.wTag(logTag, '文件验证失败: ${platformFile.name}, 原因=${validationResult.errorMessage}');
             }
           }
         }
@@ -136,9 +150,9 @@ class FileTransferController {
       final List<File> validFiles = [];
       final List<String> invalidFileNames = [];
 
-      // Validate each dropped file
+      // Validate each dropped file (use async validation)
       for (final file in droppedFiles) {
-        final validationResult = _validationService.validateFile(file);
+        final validationResult = await _validationService.validateFileAsync(file);
 
         if (validationResult.isValid) {
           validFiles.add(file);
@@ -299,6 +313,15 @@ class FileTransferController {
       }
     } finally {
       onTransferEnd();
+      
+      // Clean up file_picker cache after transfer completes (Android only)
+      // This is safe because files have already been read and sent
+      if (Platform.isAndroid) {
+        LogUtil.iTag(logTag, '文件传输完成，清理file_picker缓存');
+        _cacheCleanupService.cleanupFilePickerCache().catchError((e) {
+          LogUtil.wTag(logTag, '清理缓存失败: $e');
+        });
+      }
     }
   }
 

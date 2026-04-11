@@ -34,6 +34,10 @@ class FileTransferHandler {
   // Store transfer metadata for batch history saving: transferId -> metadata
   final Map<String, _TransferMetadata> _transferMetadata = {};
 
+  // Track expected file counts per sender for auto-save history when using secret key
+  final Map<String, int> _expectedFileCounts = {};
+  final Map<String, int> _completedFileCounts = {};
+
   FileTransferHandler({
     this.contextGetter,
     this.historyRefreshCallbackGetter,
@@ -226,16 +230,42 @@ class FileTransferHandler {
 
       LogUtil.iTag(logTag, '显示批量接收确认对话框: ${pendingFiles.length}个文件');
 
-      // If secret key is valid, auto-accept without showing dialog
+      // If secret key is valid, auto-accept but still show dialog for progress
       bool accepted;
       if (skipConfirmation) {
-        // Auto-accept all files
-        for (final fileInfo in pendingFiles) {
-          fileInfo.isAccepted = true;
-          fileInfo.status = '准备接收...';
-          fileInfo.completer.complete(true);
+        // Show dialog but auto-accept immediately
+        // This allows users to see the progress
+        if (!ctx.mounted) {
+          LogUtil.wTag(logTag, 'Context已销毁，无法显示进度对话框');
+          // Still accept the files even if we can't show progress
+          for (final fileInfo in pendingFiles) {
+            fileInfo.isAccepted = true;
+            fileInfo.status = '准备接收...';
+            fileInfo.completer.complete(true);
+          }
+          accepted = true;
+        } else {
+          // Show dialog with auto-accept
+          LogUtil.iTag(logTag, '使用密钥自动接受，显示进度对话框');
+
+          // Track expected file count for this sender to auto-save history later
+          _expectedFileCounts[senderIP] = pendingFiles.length;
+          _completedFileCounts[senderIP] = 0;
+
+          // Show dialog and auto-accept
+          accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
+            context: ctx,
+            files: pendingFiles,
+            senderIP: senderIP,
+            senderDeviceName: senderDeviceName,
+            autoAccept: true,
+            // Auto-accept immediately
+            onComplete: () async {
+              // Save all transfer histories for this sender in batch
+              await saveBatchHistories(senderIP);
+            },
+          );
         }
-        accepted = true;
       } else {
         // Check if context is still mounted before showing dialog
         if (!ctx.mounted) {
@@ -445,6 +475,35 @@ class FileTransferHandler {
             ? receiveResult.data?.savedPath
             : null,
       );
+
+      // Check if this was an auto-accepted transfer (using secret key)
+      // and if all files from this sender have been received
+      if (_expectedFileCounts.containsKey(senderIP)) {
+        _completedFileCounts[senderIP] =
+            (_completedFileCounts[senderIP] ?? 0) + 1;
+        final completed = _completedFileCounts[senderIP]!;
+        final expected = _expectedFileCounts[senderIP]!;
+
+        LogUtil.dTag(
+          LogTags.transfer,
+          '文件传输进度: $completed/$expected 来自 $senderIP',
+        );
+
+        // If all files from this sender have been received, save histories in batch
+        if (completed >= expected) {
+          LogUtil.iTag(
+            LogTags.transfer,
+            '所有文件已接收完成 ($completed/$expected)，保存批量历史记录',
+          );
+
+          // Save histories in batch
+          await saveBatchHistories(senderIP);
+
+          // Clean up tracking data
+          _expectedFileCounts.remove(senderIP);
+          _completedFileCounts.remove(senderIP);
+        }
+      }
 
       // Check if file was saved successfully
       if (!receiveResult.isSuccess) {

@@ -198,6 +198,9 @@ class ValidationService {
   ///
   /// Returns a ValidationResult indicating whether the file is valid
   /// and an error message if invalid
+  ///
+  /// Note: This is a synchronous method for quick validation.
+  /// For Android content URIs, use validateFileAsync() instead.
   ValidationResult validateFile(File file) {
     LogUtil.dTag(logTag, '验证文件: ${file.path}');
 
@@ -225,6 +228,36 @@ class ValidationService {
     }
   }
 
+  /// Validates if a file exists and is readable (async version)
+  ///
+  /// This async version is more reliable on Android for content URIs
+  /// and should be used when possible.
+  Future<ValidationResult> validateFileAsync(File file) async {
+    LogUtil.dTag(logTag, '异步验证文件: ${file.path}');
+
+    // Check if file exists (async)
+    if (!await file.exists()) {
+      LogUtil.wTag(logTag, '文件不存在: ${file.path}');
+      return ValidationResult(
+        isValid: false,
+        errorMessage: ErrorMessages.fileNotFound,
+      );
+    }
+
+    // Check if file is readable by attempting to get its length
+    try {
+      final size = await file.length();
+      LogUtil.dTag(logTag, '文件验证通过: ${file.path}, 大小=$size');
+      return ValidationResult(isValid: true);
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '文件不可读: ${file.path}, 错误=$e', e, stackTrace);
+      return ValidationResult(
+        isValid: false,
+        errorMessage: ErrorMessages.fileNotReadable,
+      );
+    }
+  }
+
   /// 验证文件是否可以发送
   ///
   /// 检查:
@@ -237,11 +270,11 @@ class ValidationService {
     File file,
   ) async {
     final fileName = path.basename(file.path);
-    LogUtil.dTag(logTag, '验证发送文件: $fileName');
+    LogUtil.dTag(logTag, '验证发送文件: [$fileName]，完整文件路径: [${file.path}]');
 
     // 使用统一的文件存在性检查方法
     if (!await _checkFileExists(file)) {
-      LogUtil.wTag(logTag, '文件不存在: $fileName');
+      LogUtil.wTag(logTag, '文件[$fileName] 不存在，文件完整路径: [${file.path}]');
       return OperationResult.failure(ErrorMessages.fileNotFound);
     }
 
