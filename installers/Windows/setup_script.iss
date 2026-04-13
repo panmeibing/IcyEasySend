@@ -1,5 +1,5 @@
 #define MyAppName "IcyEasySend"
-#define MyAppVersion "1.2.0"
+#define MyAppVersion "1.2.1"
 #define MyAppPublisher "IcyHope"
 #define MyAppURL "https://binglengdexiwang.top"
 #define MyAppExeName "IcyEasySend.exe"

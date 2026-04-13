@@ -107,7 +107,7 @@ https://github.com/LinusU/node-appdmg?tab=readme-ov-file#specification
 npm install -g appdmg
 cd installers/macOS
 mkdir Output
-appdmg config.json Output/IcyEasySend-macOS-v1.2.0.dmg
+appdmg config.json Output/IcyEasySend-macOS-v1.2.1.dmg
 ```
 
 
