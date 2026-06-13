@@ -192,6 +192,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkDiagnostics => '网络诊断';
 
   @override
+  String get scanDevices => '扫描设备';
+
+  @override
+  String get scanDevicesTitle => '扫描局域网设备';
+
+  @override
+  String get scanningDevices => '正在扫描局域网...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      '已扫描 $scanned/$total，发现 $found 台设备';
+
+  @override
+  String get noDevicesFound => '未发现设备';
+
+  @override
+  String get noDevicesFoundHint =>
+      '请确认目标设备已启动服务且在同一局域网内，并检查路由器的 AP 隔离和防火墙设置。';
+
+  @override
+  String scanDevicesFound(int count) => '发现 $count 台设备';
+
+  @override
+  String get rescan => '重新扫描';
+
+  @override
   String get runDiagnostics => '运行诊断';
 
   @override

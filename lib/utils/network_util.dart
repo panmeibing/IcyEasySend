@@ -271,11 +271,157 @@ class NetworkUtil {
     }
   }
 
+  /// Check if a network interface is likely a cellular/mobile data adapter.
+  static bool isCellularInterface(String interfaceName) {
+    final name = interfaceName.toLowerCase();
+    const cellularPatterns = [
+      'rmnet',
+      'pdp_ip',
+      'ccmni',
+      'wwan',
+      'clat',
+      'radio',
+    ];
+    return cellularPatterns.any((pattern) => name.contains(pattern));
+  }
+
+  /// Check if a network interface is suitable for LAN device discovery.
+  static bool isLanDiscoveryInterface(String interfaceName) {
+    if (isCellularInterface(interfaceName)) {
+      return false;
+    }
+    if (_isVirtualInterface(interfaceName)) {
+      return false;
+    }
+    return true;
+  }
+
+  /// Get all private IPv4 addresses assigned to this device.
+  static Future<Set<String>> getLocalPrivateIPs() async {
+    final ips = <String>{};
+
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
+
+      for (final interface in interfaces) {
+        for (final addr in interface.addresses) {
+          if (!addr.isLoopback &&
+              addr.type == InternetAddressType.IPv4 &&
+              isPrivateNetwork(addr.address)) {
+            ips.add(addr.address);
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '获取本机私有 IP 失败: $e', e, stackTrace);
+    }
+
+    return ips;
+  }
+
+  /// Build the /24 subnet prefix from an IPv4 address.
+  static String? getSubnetPrefix(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) {
+      return null;
+    }
+    return '${parts[0]}.${parts[1]}.${parts[2]}.';
+  }
+
+  /// Generate all host IPs in a /24 subnet, excluding [excludeIp].
+  static List<String> getSubnetIPs(String localIp, {String? excludeIp}) {
+    final prefix = getSubnetPrefix(localIp);
+    if (prefix == null) {
+      return [];
+    }
+
+    final exclude = excludeIp ?? localIp;
+    return [
+      for (var host = 1; host <= 254; host++)
+        if ('$prefix$host' != exclude) '$prefix$host',
+    ];
+  }
+
+  /// Collect unique scan targets from LAN-capable private IPv4 interfaces.
+  ///
+  /// Cellular interfaces (e.g. Android rmnet) are excluded because they are
+  /// not useful for LAN discovery and would match this device's own server.
+  static Future<List<String>> getSubnetIPsForScan({
+    Set<String>? excludeIps,
+  }) async {
+    final localIps = excludeIps ?? await getLocalPrivateIPs();
+    final prefixes = <String>{};
+
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
+
+      for (final interface in interfaces) {
+        if (!isLanDiscoveryInterface(interface.name)) {
+          LogUtil.dTag(logTag, '跳过非局域网扫描接口: ${interface.name}');
+          continue;
+        }
+
+        for (final addr in interface.addresses) {
+          if (!addr.isLoopback &&
+              addr.type == InternetAddressType.IPv4 &&
+              isPrivateNetwork(addr.address)) {
+            final prefix = getSubnetPrefix(addr.address);
+            if (prefix != null) {
+              prefixes.add(prefix);
+              LogUtil.dTag(
+                logTag,
+                '加入扫描子网: $prefix* (${interface.name}: ${addr.address})',
+              );
+            }
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '获取扫描子网失败: $e', e, stackTrace);
+    }
+
+    if (prefixes.isEmpty) {
+      LogUtil.wTag(logTag, '未找到可用于局域网扫描的网络接口');
+      return [];
+    }
+
+    final ips = <String>{};
+    for (final prefix in prefixes) {
+      for (var host = 1; host <= 254; host++) {
+        final ip = '$prefix$host';
+        if (!localIps.contains(ip)) {
+          ips.add(ip);
+        }
+      }
+    }
+
+    final sortedIps = ips.toList()..sort(_compareIpv4);
+    return sortedIps;
+  }
+
   /// Check if the IP address starts with 10.x.x.x
   ///
   /// This is commonly used for hotspot networks
   static bool isHotspotIP(String ip) {
     return ip.startsWith('10.');
+  }
+
+  static int _compareIpv4(String a, String b) {
+    final aParts = a.split('.').map(int.parse).toList();
+    final bParts = b.split('.').map(int.parse).toList();
+    for (var i = 0; i < 4; i++) {
+      final diff = aParts[i].compareTo(bParts[i]);
+      if (diff != 0) {
+        return diff;
+      }
+    }
+    return 0;
   }
 }
 

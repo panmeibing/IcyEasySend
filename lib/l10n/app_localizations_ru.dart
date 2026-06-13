@@ -196,6 +196,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String get networkDiagnostics => 'Диагностика сети';
 
   @override
+  String get scanDevices => 'Сканировать устройства';
+
+  @override
+  String get scanDevicesTitle => 'Сканирование устройств в LAN';
+
+  @override
+  String get scanningDevices => 'Сканирование локальной сети...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'Просканировано $scanned/$total, найдено устройств: $found';
+
+  @override
+  String get noDevicesFound => 'Устройства не найдены';
+
+  @override
+  String get noDevicesFoundHint =>
+      'Убедитесь, что на целевом устройстве запущен сервер и оно находится в той же сети. Проверьте AP-изоляцию роутера и настройки брандмауэра.';
+
+  @override
+  String scanDevicesFound(int count) => 'Найдено устройств: $count';
+
+  @override
+  String get rescan => 'Сканировать снова';
+
+  @override
   String get runDiagnostics => 'Запустить диагностику';
 
   @override

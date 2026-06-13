@@ -73,71 +73,79 @@ class ServerStatusCard extends StatelessWidget {
           ),
           if (isServerRunning && ip != null && port != null) ...[
             const SizedBox(height: 16),
-            Text(
-              l10n.localIP,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final copyButton = _buildCopyButton(context, ip!);
-                final ipText = Text(
-                  ip,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF212121),
-                    letterSpacing: 0.5,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                );
-
-                // Stack vertically when horizontal space is too tight for IP + copy.
-                if (constraints.maxWidth < 80) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ipText,
-                      const SizedBox(height: 4),
-                      copyButton,
-                    ],
-                  );
-                }
-
-                return Row(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(child: ipText),
-                    const SizedBox(width: 4),
-                    copyButton,
+                    _buildFieldLabel(l10n.localIP),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 28,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            ip,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF212121),
+                              letterSpacing: 0.5,
+                              height: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _buildCopyButton(context, ip),
+                        ],
+                      ),
+                    ),
                   ],
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.port,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              port,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF424242),
-              ),
+                ),
+                const SizedBox(width: 32),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildFieldLabel(l10n.port),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 28,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          port,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF212121),
+                            letterSpacing: 0.5,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 12,
+        color: Colors.grey[600],
+        fontWeight: FontWeight.w500,
+        height: 1,
       ),
     );
   }

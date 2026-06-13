@@ -238,6 +238,7 @@ class HTTPServerManager {
         );
 
         _currentPort = tryPort;
+        _healthCheckHandler.serverPortGetter = () => _currentPort;
 
         // Get the local IP address
         final localIP = await NetworkUtil.getLocalIPAddress();

@@ -200,6 +200,33 @@ class AppLocalizationsFr extends AppLocalizations {
   String get networkDiagnostics => 'Diagnostics réseau';
 
   @override
+  String get scanDevices => 'Scanner les appareils';
+
+  @override
+  String get scanDevicesTitle => 'Scanner les appareils du LAN';
+
+  @override
+  String get scanningDevices => 'Analyse du réseau local...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'Analysé $scanned/$total, $found appareil${found > 1 ? 's' : ''} trouvé${found > 1 ? 's' : ''}';
+
+  @override
+  String get noDevicesFound => 'Aucun appareil trouvé';
+
+  @override
+  String get noDevicesFoundHint =>
+      'Assurez-vous que l\'appareil cible a démarré le serveur et est sur le même réseau. Vérifiez l\'isolation AP du routeur et le pare-feu.';
+
+  @override
+  String scanDevicesFound(int count) =>
+      '$count appareil${count > 1 ? 's' : ''} trouvé${count > 1 ? 's' : ''}';
+
+  @override
+  String get rescan => 'Relancer le scan';
+
+  @override
   String get runDiagnostics => 'Exécuter les diagnostics';
 
   @override

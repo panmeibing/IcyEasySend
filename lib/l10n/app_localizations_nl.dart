@@ -197,6 +197,33 @@ class AppLocalizationsNl extends AppLocalizations {
   String get networkDiagnostics => 'Netwerkdiagnose';
 
   @override
+  String get scanDevices => 'Apparaten scannen';
+
+  @override
+  String get scanDevicesTitle => 'LAN-apparaten scannen';
+
+  @override
+  String get scanningDevices => 'Lokaal netwerk scannen...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'Gescand $scanned/$total, $found apparaat${found == 1 ? '' : 'en'} gevonden';
+
+  @override
+  String get noDevicesFound => 'Geen apparaten gevonden';
+
+  @override
+  String get noDevicesFoundHint =>
+      'Controleer of de doelapparaat de server heeft gestart en op hetzelfde netwerk zit. Controleer AP-isolatie en firewall.';
+
+  @override
+  String scanDevicesFound(int count) =>
+      '$count apparaat${count == 1 ? '' : 'en'} gevonden';
+
+  @override
+  String get rescan => 'Opnieuw scannen';
+
+  @override
   String get runDiagnostics => 'Diagnose uitvoeren';
 
   @override

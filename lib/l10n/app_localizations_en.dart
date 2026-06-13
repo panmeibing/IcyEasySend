@@ -195,6 +195,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get networkDiagnostics => 'Network Diagnostics';
 
   @override
+  String get scanDevices => 'Scan Devices';
+
+  @override
+  String get scanDevicesTitle => 'Scan LAN Devices';
+
+  @override
+  String get scanningDevices => 'Scanning local network...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'Scanned $scanned/$total, found $found device${found == 1 ? '' : 's'}';
+
+  @override
+  String get noDevicesFound => 'No devices found';
+
+  @override
+  String get noDevicesFoundHint =>
+      'Make sure the target device has started the server and is on the same network. Check router AP isolation and firewall settings.';
+
+  @override
+  String scanDevicesFound(int count) =>
+      'Found $count device${count == 1 ? '' : 's'}';
+
+  @override
+  String get rescan => 'Rescan';
+
+  @override
   String get runDiagnostics => 'Run Diagnostics';
 
   @override

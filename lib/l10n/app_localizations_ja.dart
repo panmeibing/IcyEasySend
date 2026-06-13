@@ -194,6 +194,32 @@ class AppLocalizationsJa extends AppLocalizations {
   String get networkDiagnostics => 'ネットワーク診断';
 
   @override
+  String get scanDevices => 'デバイスをスキャン';
+
+  @override
+  String get scanDevicesTitle => 'LAN デバイスをスキャン';
+
+  @override
+  String get scanningDevices => 'ローカルネットワークをスキャン中...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'スキャン $scanned/$total、$found 台を発見';
+
+  @override
+  String get noDevicesFound => 'デバイスが見つかりません';
+
+  @override
+  String get noDevicesFoundHint =>
+      '相手デバイスでサーバーが起動していること、同じネットワークに接続していることを確認してください。AP 分離やファイアウォール設定も確認してください。';
+
+  @override
+  String scanDevicesFound(int count) => '$count 台のデバイスを発見';
+
+  @override
+  String get rescan => '再スキャン';
+
+  @override
   String get runDiagnostics => '診断を実行';
 
   @override

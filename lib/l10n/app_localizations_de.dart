@@ -197,6 +197,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String get networkDiagnostics => 'Netzwerkdiagnose';
 
   @override
+  String get scanDevices => 'Geräte suchen';
+
+  @override
+  String get scanDevicesTitle => 'LAN-Geräte suchen';
+
+  @override
+  String get scanningDevices => 'Lokales Netzwerk wird gescannt...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      'Gescannt $scanned/$total, $found Gerät${found == 1 ? '' : 'e'} gefunden';
+
+  @override
+  String get noDevicesFound => 'Keine Geräte gefunden';
+
+  @override
+  String get noDevicesFoundHint =>
+      'Stellen Sie sicher, dass auf dem Zielgerät der Server läuft und beide Geräte im selben Netzwerk sind. Prüfen Sie AP-Isolation und Firewall.';
+
+  @override
+  String scanDevicesFound(int count) =>
+      '$count Gerät${count == 1 ? '' : 'e'} gefunden';
+
+  @override
+  String get rescan => 'Erneut suchen';
+
+  @override
   String get runDiagnostics => 'Diagnose ausführen';
 
   @override

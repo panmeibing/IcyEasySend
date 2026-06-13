@@ -167,6 +167,22 @@ abstract class AppLocalizations {
 
   String get networkDiagnostics;
 
+  String get scanDevices;
+
+  String get scanDevicesTitle;
+
+  String get scanningDevices;
+
+  String scanProgress(int scanned, int total, int found);
+
+  String get noDevicesFound;
+
+  String get noDevicesFoundHint;
+
+  String scanDevicesFound(int count);
+
+  String get rescan;
+
   String get runDiagnostics;
 
   String get about;

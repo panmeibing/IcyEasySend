@@ -12,12 +12,14 @@ import '../services/sharing_intent_service.dart';
 import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
+import '../models/discovered_device.dart';
 import '../models/transfer_file_item.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
 import 'home/controllers/clipboard_controller.dart';
 import 'home/controllers/file_transfer_controller.dart';
+import 'home/widgets/device_scan_dialog.dart';
 import 'home/widgets/file_selection_section.dart';
 import 'home/widgets/ip_input_section.dart';
 import 'home/widgets/port_input_section.dart';
@@ -428,6 +430,23 @@ class HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Scan devices button
+                      OutlinedButton.icon(
+                        onPressed: isServerRunning ? _scanDevices : null,
+                        icon: const Icon(Icons.search),
+                        label: Text(
+                          AppLocalizations.of(context).scanDevices,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(
+                            color: isServerRunning ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // Network diagnostics button
                       OutlinedButton.icon(
                         onPressed: isServerRunning ? _runNetworkDiagnostics : null,
@@ -827,6 +846,36 @@ class HomePageState extends State<HomePage> {
     _ipFocusNode.canRequestFocus = true;
     _portFocusNode.canRequestFocus = true;
     _secretKeyFocusNode.canRequestFocus = true;
+  }
+
+  /// Scan local network for devices running Icy Easy Send
+  Future<void> _scanDevices() async {
+    if (!mounted || !isServerRunning) return;
+
+    _disableFocusNodes();
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    final localIps = await NetworkUtil.getLocalPrivateIPs();
+
+    if (!mounted) return;
+
+    final device = await showDialog<DiscoveredDevice>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => DeviceScanDialog(
+        localIps: localIps,
+      ),
+    );
+
+    _enableFocusNodes();
+
+    if (device == null || !mounted) return;
+
+    _ipController.text = device.ip;
+    _portController.text = '${device.port}';
+    await _validateIPAddress();
+    _validatePort();
   }
 
   /// Run network diagnostics

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:shelf/shelf.dart';
 
+import '../utils/constants.dart';
 import '../utils/network_util.dart';
 
 /// Handler for health check endpoint
@@ -11,6 +12,9 @@ import '../utils/network_util.dart';
 /// to receive files.
 class HealthCheckHandler {
   final String logTag = LogTags.server;
+  int? Function()? serverPortGetter;
+
+  HealthCheckHandler({this.serverPortGetter});
 
   /// Handle GET /health requests
   ///
@@ -24,14 +28,18 @@ class HealthCheckHandler {
     try {
       final deviceName = await NetworkUtil.getDeviceName();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final port = _resolvePort(request);
 
       final response = {
         'status': 'ok',
         'timestamp': timestamp,
         'deviceName': deviceName,
+        'app': AppConstants.projectNameTight,
+        'version': AppConstants.version,
+        'port': port,
       };
 
-      LogUtil.dTag(logTag, '健康检查响应: 设备名=$deviceName');
+      LogUtil.dTag(logTag, '健康检查响应: 设备名=$deviceName, 端口=$port');
 
       return Response.ok(
         jsonEncode(response),
@@ -44,5 +52,24 @@ class HealthCheckHandler {
         headers: {'Content-Type': 'application/json'},
       );
     }
+  }
+
+  int _resolvePort(Request request) {
+    if (request.url.hasPort && request.url.port > 0) {
+      return request.url.port;
+    }
+
+    final host = request.headers['host'];
+    if (host != null) {
+      final hostParts = host.split(':');
+      if (hostParts.length == 2) {
+        final parsedPort = int.tryParse(hostParts[1]);
+        if (parsedPort != null) {
+          return parsedPort;
+        }
+      }
+    }
+
+    return serverPortGetter?.call() ?? AppConstants.defaultPort;
   }
 }

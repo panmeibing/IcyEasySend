@@ -192,6 +192,32 @@ class AppLocalizationsZhHk extends AppLocalizations {
   String get networkDiagnostics => '網路診斷';
 
   @override
+  String get scanDevices => '掃描裝置';
+
+  @override
+  String get scanDevicesTitle => '掃描區域網路裝置';
+
+  @override
+  String get scanningDevices => '正在掃描區域網路...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      '已掃描 $scanned/$total，發現 $found 台裝置';
+
+  @override
+  String get noDevicesFound => '未發現裝置';
+
+  @override
+  String get noDevicesFoundHint =>
+      '請確認目標裝置已啟動服務且在同一區域網路內，並檢查路由器的 AP 隔離和防火牆設定。';
+
+  @override
+  String scanDevicesFound(int count) => '發現 $count 台裝置';
+
+  @override
+  String get rescan => '重新掃描';
+
+  @override
   String get runDiagnostics => '執行診斷';
 
   @override

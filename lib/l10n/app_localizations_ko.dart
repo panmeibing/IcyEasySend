@@ -194,6 +194,32 @@ class AppLocalizationsKo extends AppLocalizations {
   String get networkDiagnostics => '네트워크 진단';
 
   @override
+  String get scanDevices => '기기 검색';
+
+  @override
+  String get scanDevicesTitle => 'LAN 기기 검색';
+
+  @override
+  String get scanningDevices => '로컬 네트워크를 검색하는 중...';
+
+  @override
+  String scanProgress(int scanned, int total, int found) =>
+      '검색 $scanned/$total, $found대 발견';
+
+  @override
+  String get noDevicesFound => '기기를 찾을 수 없습니다';
+
+  @override
+  String get noDevicesFoundHint =>
+      '대상 기기에서 서버가 실행 중이고 같은 네트워크에 연결되어 있는지 확인하세요. AP 격리 및 방화벽 설정도 확인하세요.';
+
+  @override
+  String scanDevicesFound(int count) => '$count대 기기 발견';
+
+  @override
+  String get rescan => '다시 검색';
+
+  @override
   String get runDiagnostics => '진단 실행';
 
   @override
