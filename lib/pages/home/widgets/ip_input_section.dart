@@ -10,7 +10,6 @@ class IPInputSection extends StatefulWidget {
   final bool isEnabled;
   final List<String> ipHistory;
   final String? serverAddress;
-  final VoidCallback onDiagnostics;
   final Function(String) onIPSelected;
   final Function(String) onIPDeleted;
 
@@ -22,7 +21,6 @@ class IPInputSection extends StatefulWidget {
     required this.isEnabled,
     required this.ipHistory,
     this.serverAddress,
-    required this.onDiagnostics,
     required this.onIPSelected,
     required this.onIPDeleted,
   });
@@ -97,81 +95,64 @@ class _IPInputSectionState extends State<IPInputSection> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                decoration: InputDecoration(
-                  hintText: l10n.ipHint,
-                  border: const OutlineInputBorder(),
-                  errorText: widget.errorMessage,
-                  errorMaxLines: 10,
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_hasText)
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          tooltip: l10n.clear,
-                          onPressed: () {
-                            widget.controller.clear();
-                          },
-                        ),
-                      if (widget.ipHistory.isNotEmpty)
-                        PopupMenuButton<String>(
-                          icon: const Icon(Icons.history),
-                          tooltip: l10n.history,
-                          onSelected: widget.onIPSelected,
-                          itemBuilder: (BuildContext context) {
-                            return widget.ipHistory.map((String ip) {
-                              return PopupMenuItem<String>(
-                                value: ip,
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.access_time, size: 16),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: Text(ip)),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        size: 16,
-                                        color: Colors.red,
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                        widget.onIPDeleted(ip);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList();
-                          },
-                        ),
-                    ],
+        TextField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          decoration: InputDecoration(
+            hintText: l10n.ipHint,
+            border: const OutlineInputBorder(),
+            errorText: widget.errorMessage,
+            errorMaxLines: 10,
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_hasText)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    tooltip: l10n.clear,
+                    onPressed: () {
+                      widget.controller.clear();
+                    },
                   ),
-                ),
-                keyboardType: TextInputType.number,
-                enabled: widget.isEnabled,
-              ),
+                if (widget.ipHistory.isNotEmpty)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.history),
+                    tooltip: l10n.history,
+                    onSelected: widget.onIPSelected,
+                    itemBuilder: (BuildContext context) {
+                      return widget.ipHistory.map((String ip) {
+                        return PopupMenuItem<String>(
+                          value: ip,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.access_time, size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(ip)),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete,
+                                  size: 16,
+                                  color: Colors.red,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  widget.onIPDeleted(ip);
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+              ],
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: widget.isEnabled ? widget.onDiagnostics : null,
-              icon: const Icon(Icons.network_check),
-              tooltip: l10n.networkDiagnostics,
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.blue.shade50,
-                foregroundColor: Colors.blue,
-              ),
-            ),
-          ],
+          ),
+          keyboardType: TextInputType.number,
+          enabled: widget.isEnabled,
         ),
         const SizedBox(height: 8),
         Wrap(

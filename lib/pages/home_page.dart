@@ -5,8 +5,6 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
-import 'package:path/path.dart' as path;
-
 import '../l10n/app_localizations.dart';
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
@@ -14,6 +12,7 @@ import '../services/sharing_intent_service.dart';
 import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
+import '../models/transfer_file_item.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
@@ -46,7 +45,7 @@ class HomePageState extends State<HomePage> {
 
   // State variables
   String targetIP = '';
-  List<File> selectedFiles = [];
+  List<TransferFileItem> selectedItems = [];
   bool isServerRunning = false;
   String? serverAddress;
   bool isSending = false;
@@ -355,11 +354,13 @@ class HomePageState extends State<HomePage> {
           return;
         }
 
-        // Convert XFile to File
-        final files = details.files.map((xFile) => File(xFile.path)).toList();
+        final paths = details.files
+            .map((xFile) => xFile.path)
+            .where((p) => p.isNotEmpty)
+            .toList();
 
-        if (files.isNotEmpty) {
-          await _handleDroppedFiles(files);
+        if (paths.isNotEmpty) {
+          await _handleDroppedPaths(paths);
         }
       },
       child: Stack(
@@ -392,7 +393,6 @@ class HomePageState extends State<HomePage> {
                         isEnabled: isServerRunning,
                         ipHistory: _ipHistory,
                         serverAddress: serverAddress,
-                        onDiagnostics: _runNetworkDiagnostics,
                         onIPSelected: (ip) {
                           _ipController.text = ip;
                           _validateIPAddress();
@@ -426,6 +426,23 @@ class HomePageState extends State<HomePage> {
                               .clearTargetDeviceSecretKey();
                         },
                       ),
+                      const SizedBox(height: 16),
+
+                      // Network diagnostics button
+                      OutlinedButton.icon(
+                        onPressed: isServerRunning ? _runNetworkDiagnostics : null,
+                        icon: const Icon(Icons.network_check),
+                        label: Text(
+                          AppLocalizations.of(context).networkDiagnostics,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(
+                            color: isServerRunning ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 24),
 
                       // Clipboard sync button
@@ -449,13 +466,14 @@ class HomePageState extends State<HomePage> {
 
                       // File selection
                       FileSelectionSection(
-                        selectedFiles: selectedFiles,
+                        selectedItems: selectedItems,
                         isEnabled: isServerRunning,
                         isSending: isSending,
                         onSelectFiles: _selectFiles,
+                        onSelectFolder: _selectFolder,
                         onRemoveFile: (index) {
                           setState(() {
-                            selectedFiles.removeAt(index);
+                            selectedItems.removeAt(index);
                           });
                         },
                       ),
@@ -477,10 +495,10 @@ class HomePageState extends State<HomePage> {
                         label: Text(
                           isSending
                               ? AppLocalizations.of(context).sending
-                              : selectedFiles.length > 1
+                              : selectedItems.length > 1
                               ? AppLocalizations.of(
                                   context,
-                                ).filesCount(selectedFiles.length)
+                                ).filesCount(selectedItems.length)
                               : AppLocalizations.of(context).sendFile,
                         ),
                         style: ElevatedButton.styleFrom(
@@ -570,34 +588,52 @@ class HomePageState extends State<HomePage> {
 
     return isServerRunning &&
         !isSending &&
-        selectedFiles.isNotEmpty &&
+        selectedItems.isNotEmpty &&
         isIPValid &&
         isPortValid;
   }
 
   /// Select multiple files
   Future<void> _selectFiles() async {
-    final files = await _fileTransferController.selectFiles(context);
+    final items = await _fileTransferController.selectFiles(context);
 
-    if (files.isNotEmpty) {
+    if (items.isNotEmpty) {
       setState(() {
-        selectedFiles = files;
+        selectedItems = items;
       });
       _scrollToBottom();
     }
   }
 
-  /// Handle dropped files from drag and drop
-  Future<void> _handleDroppedFiles(List<File> droppedFiles) async {
-    final validFiles = await _fileTransferController.validateDroppedFiles(
+  /// Select a folder (all files inside will be sent)
+  Future<void> _selectFolder() async {
+    final items = await _fileTransferController.selectFolder(context);
+
+    if (items.isNotEmpty) {
+      setState(() {
+        selectedItems = items;
+      });
+      _scrollToBottom();
+
+      if (mounted) {
+        ToastHelper.showSuccess(
+          context,
+          AppLocalizations.of(context).folderFilesAdded(items.length),
+        );
+      }
+    }
+  }
+
+  /// Handle dropped paths from drag and drop (files or folders)
+  Future<void> _handleDroppedPaths(List<String> paths) async {
+    final validItems = await _fileTransferController.validateDroppedPaths(
       context,
-      droppedFiles,
+      paths,
     );
 
-    if (validFiles.isNotEmpty) {
+    if (validItems.isNotEmpty) {
       setState(() {
-        // Add to existing files instead of replacing
-        selectedFiles.addAll(validFiles);
+        selectedItems.addAll(validItems);
       });
       _scrollToBottom();
     }
@@ -626,9 +662,10 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    final validFiles = await _fileTransferController.validateDroppedFiles(
+    final paths = sharedFiles.map((file) => file.path).toList();
+    final validItems = await _fileTransferController.validateDroppedPaths(
       context,
-      sharedFiles,
+      paths,
     );
 
     if (!mounted) {
@@ -636,15 +673,14 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    if (validFiles.isNotEmpty) {
+    if (validItems.isNotEmpty) {
       setState(() {
-        // Add shared files to the selection
-        selectedFiles.addAll(validFiles);
+        selectedItems.addAll(validItems);
       });
 
       ToastHelper.showSuccess(
         context,
-        AppLocalizations.of(context).filesAdded(validFiles.length),
+        AppLocalizations.of(context).filesAdded(validItems.length),
       );
 
       _scrollToBottom();
@@ -653,7 +689,7 @@ class HomePageState extends State<HomePage> {
 
   /// Send multiple selected files to the target device
   Future<void> _sendFiles() async {
-    if (selectedFiles.isEmpty || targetIP.isEmpty) {
+    if (selectedItems.isEmpty || targetIP.isEmpty) {
       return;
     }
 
@@ -668,7 +704,7 @@ class HomePageState extends State<HomePage> {
     try {
       await _fileTransferController.sendFiles(
         context: context,
-        files: selectedFiles,
+        files: selectedItems,
         targetIP: targetIP,
         targetPort: port,
         secretKey: _secretKeyController.text.trim(),
@@ -699,7 +735,7 @@ class HomePageState extends State<HomePage> {
         onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
           setState(() {
             _fileProgress[fileIndex] = progress;
-            final fileName = path.basename(selectedFiles[fileIndex].path);
+            final fileName = selectedItems[fileIndex].transferName;
             final l10n = AppLocalizations.of(context);
 
             if (progress < 1.0) {
@@ -707,7 +743,7 @@ class HomePageState extends State<HomePage> {
                 progress * 100,
               );
               _transferStatus =
-                  '[${fileIndex + 1}/${selectedFiles.length}] $fileName: ${l10n.transferring}...';
+                  '[${fileIndex + 1}/${selectedItems.length}] $fileName: ${l10n.transferring}...';
             } else {
               if (!_completedFileIndices.contains(fileIndex)) {
                 _completedFileIndices.add(fileIndex);
@@ -726,7 +762,7 @@ class HomePageState extends State<HomePage> {
           setState(() {
             isSending = true;
             _completedFilesCount = 0;
-            _totalFilesCount = selectedFiles.length;
+            _totalFilesCount = selectedItems.length;
             _transferProgress = 0.0;
             _bytesTransferred = 0;
             _totalBytes = 0;
@@ -758,7 +794,7 @@ class HomePageState extends State<HomePage> {
               _completedFileIndices.clear();
 
               // Clear selected files on successful transfer
-              selectedFiles.clear();
+              selectedItems.clear();
             });
           }
         },

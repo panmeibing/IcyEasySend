@@ -159,6 +159,29 @@ class AppLocalizationsJa extends AppLocalizations {
   String get selectSavePath => '保存パスを選択';
 
   @override
+  String get savePathDesc =>
+      '受信したファイルはここに保存されます。既定ではシステムのダウンロードフォルダを使用します。';
+
+  @override
+  String get savePathDefaultBadge => '既定';
+
+  @override
+  String get savePathUnavailable => '保存パスを取得できません';
+
+  @override
+  String get savePathSavedSuccess => '保存パスの設定に成功しました';
+
+  @override
+  String get savePathNotWritable =>
+      'このフォルダに書き込めません。別の場所を選ぶか、権限を確認してください。';
+
+  @override
+  String get resetSavePathToDefault => '既定のフォルダに戻す';
+
+  @override
+  String get savePathResetSuccess => 'システムのダウンロードフォルダに戻しました';
+
+  @override
   String get autoStart => '自動起動';
 
   @override
@@ -301,6 +324,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'フォルダ選択に失敗';
+
+  @override
+  String folderFilesAdded(int count) => 'フォルダから $count 個のファイルを追加しました';
+
+  @override
+  String get folderContainsNoFiles =>
+      '選択したフォルダに送信できるファイルがありません';
 
   @override
   String get openFileFailed => 'ファイルを開けません';

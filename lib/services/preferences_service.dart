@@ -19,6 +19,7 @@ class PreferencesService {
   static const String _keyEnableIPValidation = 'enable_ip_validation';
   static const String _keyDeviceSecretKey = 'device_secret_key';
   static const String _keyTargetDeviceSecretKey = 'target_device_secret_key';
+  static const String _keyCustomReceiveSavePath = 'custom_receive_save_path';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -393,6 +394,47 @@ class PreferencesService {
       return prefs.getString(_keyTargetDeviceSecretKey);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Save custom directory for received files
+  Future<bool> saveCustomReceiveSavePath(String directoryPath) async {
+    try {
+      final trimmed = directoryPath.trim();
+      if (trimmed.isEmpty) {
+        return false;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyCustomReceiveSavePath, trimmed);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Get custom receive save path, or null if using system downloads folder
+  Future<String?> getCustomReceiveSavePath() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final path = prefs.getString(_keyCustomReceiveSavePath);
+      if (path == null || path.trim().isEmpty) {
+        return null;
+      }
+      return path.trim();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Clear custom receive save path (revert to system downloads folder)
+  Future<bool> clearCustomReceiveSavePath() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyCustomReceiveSavePath);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 

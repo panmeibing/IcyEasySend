@@ -18,6 +18,10 @@ class SettingsState {
   final bool isEditingMaxClipboardSize;
   final bool enableIPValidation;
 
+  // Receive save path
+  final String receiveSavePathDisplay;
+  final bool isCustomReceiveSavePath;
+
   // Secret key
   final String deviceSecretKey;
   final bool isEditingSecretKey;
@@ -42,6 +46,8 @@ class SettingsState {
     required this.maxClipboardSizeMB,
     this.isEditingMaxClipboardSize = false,
     required this.enableIPValidation,
+    this.receiveSavePathDisplay = '',
+    this.isCustomReceiveSavePath = false,
     this.deviceSecretKey = '',
     this.isEditingSecretKey = false,
     this.versionTapCount = 0,
@@ -62,6 +68,8 @@ class SettingsState {
     int? maxClipboardSizeMB,
     bool? isEditingMaxClipboardSize,
     bool? enableIPValidation,
+    String? receiveSavePathDisplay,
+    bool? isCustomReceiveSavePath,
     String? deviceSecretKey,
     bool? isEditingSecretKey,
     int? versionTapCount,
@@ -83,6 +91,10 @@ class SettingsState {
       isEditingMaxClipboardSize:
           isEditingMaxClipboardSize ?? this.isEditingMaxClipboardSize,
       enableIPValidation: enableIPValidation ?? this.enableIPValidation,
+      receiveSavePathDisplay:
+          receiveSavePathDisplay ?? this.receiveSavePathDisplay,
+      isCustomReceiveSavePath:
+          isCustomReceiveSavePath ?? this.isCustomReceiveSavePath,
       deviceSecretKey: deviceSecretKey ?? this.deviceSecretKey,
       isEditingSecretKey: isEditingSecretKey ?? this.isEditingSecretKey,
       versionTapCount: versionTapCount ?? this.versionTapCount,

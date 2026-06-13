@@ -43,8 +43,11 @@ class FileSender {
     String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
+    String? transferName,
   }) async {
-    final fileName = path.basename(file.path);
+    final fileName = transferName != null && transferName.isNotEmpty
+        ? transferName
+        : path.basename(file.path);
     int fileSize = 0;
 
     try {

@@ -159,6 +159,30 @@ class AppLocalizationsRu extends AppLocalizations {
   String get selectSavePath => 'Выбрать путь сохранения';
 
   @override
+  String get savePathDesc =>
+      'Полученные файлы сохраняются здесь. По умолчанию используется системная папка «Загрузки».';
+
+  @override
+  String get savePathDefaultBadge => 'По умолчанию';
+
+  @override
+  String get savePathUnavailable => 'Не удалось определить путь сохранения';
+
+  @override
+  String get savePathSavedSuccess => 'Путь сохранения успешно задан';
+
+  @override
+  String get savePathNotWritable =>
+      'В эту папку нельзя записать. Выберите другое расположение или проверьте разрешения.';
+
+  @override
+  String get resetSavePathToDefault => 'Использовать папку по умолчанию';
+
+  @override
+  String get savePathResetSuccess =>
+      'Восстановлена системная папка «Загрузки»';
+
+  @override
   String get autoStart => 'Автозапуск';
 
   @override
@@ -305,6 +329,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Не удалось выбрать папку';
+
+  @override
+  String folderFilesAdded(int count) =>
+      'Добавлено файлов из папки: $count';
+
+  @override
+  String get folderContainsNoFiles =>
+      'В выбранной папке нет файлов для отправки';
 
   @override
   String get openFileFailed => 'Не удалось открыть файл';

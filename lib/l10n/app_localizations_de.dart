@@ -161,6 +161,30 @@ class AppLocalizationsDe extends AppLocalizations {
   String get selectSavePath => 'Speicherpfad auswählen';
 
   @override
+  String get savePathDesc =>
+      'Empfangene Dateien werden hier gespeichert. Standardmäßig wird der System-Download-Ordner verwendet.';
+
+  @override
+  String get savePathDefaultBadge => 'Standard';
+
+  @override
+  String get savePathUnavailable => 'Speicherpfad konnte nicht ermittelt werden';
+
+  @override
+  String get savePathSavedSuccess => 'Speicherpfad erfolgreich festgelegt';
+
+  @override
+  String get savePathNotWritable =>
+      'In diesen Ordner kann nicht geschrieben werden. Wählen Sie einen anderen Speicherort oder prüfen Sie die Berechtigungen.';
+
+  @override
+  String get resetSavePathToDefault => 'Standardordner verwenden';
+
+  @override
+  String get savePathResetSuccess =>
+      'Auf System-Download-Ordner zurückgesetzt';
+
+  @override
   String get autoStart => 'Autostart';
 
   @override
@@ -306,6 +330,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Ordner konnte nicht ausgewählt werden';
+
+  @override
+  String folderFilesAdded(int count) =>
+      '$count Dateien aus dem Ordner hinzugefügt';
+
+  @override
+  String get folderContainsNoFiles =>
+      'Der ausgewählte Ordner enthält keine Dateien zum Senden';
 
   @override
   String get openFileFailed => 'Datei konnte nicht geöffnet werden';

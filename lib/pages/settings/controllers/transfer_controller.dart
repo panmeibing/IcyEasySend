@@ -1,5 +1,6 @@
 import '../../../services/preferences_service.dart';
 import '../../../services/transfer_history_service.dart';
+import '../../../utils/platform_util.dart';
 
 /// Controller for transfer settings
 class TransferController {
@@ -66,5 +67,31 @@ class TransferController {
   /// Save IP validation enabled state
   Future<bool> saveIPValidationEnabled(bool enabled) async {
     return await _preferencesService.saveIPValidationEnabled(enabled);
+  }
+
+  /// Whether a custom receive save path is configured
+  Future<bool> hasCustomReceiveSavePath() async {
+    final path = await _preferencesService.getCustomReceiveSavePath();
+    return path != null && path.isNotEmpty;
+  }
+
+  /// Path shown in settings (custom path or system downloads folder)
+  Future<String> getReceiveSavePathDisplay() async {
+    final custom = await _preferencesService.getCustomReceiveSavePath();
+    if (custom != null && custom.isNotEmpty) {
+      return custom;
+    }
+    final downloadsDir = await PlatformUtil.getDownloadsDirectory();
+    return downloadsDir?.path ?? '';
+  }
+
+  /// Save custom receive save path
+  Future<bool> saveCustomReceiveSavePath(String path) async {
+    return _preferencesService.saveCustomReceiveSavePath(path);
+  }
+
+  /// Clear custom receive save path (use system downloads folder)
+  Future<bool> clearCustomReceiveSavePath() async {
+    return _preferencesService.clearCustomReceiveSavePath();
   }
 }

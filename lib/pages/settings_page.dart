@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -6,6 +7,7 @@ import '../services/http_server_manager.dart';
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import '../services/transfer_history_service.dart';
+import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/platform_util.dart';
@@ -46,6 +48,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late final GeneralController _generalController;
   late final TransferController _transferController;
   late final DeveloperController _developerController;
+  late final ValidationService _validationService;
 
   // Text controllers
   final TextEditingController _deviceNameController = TextEditingController();
@@ -80,6 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _historyService,
     );
     _developerController = DeveloperController();
+    _validationService = ValidationService();
 
     // Initialize state with default values
     _state = SettingsState(
@@ -128,6 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _loadMaxHistoryItems(),
       _loadMaxClipboardSize(),
       _loadIPValidationEnabled(),
+      _loadReceiveSavePath(),
       _loadDeviceSecretKey(),
     ]);
     _loadServerInfo(); // This is synchronous
@@ -210,6 +215,20 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) {
       setState(() {
         _state = _state.copyWith(enableIPValidation: enabled);
+      });
+    }
+  }
+
+  /// Load receive save path display
+  Future<void> _loadReceiveSavePath() async {
+    final displayPath = await _transferController.getReceiveSavePathDisplay();
+    final isCustom = await _transferController.hasCustomReceiveSavePath();
+    if (mounted) {
+      setState(() {
+        _state = _state.copyWith(
+          receiveSavePathDisplay: displayPath,
+          isCustomReceiveSavePath: isCustom,
+        );
       });
     }
   }
@@ -505,6 +524,63 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  /// Pick a custom directory for received files
+  Future<void> _pickReceiveSavePath() async {
+    final l10n = AppLocalizations.of(context);
+
+    final selectedPath = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: l10n.selectSavePath,
+    );
+
+    if (selectedPath == null || selectedPath.trim().isEmpty) {
+      return;
+    }
+
+    final validationResult = await _validationService.validateDirectoryWritable(
+      selectedPath,
+    );
+
+    if (!validationResult.isSuccess) {
+      if (mounted) {
+        _showErrorSnackBar(l10n.savePathNotWritable);
+      }
+      return;
+    }
+
+    final saved = await _transferController.saveCustomReceiveSavePath(
+      selectedPath,
+    );
+
+    if (!mounted) return;
+
+    if (saved) {
+      setState(() {
+        _state = _state.copyWith(
+          receiveSavePathDisplay: selectedPath,
+          isCustomReceiveSavePath: true,
+        );
+      });
+      _showSuccessSnackBar(l10n.savePathSavedSuccess);
+    } else {
+      _showErrorSnackBar(l10n.saveFailed);
+    }
+  }
+
+  /// Reset receive save path to system downloads folder
+  Future<void> _resetReceiveSavePathToDefault() async {
+    final l10n = AppLocalizations.of(context);
+
+    final success = await _transferController.clearCustomReceiveSavePath();
+    if (!mounted) return;
+
+    if (success) {
+      await _loadReceiveSavePath();
+      _showSuccessSnackBar(l10n.savePathResetSuccess);
+    } else {
+      _showErrorSnackBar(l10n.saveFailed);
+    }
+  }
+
   /// Save IP validation enabled state
   Future<void> _saveIPValidationEnabled(bool enabled) async {
     final l10n = AppLocalizations.of(context);
@@ -742,6 +818,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     const SizedBox(height: 16),
                     TransferSettingsCard(
+                      receiveSavePathDisplay: _state.receiveSavePathDisplay,
+                      isCustomReceiveSavePath: _state.isCustomReceiveSavePath,
+                      onSelectSavePath: _pickReceiveSavePath,
+                      onResetSavePathToDefault: _resetReceiveSavePathToDefault,
                       concurrentTransfers: _state.concurrentTransfers,
                       tempConcurrentTransfers: _state.tempConcurrentTransfers,
                       maxConcurrentTransfers: _maxConcurrentTransfers,

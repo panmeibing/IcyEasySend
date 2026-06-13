@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
 import '../models/transfer_data.dart';
+import '../models/transfer_file_item.dart';
 import '../utils/log_util.dart';
 import '../utils/operation_result.dart';
 import 'preferences_service.dart';
@@ -38,7 +37,7 @@ class FileTransferService {
 
   Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
     required String targetIP,
-    required List<File> files,
+    required List<TransferFileItem> files,
     String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,

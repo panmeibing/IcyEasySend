@@ -159,6 +159,29 @@ class AppLocalizationsKo extends AppLocalizations {
   String get selectSavePath => '저장 경로 선택';
 
   @override
+  String get savePathDesc =>
+      '수신한 파일이 이 위치에 저장됩니다. 기본값은 시스템 다운로드 폴더입니다.';
+
+  @override
+  String get savePathDefaultBadge => '기본';
+
+  @override
+  String get savePathUnavailable => '저장 경로를 가져올 수 없습니다';
+
+  @override
+  String get savePathSavedSuccess => '저장 경로가 성공적으로 설정되었습니다';
+
+  @override
+  String get savePathNotWritable =>
+      '이 폴더에 쓸 수 없습니다. 다른 위치를 선택하거나 권한을 확인하세요.';
+
+  @override
+  String get resetSavePathToDefault => '기본 폴더 사용';
+
+  @override
+  String get savePathResetSuccess => '시스템 다운로드 폴더로 복원되었습니다';
+
+  @override
   String get autoStart => '자동 시작';
 
   @override
@@ -301,6 +324,13 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get selectFolderFailed => '폴더 선택 실패';
+
+  @override
+  String folderFilesAdded(int count) => '폴더에서 $count개 파일을 추가했습니다';
+
+  @override
+  String get folderContainsNoFiles =>
+      '선택한 폴더에 전송할 파일이 없습니다';
 
   @override
   String get openFileFailed => '파일 열기 실패';

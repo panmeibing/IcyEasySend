@@ -4,7 +4,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../utils/dialog_helper.dart';
 
 /// Secret key input section widget
-class SecretKeyInputSection extends StatelessWidget {
+class SecretKeyInputSection extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode? focusNode;
   final bool isEnabled;
@@ -17,6 +17,35 @@ class SecretKeyInputSection extends StatelessWidget {
     required this.isEnabled,
     required this.onClear,
   });
+
+  @override
+  State<SecretKeyInputSection> createState() => _SecretKeyInputSectionState();
+}
+
+class _SecretKeyInputSectionState extends State<SecretKeyInputSection> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasText = widget.controller.text.isNotEmpty;
+    widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (_hasText != hasText) {
+      setState(() {
+        _hasText = hasText;
+      });
+    }
+  }
 
   /// Show help dialog with secret key information
   void _showHelpDialog(BuildContext context) {
@@ -93,56 +122,44 @@ class SecretKeyInputSection extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                decoration: InputDecoration(
-                  hintText: l10n.secretKeyHint,
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.vpn_key),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () => _showHelpDialog(context),
-                        icon: const Icon(Icons.help_outline),
-                        tooltip: l10n.secretKeyDescription,
-                        iconSize: 20,
-                        color: Colors.grey[600],
-                      ),
-                    ],
+        TextField(
+          controller: widget.controller,
+          focusNode: widget.focusNode,
+          decoration: InputDecoration(
+            hintText: l10n.secretKeyHint,
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.vpn_key),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_hasText)
+                  IconButton(
+                    onPressed: widget.isEnabled ? widget.onClear : null,
+                    icon: const Icon(Icons.clear),
+                    tooltip: l10n.clearSecretKey,
                   ),
+                IconButton(
+                  onPressed: () => _showHelpDialog(context),
+                  icon: const Icon(Icons.help_outline),
+                  tooltip: l10n.secretKeyDescription,
+                  iconSize: 20,
+                  color: Colors.grey[600],
                 ),
-                enabled: isEnabled,
-                obscureText: true,
-                maxLength: 20,
-                buildCounter:
-                    (
-                      context, {
-                      required currentLength,
-                      required isFocused,
-                      maxLength,
-                    }) {
-                      return null; // Hide the counter
-                    },
-              ),
+              ],
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: isEnabled && controller.text.isNotEmpty
-                  ? onClear
-                  : null,
-              icon: const Icon(Icons.clear),
-              tooltip: l10n.clearSecretKey,
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.grey.shade50,
-                foregroundColor: Colors.grey.shade700,
-              ),
-            ),
-          ],
+          ),
+          enabled: widget.isEnabled,
+          obscureText: true,
+          maxLength: 20,
+          buildCounter:
+              (
+                context, {
+                required currentLength,
+                required isFocused,
+                maxLength,
+              }) {
+                return null;
+              },
         ),
       ],
     );

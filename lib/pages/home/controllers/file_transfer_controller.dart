@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../../l10n/app_localizations.dart';
+import '../../../models/transfer_file_item.dart';
 import '../../../services/cache_cleanup_service.dart';
+import '../../../utils/folder_collect_util.dart';
 import '../../../services/file_transfer_service.dart';
 import '../../../services/permission_service.dart';
 import '../../../services/preferences_service.dart';
@@ -36,36 +38,10 @@ class FileTransferController {
        _cacheCleanupService = cacheCleanupService ?? CacheCleanupService();
 
   /// Select multiple files using the file picker
-  Future<List<File>> selectFiles(BuildContext context) async {
+  Future<List<TransferFileItem>> selectFiles(BuildContext context) async {
     try {
-      // Check and request storage permission
-      final hasPermission = await _permissionService.hasStoragePermission();
-
-      if (!hasPermission) {
-        final permissionResult = await _permissionService
-            .requestStoragePermission();
-
-        if (!permissionResult.granted) {
-          if (context.mounted) {
-            if (permissionResult.permanentlyDenied) {
-              await _showPermissionDeniedDialog(
-                context,
-                permissionResult.errorMessage,
-              );
-            } else {
-              final l10n = AppLocalizations.of(context);
-              await DialogHelper.showErrorDialog(
-                context,
-                message:
-                    permissionResult.errorMessage ??
-                    AppLocalizations.of(context).permissionDenied,
-                title: l10n.error,
-                confirmText: l10n.confirm,
-              );
-            }
-          }
-          return [];
-        }
+      if (!await _ensureStoragePermission(context)) {
+        return [];
       }
 
       // Open file picker with multiple selection enabled
@@ -78,119 +54,215 @@ class FileTransferController {
       );
 
       if (result != null && result.files.isNotEmpty) {
-        final List<File> validFiles = [];
-        final List<String> invalidFileNames = [];
-
-        // Validate each selected file (use async validation for Android compatibility)
-        for (final platformFile in result.files) {
-          if (platformFile.path != null) {
-            LogUtil.dTag(logTag, '选择的文件路径: ${platformFile.path}');
-            LogUtil.dTag(logTag, '选择的文件名: ${platformFile.name}');
-            
-            final file = File(platformFile.path!);
-            // Use async validation to handle Android content URIs properly
-            final validationResult = await _validationService.validateFileAsync(file);
-
-            if (validationResult.isValid) {
-              validFiles.add(file);
-              LogUtil.dTag(logTag, '文件验证通过，添加到列表: ${platformFile.name}');
-            } else {
-              invalidFileNames.add(platformFile.name);
-              LogUtil.wTag(logTag, '文件验证失败: ${platformFile.name}, 原因=${validationResult.errorMessage}');
-            }
-          }
+        final paths = result.files
+            .where((platformFile) => platformFile.path != null)
+            .map((platformFile) => platformFile.path!)
+            .toList();
+        if (!context.mounted) {
+          return [];
         }
-
-        // Show error for invalid files
-        if (invalidFileNames.isNotEmpty && context.mounted) {
-          final l10n = AppLocalizations.of(context);
-          await DialogHelper.showErrorDialog(
-            context,
-            message: l10n.invalidFilesMessage(invalidFileNames.join('\n')),
-            title: l10n.error,
-            confirmText: l10n.confirm,
-          );
-        }
-
-        return validFiles;
+        return _collectAndValidatePaths(context, paths);
       }
 
       return [];
     } on FileSystemException {
       if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        await DialogHelper.showErrorDialog(
-          context,
-          message: l10n.fileAccessError,
-          title: l10n.error,
-          confirmText: l10n.confirm,
-        );
+        await _showFileAccessError(context);
       }
       return [];
     } catch (e) {
       if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        await DialogHelper.showErrorDialog(
-          context,
-          message: l10n.fileError(e.toString()),
-          title: l10n.error,
-          confirmText: l10n.confirm,
-        );
+        await _showFileError(context, e);
       }
       return [];
     }
   }
 
-  /// Validate dropped files and return valid ones
-  Future<List<File>> validateDroppedFiles(
-    BuildContext context,
-    List<File> droppedFiles,
-  ) async {
+  /// Select a folder and expand it into transfer items (recursive).
+  Future<List<TransferFileItem>> selectFolder(BuildContext context) async {
     try {
-      final List<File> validFiles = [];
-      final List<String> invalidFileNames = [];
+      if (!await _ensureStoragePermission(context)) {
+        return [];
+      }
 
-      // Validate each dropped file (use async validation)
-      for (final file in droppedFiles) {
-        final validationResult = await _validationService.validateFileAsync(file);
+      if (!context.mounted) {
+        return [];
+      }
 
-        if (validationResult.isValid) {
-          validFiles.add(file);
-        } else {
-          invalidFileNames.add(file.path.split('/').last);
+      final l10n = AppLocalizations.of(context);
+      final directoryPath = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: l10n.selectFolder,
+      );
+
+      if (directoryPath == null || directoryPath.trim().isEmpty) {
+        return [];
+      }
+
+      final items = await FolderCollectUtil.collectFromDirectory(
+        Directory(directoryPath),
+      );
+
+      if (items.isEmpty) {
+        if (context.mounted) {
+          await DialogHelper.showInfoDialog(
+            context,
+            title: l10n.error,
+            message: l10n.folderContainsNoFiles,
+            confirmText: l10n.confirm,
+          );
         }
+        return [];
       }
 
-      // Show error for invalid files
-      if (invalidFileNames.isNotEmpty && context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        await DialogHelper.showErrorDialog(
-          context,
-          message: l10n.invalidFilesMessage(invalidFileNames.join('\n')),
-          title: l10n.error,
-          confirmText: l10n.confirm,
-        );
+      if (!context.mounted) {
+        return [];
       }
-
-      return validFiles;
+      return _validateTransferItems(context, items);
+    } on FileSystemException {
+      if (context.mounted) {
+        await _showFileAccessError(context);
+      }
+      return [];
     } catch (e) {
       if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        await DialogHelper.showErrorDialog(
-          context,
-          message: l10n.fileError(e.toString()),
-          title: l10n.error,
-          confirmText: l10n.confirm,
-        );
+        await _showFileError(context, e);
       }
       return [];
     }
+  }
+
+  /// Expand dropped/shared paths (files or folders) and return valid items.
+  Future<List<TransferFileItem>> validateDroppedPaths(
+    BuildContext context,
+    Iterable<String> paths,
+  ) async {
+    try {
+      final items = await FolderCollectUtil.collectFromPaths(paths);
+      if (items.isEmpty) {
+        return [];
+      }
+      if (!context.mounted) {
+        return [];
+      }
+      return _validateTransferItems(context, items);
+    } catch (e) {
+      if (context.mounted) {
+        await _showFileError(context, e);
+      }
+      return [];
+    }
+  }
+
+  Future<List<TransferFileItem>> _collectAndValidatePaths(
+    BuildContext context,
+    List<String> paths,
+  ) async {
+    final items = await FolderCollectUtil.collectFromPaths(paths);
+    if (!context.mounted) {
+      return [];
+    }
+    return _validateTransferItems(context, items);
+  }
+
+  Future<List<TransferFileItem>> _validateTransferItems(
+    BuildContext context,
+    List<TransferFileItem> items,
+  ) async {
+    final validItems = <TransferFileItem>[];
+    final invalidNames = <String>[];
+
+    for (final item in items) {
+      final validationResult = await _validationService.validateFileAsync(
+        item.file,
+      );
+
+      if (validationResult.isValid) {
+        validItems.add(item);
+        LogUtil.dTag(
+          logTag,
+          '文件验证通过: ${item.transferName} -> ${item.file.path}',
+        );
+      } else {
+        invalidNames.add(item.transferName);
+        LogUtil.wTag(
+          logTag,
+          '文件验证失败: ${item.transferName}, 原因=${validationResult.errorMessage}',
+        );
+      }
+    }
+
+    if (invalidNames.isNotEmpty && context.mounted) {
+      final l10n = AppLocalizations.of(context);
+      await DialogHelper.showErrorDialog(
+        context,
+        message: l10n.invalidFilesMessage(invalidNames.join('\n')),
+        title: l10n.error,
+        confirmText: l10n.confirm,
+      );
+    }
+
+    return validItems;
+  }
+
+  Future<bool> _ensureStoragePermission(BuildContext context) async {
+    final hasPermission = await _permissionService.hasStoragePermission();
+    if (hasPermission) {
+      return true;
+    }
+
+    final permissionResult = await _permissionService.requestStoragePermission();
+    if (permissionResult.granted) {
+      return true;
+    }
+
+    if (!context.mounted) {
+      return false;
+    }
+
+    if (permissionResult.permanentlyDenied) {
+      await _showPermissionDeniedDialog(
+        context,
+        permissionResult.errorMessage,
+      );
+    } else {
+      final l10n = AppLocalizations.of(context);
+      await DialogHelper.showErrorDialog(
+        context,
+        message:
+            permissionResult.errorMessage ?? l10n.permissionDenied,
+        title: l10n.error,
+        confirmText: l10n.confirm,
+      );
+    }
+    return false;
+  }
+
+  Future<void> _showFileAccessError(BuildContext context) async {
+    if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context);
+    await DialogHelper.showErrorDialog(
+      context,
+      message: l10n.fileAccessError,
+      title: l10n.error,
+      confirmText: l10n.confirm,
+    );
+  }
+
+  Future<void> _showFileError(BuildContext context, Object error) async {
+    if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context);
+    await DialogHelper.showErrorDialog(
+      context,
+      message: l10n.fileError(error.toString()),
+      title: l10n.error,
+      confirmText: l10n.confirm,
+    );
   }
 
   /// Send multiple selected files to the target device
   Future<void> sendFiles({
     required BuildContext context,
-    required List<File> files,
+    required List<TransferFileItem> files,
     required String targetIP,
     required int targetPort,
     String? secretKey,

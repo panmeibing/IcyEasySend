@@ -160,6 +160,30 @@ class AppLocalizationsNl extends AppLocalizations {
   String get selectSavePath => 'Opslagpad selecteren';
 
   @override
+  String get savePathDesc =>
+      'Ontvangen bestanden worden hier opgeslagen. Standaard wordt de systeemdownloadmap gebruikt.';
+
+  @override
+  String get savePathDefaultBadge => 'Standaard';
+
+  @override
+  String get savePathUnavailable => 'Kan opslagpad niet bepalen';
+
+  @override
+  String get savePathSavedSuccess => 'Opslagpad succesvol ingesteld';
+
+  @override
+  String get savePathNotWritable =>
+      'Kan niet naar deze map schrijven. Kies een andere locatie of controleer de machtigingen.';
+
+  @override
+  String get resetSavePathToDefault => 'Standaardmap gebruiken';
+
+  @override
+  String get savePathResetSuccess =>
+      'Hersteld naar systeemdownloadmap';
+
+  @override
   String get autoStart => 'Automatisch starten';
 
   @override
@@ -306,6 +330,14 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Map selecteren mislukt';
+
+  @override
+  String folderFilesAdded(int count) =>
+      '$count bestanden uit map toegevoegd';
+
+  @override
+  String get folderContainsNoFiles =>
+      'De geselecteerde map bevat geen bestanden om te verzenden';
 
   @override
   String get openFileFailed => 'Bestand openen mislukt';

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as path_provider;
 
+import '../services/preferences_service.dart';
 import 'constants.dart';
 import 'log_util.dart';
 
@@ -77,6 +78,33 @@ class PlatformUtil {
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '获取下载目录失败: $e', e, stackTrace);
       return null;
+    }
+  }
+
+  /// Directory where received files are saved (custom path or downloads folder).
+  static Future<Directory?> getReceiveSaveDirectory({
+    PreferencesService? preferencesService,
+  }) async {
+    try {
+      final prefs = preferencesService ?? PreferencesService();
+      final customPath = await prefs.getCustomReceiveSavePath();
+
+      if (customPath != null && customPath.isNotEmpty) {
+        final customDir = Directory(customPath);
+        if (await customDir.exists()) {
+          LogUtil.iTag(logTag, '使用自定义接收目录: $customPath');
+          return customDir;
+        }
+        LogUtil.wTag(
+          logTag,
+          '自定义接收目录不存在，回退到系统下载目录: $customPath',
+        );
+      }
+
+      return getDownloadsDirectory();
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '获取接收保存目录失败: $e', e, stackTrace);
+      return getDownloadsDirectory();
     }
   }
 

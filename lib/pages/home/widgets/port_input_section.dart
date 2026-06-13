@@ -32,37 +32,26 @@ class PortInputSection extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                decoration: InputDecoration(
-                  hintText: '${l10n.portHint}: ${AppConstants.defaultPort}',
-                  border: const OutlineInputBorder(),
-                  errorText: errorMessage,
-                  prefixIcon: const Icon(Icons.settings_ethernet),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(5),
-                ],
-                enabled: isEnabled,
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
+        TextField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: InputDecoration(
+            hintText: '${l10n.portHint}: ${AppConstants.defaultPort}',
+            border: const OutlineInputBorder(),
+            errorText: errorMessage,
+            prefixIcon: const Icon(Icons.settings_ethernet),
+            suffixIcon: IconButton(
               onPressed: isEnabled ? onReset : null,
               icon: const Icon(Icons.refresh),
               tooltip: l10n.resetToDefaultPort(AppConstants.defaultPort),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.grey.shade50,
-                foregroundColor: Colors.grey.shade700,
-              ),
             ),
+          ),
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(5),
           ],
+          enabled: isEnabled,
         ),
       ],
     );

@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
 
 import '../../models/transfer_data.dart';
+import '../../models/transfer_file_item.dart';
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/http_helper.dart';
@@ -50,7 +49,7 @@ class BatchTransferManager {
   /// Send multiple files with batch confirmation
   Future<Map<String, OperationResult<TransferData>>> sendFilesWithBatchConfirm({
     required String targetIP,
-    required List<File> files,
+    required List<TransferFileItem> files,
     String? secretKey,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
@@ -75,9 +74,8 @@ class BatchTransferManager {
       onStatusChange?.call(_statusProvider.checkingTargetDevice);
       final healthResult = await _healthChecker.checkHealth(targetIP);
       if (!healthResult.isSuccess) {
-        for (final file in files) {
-          final fileName = path.basename(file.path);
-          results[fileName] = OperationResult.failure(
+        for (final item in files) {
+          results[item.transferName] = OperationResult.failure(
             _statusProvider.targetDeviceError(healthResult.errorMessage ?? ''),
           );
         }
@@ -247,10 +245,9 @@ class BatchTransferManager {
       return results;
     } catch (e) {
       LogUtil.eTag(logTag, "sendFilesWithBatchConfirm() ${e.toString()}");
-      for (final file in files) {
-        final fileName = path.basename(file.path);
-        if (!results.containsKey(fileName)) {
-          results[fileName] = OperationResult.failure(
+      for (final item in files) {
+        if (!results.containsKey(item.transferName)) {
+          results[item.transferName] = OperationResult.failure(
             'Unexpected error: ${e.toString()}',
           );
         }
@@ -261,7 +258,7 @@ class BatchTransferManager {
 
   /// Send files with concurrency control
   Future<void> _sendFilesWithConcurrency({
-    required List<File> files,
+    required List<TransferFileItem> files,
     required Map<String, String> transferIds,
     required String targetIP,
     required String senderIP,
@@ -287,8 +284,7 @@ class BatchTransferManager {
 
     // Initialize fileBytes for valid files
     for (int i = 0; i < files.length; i++) {
-      final fileName = path.basename(files[i].path);
-      if (transferIds.containsKey(fileName)) {
+      if (transferIds.containsKey(files[i].transferName)) {
         fileBytes[i] = 0;
       }
     }
@@ -296,16 +292,16 @@ class BatchTransferManager {
     // Create list of valid file indices
     final validFileIndices = <int>[];
     for (int i = 0; i < files.length; i++) {
-      final fileName = path.basename(files[i].path);
-      if (transferIds.containsKey(fileName)) {
+      if (transferIds.containsKey(files[i].transferName)) {
         validFileIndices.add(i);
       }
     }
 
     // Function to send a single file with timeout protection
     Future<OperationResult<TransferData>> sendFile(int fileIndex) async {
-      final file = files[fileIndex];
-      final fileName = path.basename(file.path);
+      final item = files[fileIndex];
+      final file = item.file;
+      final fileName = item.transferName;
 
       if (results.containsKey(fileName)) {
         return results[fileName]!;
@@ -338,6 +334,7 @@ class BatchTransferManager {
               senderIP: senderIP,
               deviceName: deviceName,
               secretKey: secretKey,
+              transferName: fileName,
               onProgress: (progress, bytes, total) {
                 fileProgress[fileIndex] = progress;
                 fileBytes[fileIndex] = bytes;
@@ -386,12 +383,10 @@ class BatchTransferManager {
         batch.add(
           sendFile(fileIndex)
               .then((result) {
-                final fileName = path.basename(files[fileIndex].path);
-                results[fileName] = result;
+                results[files[fileIndex].transferName] = result;
               })
               .catchError((error) {
-                // Ensure errors are caught and stored in results
-                final fileName = path.basename(files[fileIndex].path);
+                final fileName = files[fileIndex].transferName;
                 LogUtil.eTag(
                   logTag,
                   'Error in batch transfer for $fileName: $error',
@@ -411,7 +406,7 @@ class BatchTransferManager {
   /// Save all transfer histories in batch after transfers complete
   /// This prevents concurrent write conflicts to the history file
   Future<void> _saveBatchTransferHistories({
-    required List<File> files,
+    required List<TransferFileItem> files,
     required Map<String, OperationResult<TransferData>> results,
     required String targetIP,
     String? deviceName,
@@ -419,14 +414,13 @@ class BatchTransferManager {
     try {
       final histories = <TransferHistory>[];
 
-      for (final file in files) {
-        final fileName = path.basename(file.path);
-        final result = results[fileName];
+      for (final item in files) {
+        final result = results[item.transferName];
 
         if (result != null) {
-          final fileSize = await file.length();
+          final fileSize = await item.file.length();
           final history = _historyManager.createTransferHistory(
-            fileName: fileName,
+            fileName: item.transferName,
             fileSize: fileSize,
             targetIP: targetIP,
             success: result.isSuccess,

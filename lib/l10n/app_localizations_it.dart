@@ -160,6 +160,31 @@ class AppLocalizationsIt extends AppLocalizations {
   String get selectSavePath => 'Seleziona Percorso di Salvataggio';
 
   @override
+  String get savePathDesc =>
+      'I file ricevuti vengono salvati qui. Per impostazione predefinita si usa la cartella Download di sistema.';
+
+  @override
+  String get savePathDefaultBadge => 'Predefinito';
+
+  @override
+  String get savePathUnavailable =>
+      'Impossibile ottenere il percorso di salvataggio';
+
+  @override
+  String get savePathSavedSuccess => 'Percorso di salvataggio impostato con successo';
+
+  @override
+  String get savePathNotWritable =>
+      'Impossibile scrivere in questa cartella. Scegli un\'altra posizione o controlla i permessi.';
+
+  @override
+  String get resetSavePathToDefault => 'Usa cartella predefinita';
+
+  @override
+  String get savePathResetSuccess =>
+      'Ripristinata la cartella Download di sistema';
+
+  @override
   String get autoStart => 'Avvio Automatico';
 
   @override
@@ -306,6 +331,14 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Selezione cartella fallita';
+
+  @override
+  String folderFilesAdded(int count) =>
+      'Aggiunti $count file dalla cartella';
+
+  @override
+  String get folderContainsNoFiles =>
+      'La cartella selezionata non contiene file da inviare';
 
   @override
   String get openFileFailed => 'Apertura file fallita';

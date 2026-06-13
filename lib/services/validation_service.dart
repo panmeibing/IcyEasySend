@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:storage_space/storage_space.dart';
 
+import '../models/transfer_file_item.dart';
 import '../utils/constants.dart';
+import '../utils/transfer_path_util.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
@@ -267,9 +269,12 @@ class ValidationService {
   ///
   /// Returns [OperationResult<FileValidationData>] with file information if valid
   Future<OperationResult<FileValidationData>> validateFileForSending(
-    File file,
-  ) async {
-    final fileName = path.basename(file.path);
+    File file, {
+    String? transferName,
+  }) async {
+    final fileName = transferName != null && transferName.isNotEmpty
+        ? TransferPathUtil.normalizeTransferPath(transferName)
+        : path.basename(file.path);
     LogUtil.dTag(logTag, '验证发送文件: [$fileName]，完整文件路径: [${file.path}]');
 
     // 使用统一的文件存在性检查方法
@@ -324,20 +329,25 @@ class ValidationService {
   /// Parameters:
   /// - [files]: List of files to be verified
   ///
-  /// Returns a map of fileName -> validation result
+  /// Returns a map of transferName -> validation result
   Future<Map<String, OperationResult<FileValidationData>>>
-  validateFilesForSending(List<File> files) async {
-    LogUtil.iTag(logTag, '批量验证文件: ${files.length}个文件');
+  validateFilesForSending(List<TransferFileItem> items) async {
+    LogUtil.iTag(logTag, '批量验证文件: ${items.length}个文件');
 
-    final futures = files.map((file) async {
-      final fileName = path.basename(file.path);
-      final result = await validateFileForSending(file);
+    final futures = items.map((item) async {
+      final result = await validateFileForSending(
+        item.file,
+        transferName: item.transferName,
+      );
 
       if (!result.isSuccess) {
-        LogUtil.wTag(logTag, '文件验证失败: $fileName, 原因=${result.errorMessage}');
+        LogUtil.wTag(
+          logTag,
+          '文件验证失败: ${item.transferName}, 原因=${result.errorMessage}',
+        );
       }
 
-      return MapEntry(fileName, result);
+      return MapEntry(item.transferName, result);
     });
 
     final resultsList = await Future.wait(futures);
@@ -348,7 +358,7 @@ class ValidationService {
 
     LogUtil.iTag(
       logTag,
-      '批量验证完成: 成功=$successCount, 失败=$failureCount, 总数=${files.length}',
+      '批量验证完成: 成功=$successCount, 失败=$failureCount, 总数=${items.length}',
     );
 
     return results;
@@ -369,10 +379,10 @@ class ValidationService {
     );
 
     try {
-      // 获取下载目录
-      final directory = await PlatformUtil.getDownloadsDirectory();
+      // 获取接收文件保存目录
+      final directory = await PlatformUtil.getReceiveSaveDirectory();
       if (directory == null) {
-        LogUtil.wTag(logTag, '无法获取下载目录');
+        LogUtil.wTag(logTag, '无法获取接收保存目录');
         return OperationResult.failure(
           ErrorMessages.downloadsDirectoryUnavailable,
         );
@@ -440,11 +450,48 @@ class ValidationService {
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '移动平台存储空间检查失败: $e', e, stackTrace);
       // 移动平台如果检查失败，降级到桌面平台的方案
-      final directory = await PlatformUtil.getDownloadsDirectory();
+      final directory = await PlatformUtil.getReceiveSaveDirectory();
       if (directory != null) {
         return await _validateStorageSpaceDesktop(requiredBytes, directory);
       }
       return OperationResult.failure(ErrorMessages.storageCheckFailed);
+    }
+  }
+
+  /// Verify that a directory exists and is writable (create test file).
+  Future<OperationResult<void>> validateDirectoryWritable(
+    String directoryPath,
+  ) async {
+    final trimmed = directoryPath.trim();
+    if (trimmed.isEmpty) {
+      return OperationResult.failure(ErrorMessages.fileAccessError);
+    }
+
+    LogUtil.dTag(logTag, '验证目录可写: $trimmed');
+
+    try {
+      final directory = Directory(trimmed);
+
+      if (!await directory.exists()) {
+        try {
+          await directory.create(recursive: true);
+          LogUtil.dTag(logTag, '目录已创建: $trimmed');
+        } catch (e, stackTrace) {
+          LogUtil.eTag(logTag, '无法创建目录: $trimmed, $e', e, stackTrace);
+          return OperationResult.failure(ErrorMessages.fileAccessError);
+        }
+      } else {
+        final stat = await directory.stat();
+        if (stat.type != FileSystemEntityType.directory) {
+          LogUtil.wTag(logTag, '路径不是目录: $trimmed');
+          return OperationResult.failure(ErrorMessages.fileAccessError);
+        }
+      }
+
+      return await _validateStorageSpaceDesktop(0, directory);
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '目录可写性验证失败: $e', e, stackTrace);
+      return OperationResult.failure(ErrorMessages.fileAccessError);
     }
   }
 

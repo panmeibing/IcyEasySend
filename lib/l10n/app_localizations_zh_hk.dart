@@ -159,6 +159,27 @@ class AppLocalizationsZhHk extends AppLocalizations {
   String get selectSavePath => '選擇儲存路徑';
 
   @override
+  String get savePathDesc => '接收到的檔案將儲存到此目錄。預設使用系統下載資料夾。';
+
+  @override
+  String get savePathDefaultBadge => '預設';
+
+  @override
+  String get savePathUnavailable => '無法取得儲存路徑';
+
+  @override
+  String get savePathSavedSuccess => '儲存路徑設定成功';
+
+  @override
+  String get savePathNotWritable => '此路徑無法寫入檔案，請選擇其他目錄或檢查權限';
+
+  @override
+  String get resetSavePathToDefault => '恢復預設路徑';
+
+  @override
+  String get savePathResetSuccess => '已恢復為系統下載資料夾';
+
+  @override
   String get autoStart => '自動啟動';
 
   @override
@@ -301,6 +322,12 @@ class AppLocalizationsZhHk extends AppLocalizations {
 
   @override
   String get selectFolderFailed => '選擇資料夾失敗';
+
+  @override
+  String folderFilesAdded(int count) => '已從資料夾添加 $count 個檔案';
+
+  @override
+  String get folderContainsNoFiles => '所選資料夾中沒有可傳送的檔案';
 
   @override
   String get openFileFailed => '開啟檔案失敗';

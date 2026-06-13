@@ -161,6 +161,30 @@ class AppLocalizationsEs extends AppLocalizations {
   String get selectSavePath => 'Seleccionar ruta de guardado';
 
   @override
+  String get savePathDesc =>
+      'Los archivos recibidos se guardan aquí. Por defecto se usa la carpeta de descargas del sistema.';
+
+  @override
+  String get savePathDefaultBadge => 'Predeterminado';
+
+  @override
+  String get savePathUnavailable => 'No se puede obtener la ruta de guardado';
+
+  @override
+  String get savePathSavedSuccess => 'Ruta de guardado configurada correctamente';
+
+  @override
+  String get savePathNotWritable =>
+      'No se puede escribir en esta carpeta. Elija otra ubicación o compruebe los permisos.';
+
+  @override
+  String get resetSavePathToDefault => 'Usar carpeta predeterminada';
+
+  @override
+  String get savePathResetSuccess =>
+      'Restaurado a la carpeta de descargas del sistema';
+
+  @override
   String get autoStart => 'Inicio automático';
 
   @override
@@ -307,6 +331,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Error al seleccionar carpeta';
+
+  @override
+  String folderFilesAdded(int count) =>
+      'Se agregaron $count archivos de la carpeta';
+
+  @override
+  String get folderContainsNoFiles =>
+      'La carpeta seleccionada no contiene archivos para enviar';
 
   @override
   String get openFileFailed => 'Error al abrir archivo';

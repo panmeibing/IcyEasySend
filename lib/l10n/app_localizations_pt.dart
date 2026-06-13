@@ -160,6 +160,30 @@ class AppLocalizationsPt extends AppLocalizations {
   String get selectSavePath => 'Selecionar Caminho de Salvamento';
 
   @override
+  String get savePathDesc =>
+      'Os arquivos recebidos são salvos aqui. Por padrão, usa-se a pasta de downloads do sistema.';
+
+  @override
+  String get savePathDefaultBadge => 'Padrão';
+
+  @override
+  String get savePathUnavailable => 'Não foi possível obter o caminho de salvamento';
+
+  @override
+  String get savePathSavedSuccess => 'Caminho de salvamento definido com sucesso';
+
+  @override
+  String get savePathNotWritable =>
+      'Não é possível gravar nesta pasta. Escolha outro local ou verifique as permissões.';
+
+  @override
+  String get resetSavePathToDefault => 'Usar pasta padrão';
+
+  @override
+  String get savePathResetSuccess =>
+      'Restaurado para a pasta de downloads do sistema';
+
+  @override
   String get autoStart => 'Iniciar Automaticamente';
 
   @override
@@ -306,6 +330,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Falha ao selecionar pasta';
+
+  @override
+  String folderFilesAdded(int count) =>
+      '$count arquivos adicionados da pasta';
+
+  @override
+  String get folderContainsNoFiles =>
+      'A pasta selecionada não contém arquivos para enviar';
 
   @override
   String get openFileFailed => 'Falha ao abrir arquivo';

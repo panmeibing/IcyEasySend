@@ -145,6 +145,20 @@ abstract class AppLocalizations {
 
   String get selectSavePath;
 
+  String get savePathDesc;
+
+  String get savePathDefaultBadge;
+
+  String get savePathUnavailable;
+
+  String get savePathSavedSuccess;
+
+  String get savePathNotWritable;
+
+  String get resetSavePathToDefault;
+
+  String get savePathResetSuccess;
+
   String get autoStart;
 
   String get autoStartDesc;
@@ -245,6 +259,10 @@ abstract class AppLocalizations {
   String get selectFilesFailed;
 
   String get selectFolderFailed;
+
+  String folderFilesAdded(int count);
+
+  String get folderContainsNoFiles;
 
   String get openFileFailed;
 

@@ -73,83 +73,86 @@ class ServerStatusCard extends StatelessWidget {
           ),
           if (isServerRunning && ip != null && port != null) ...[
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
+            Text(
+              l10n.localIP,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final copyButton = _buildCopyButton(context, ip!);
+                final ipText = Text(
+                  ip,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF212121),
+                    letterSpacing: 0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                );
+
+                // Stack vertically when horizontal space is too tight for IP + copy.
+                if (constraints.maxWidth < 80) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        l10n.localIP,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      ipText,
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            ip,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF212121),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          InkWell(
-                            onTap: () => _copyToClipboard(context, ip!),
-                            borderRadius: BorderRadius.circular(4),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFF2196F3,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(
-                                Icons.copy,
-                                size: 16,
-                                color: Color(0xFF2196F3),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      copyButton,
                     ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                }
+
+                return Row(
                   children: [
-                    Text(
-                      l10n.port,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      port,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF424242),
-                      ),
-                    ),
+                    Expanded(child: ipText),
+                    const SizedBox(width: 4),
+                    copyButton,
                   ],
-                ),
-              ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.port,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              port,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF424242),
+              ),
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildCopyButton(BuildContext context, String ip) {
+    return IconButton(
+      onPressed: () => _copyToClipboard(context, ip),
+      icon: const Icon(Icons.copy, size: 16, color: Color(0xFF2196F3)),
+      tooltip: AppLocalizations.of(context).copy,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+      visualDensity: VisualDensity.compact,
+      style: IconButton.styleFrom(
+        backgroundColor: const Color(0xFF2196F3).withValues(alpha: 0.1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       ),
     );
   }

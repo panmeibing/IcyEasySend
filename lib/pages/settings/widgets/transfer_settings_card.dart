@@ -6,6 +6,12 @@ import '../../../utils/constants.dart';
 
 /// Transfer settings card widget
 class TransferSettingsCard extends StatelessWidget {
+  // Receive save path
+  final String receiveSavePathDisplay;
+  final bool isCustomReceiveSavePath;
+  final VoidCallback onSelectSavePath;
+  final VoidCallback onResetSavePathToDefault;
+
   // Concurrent transfers
   final int concurrentTransfers;
   final int tempConcurrentTransfers;
@@ -45,6 +51,10 @@ class TransferSettingsCard extends StatelessWidget {
 
   const TransferSettingsCard({
     super.key,
+    required this.receiveSavePathDisplay,
+    required this.isCustomReceiveSavePath,
+    required this.onSelectSavePath,
+    required this.onResetSavePathToDefault,
     required this.concurrentTransfers,
     required this.tempConcurrentTransfers,
     required this.maxConcurrentTransfers,
@@ -109,6 +119,13 @@ class TransferSettingsCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // Receive save path
+            _buildSavePathSection(),
+
+            const SizedBox(height: 24),
+            Divider(height: 1, color: Colors.grey[300]),
+            const SizedBox(height: 24),
+
             // Concurrent transfers setting
             _buildConcurrentTransfersSection(),
 
@@ -142,6 +159,115 @@ class TransferSettingsCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Build receive save path section
+  Widget _buildSavePathSection() {
+    return Builder(
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.savePath,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF212121),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.savePathDesc,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF2196F3).withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    isCustomReceiveSavePath
+                        ? Icons.folder_special
+                        : Icons.folder_outlined,
+                    size: 20,
+                    color: const Color(0xFF2196F3),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isCustomReceiveSavePath)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2196F3),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                l10n.savePathDefaultBadge,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        Text(
+                          receiveSavePathDisplay.isEmpty
+                              ? l10n.savePathUnavailable
+                              : receiveSavePathDisplay,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF212121),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onSelectSavePath,
+                  icon: const Icon(Icons.folder_open, size: 18),
+                  label: Text(l10n.selectSavePath),
+                ),
+                if (isCustomReceiveSavePath)
+                  OutlinedButton.icon(
+                    onPressed: onResetSavePathToDefault,
+                    icon: const Icon(Icons.restore, size: 18),
+                    label: Text(l10n.resetSavePathToDefault),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 

@@ -159,6 +159,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectSavePath => '选择保存路径';
 
   @override
+  String get savePathDesc => '接收到的文件将保存到此目录。默认使用系统下载文件夹。';
+
+  @override
+  String get savePathDefaultBadge => '默认';
+
+  @override
+  String get savePathUnavailable => '无法获取保存路径';
+
+  @override
+  String get savePathSavedSuccess => '保存路径设置成功';
+
+  @override
+  String get savePathNotWritable => '该路径无法写入文件，请选择其他目录或检查权限';
+
+  @override
+  String get resetSavePathToDefault => '恢复默认路径';
+
+  @override
+  String get savePathResetSuccess => '已恢复为系统下载文件夹';
+
+  @override
   String get autoStart => '自动启动';
 
   @override
@@ -301,6 +322,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get selectFolderFailed => '选择文件夹失败';
+
+  @override
+  String folderFilesAdded(int count) => '已从文件夹添加 $count 个文件';
+
+  @override
+  String get folderContainsNoFiles => '所选文件夹中没有可发送的文件';
 
   @override
   String get openFileFailed => '打开文件失败';

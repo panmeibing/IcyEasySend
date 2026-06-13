@@ -160,6 +160,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectSavePath => 'Select Save Path';
 
   @override
+  String get savePathDesc =>
+      'Received files are saved here. The system downloads folder is used by default.';
+
+  @override
+  String get savePathDefaultBadge => 'Default';
+
+  @override
+  String get savePathUnavailable => 'Unable to resolve save path';
+
+  @override
+  String get savePathSavedSuccess => 'Save path updated successfully';
+
+  @override
+  String get savePathNotWritable =>
+      'Cannot write to this folder. Please choose another location or check permissions.';
+
+  @override
+  String get resetSavePathToDefault => 'Use default folder';
+
+  @override
+  String get savePathResetSuccess => 'Restored to system downloads folder';
+
+  @override
   String get autoStart => 'Auto Start';
 
   @override
@@ -305,6 +328,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Failed to select folder';
+
+  @override
+  String folderFilesAdded(int count) => 'Added $count files from folder';
+
+  @override
+  String get folderContainsNoFiles =>
+      'The selected folder contains no files to send';
 
   @override
   String get openFileFailed => 'Failed to open file';

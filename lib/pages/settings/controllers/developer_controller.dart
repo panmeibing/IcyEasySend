@@ -9,7 +9,7 @@ class DeveloperController {
   /// Get developer information
   Future<String> getDeveloperInfo() async {
     // Get paths
-    final downloadDir = await PlatformUtil.getDownloadsDirectory();
+    final downloadDir = await PlatformUtil.getReceiveSaveDirectory();
     final logPath = await PlatformUtil.getLoggerFilePath();
     final historyPath = await PlatformUtil.getHistoryFilePath();
 
@@ -21,11 +21,11 @@ class DeveloperController {
     buffer.writeln(separator * 3);
     buffer.writeln();
 
-    buffer.writeln('【下载文件路径】');
+    buffer.writeln('【接收文件保存路径】');
     if (downloadDir != null) {
       buffer.writeln(downloadDir.path);
     } else {
-      buffer.writeln('无法获取下载路径');
+      buffer.writeln('无法获取接收保存路径');
     }
     buffer.writeln();
 

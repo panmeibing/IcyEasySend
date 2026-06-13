@@ -9,6 +9,7 @@ import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
 import '../../utils/platform_util.dart';
+import '../../utils/transfer_path_util.dart';
 import '../validation_service.dart';
 
 /// Service for receiving files from sender devices
@@ -51,10 +52,10 @@ class FileReceiver {
         return OperationResult.failure(ErrorMessages.storageInsufficient);
       }
 
-      // Get downloads directory
-      final downloadsDir = await PlatformUtil.getDownloadsDirectory();
+      // Get receive save directory (custom path or system downloads)
+      final downloadsDir = await PlatformUtil.getReceiveSaveDirectory();
       if (downloadsDir == null) {
-        LogUtil.eTag(logTag, 'Downloads directory unavailable');
+        LogUtil.eTag(logTag, 'Receive save directory unavailable');
         try {
           if (!streamDrained) {
             await fileStream.drain();
@@ -72,12 +73,30 @@ class FileReceiver {
         );
       }
 
-      // Handle file name conflicts
-      final finalFileName = await _resolveFileNameConflict(
+      final safeRelativePath = TransferPathUtil.sanitizeRelativePath(fileName);
+      if (safeRelativePath == null) {
+        LogUtil.wTag(logTag, 'Invalid transfer path rejected: $fileName');
+        try {
+          if (!streamDrained) {
+            await fileStream.drain();
+            streamDrained = true;
+          }
+        } catch (e) {
+          LogUtil.eTag(logTag, 'Error draining stream after path check: $e');
+        }
+        return OperationResult.failure(ErrorMessages.invalidFileName);
+      }
+
+      // Handle file name conflicts (supports nested folder paths)
+      final finalRelativePath = await _resolveFileNameConflict(
         downloadsDir,
-        fileName,
+        safeRelativePath,
       );
-      final filePath = path.join(downloadsDir.path, finalFileName);
+      final filePath = path.join(downloadsDir.path, finalRelativePath);
+      final parentDir = path.dirname(filePath);
+      if (parentDir.isNotEmpty) {
+        await Directory(parentDir).create(recursive: true);
+      }
 
       // Save file data
       file = File(filePath);
@@ -311,11 +330,18 @@ class FileReceiver {
     return true;
   }
 
-  /// Resolve file name conflicts by adding a number suffix
+  /// Resolve file path conflicts by adding a number suffix to the file name.
   Future<String> _resolveFileNameConflict(
     Directory directory,
-    String fileName,
+    String relativePath,
   ) async {
+    final fullPath = path.join(directory.path, relativePath);
+    if (!await File(fullPath).exists()) {
+      return relativePath;
+    }
+
+    final parentDir = path.dirname(relativePath);
+    final fileName = path.basename(relativePath);
     final lastDotIndex = fileName.lastIndexOf('.');
     String baseName;
     String extension;
@@ -328,14 +354,18 @@ class FileReceiver {
       extension = '';
     }
 
-    String candidateName = fileName;
     int counter = 1;
+    while (true) {
+      final candidateFileName = '$baseName($counter)$extension';
+      final candidateRelative = parentDir == '.' || parentDir.isEmpty
+          ? candidateFileName
+          : path.join(parentDir, candidateFileName);
+      final candidateFullPath = path.join(directory.path, candidateRelative);
 
-    while (await File(path.join(directory.path, candidateName)).exists()) {
-      candidateName = '$baseName($counter)$extension';
+      if (!await File(candidateFullPath).exists()) {
+        return candidateRelative;
+      }
       counter++;
     }
-
-    return candidateName;
   }
 }

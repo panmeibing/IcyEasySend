@@ -1,24 +1,24 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as path;
 
 import '../../../l10n/app_localizations.dart';
+import '../../../models/transfer_file_item.dart';
 
 /// File selection section widget
 class FileSelectionSection extends StatelessWidget {
-  final List<File> selectedFiles;
+  final List<TransferFileItem> selectedItems;
   final bool isEnabled;
   final bool isSending;
   final VoidCallback onSelectFiles;
+  final VoidCallback onSelectFolder;
   final Function(int) onRemoveFile;
 
   const FileSelectionSection({
     super.key,
-    required this.selectedFiles,
+    required this.selectedItems,
     required this.isEnabled,
     required this.isSending,
     required this.onSelectFiles,
+    required this.onSelectFolder,
     required this.onRemoveFile,
   });
 
@@ -33,15 +33,29 @@ class FileSelectionSection extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        ElevatedButton.icon(
-          onPressed: isEnabled ? onSelectFiles : null,
-          icon: const Icon(Icons.folder_open),
-          label: Text(l10n.selectFiles),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: isEnabled ? onSelectFiles : null,
+                icon: const Icon(Icons.insert_drive_file),
+                label: Text(l10n.selectFiles),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: isEnabled ? onSelectFolder : null,
+                icon: const Icon(Icons.folder),
+                label: Text(l10n.selectFolder),
+              ),
+            ),
+          ],
         ),
-        if (selectedFiles.isNotEmpty) ...[
+        if (selectedItems.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(
-            l10n.filesSelected(selectedFiles.length),
+            l10n.filesSelected(selectedItems.length),
             style: const TextStyle(
               color: Colors.green,
               fontWeight: FontWeight.bold,
@@ -56,15 +70,19 @@ class FileSelectionSection extends StatelessWidget {
             ),
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: selectedFiles.length,
+              itemCount: selectedItems.length,
               itemBuilder: (context, index) {
-                final file = selectedFiles[index];
-                final fileName = path.basename(file.path);
+                final item = selectedItems[index];
                 return ListTile(
                   dense: true,
-                  leading: const Icon(Icons.insert_drive_file, size: 20),
+                  leading: Icon(
+                    item.transferName.contains('/')
+                        ? Icons.folder_outlined
+                        : Icons.insert_drive_file,
+                    size: 20,
+                  ),
                   title: Text(
-                    fileName,
+                    item.transferName,
                     style: const TextStyle(fontSize: 13),
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -161,6 +161,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get selectSavePath => 'Sélectionner le chemin de sauvegarde';
 
   @override
+  String get savePathDesc =>
+      'Les fichiers reçus sont enregistrés ici. Le dossier Téléchargements du système est utilisé par défaut.';
+
+  @override
+  String get savePathDefaultBadge => 'Par défaut';
+
+  @override
+  String get savePathUnavailable =>
+      'Impossible de déterminer le chemin de sauvegarde';
+
+  @override
+  String get savePathSavedSuccess =>
+      'Chemin de sauvegarde défini avec succès';
+
+  @override
+  String get savePathNotWritable =>
+      'Impossible d\'écrire dans ce dossier. Choisissez un autre emplacement ou vérifiez les autorisations.';
+
+  @override
+  String get resetSavePathToDefault => 'Utiliser le dossier par défaut';
+
+  @override
+  String get savePathResetSuccess =>
+      'Rétabli vers le dossier Téléchargements du système';
+
+  @override
   String get autoStart => 'Démarrage automatique';
 
   @override
@@ -307,6 +333,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get selectFolderFailed => 'Échec de la sélection du dossier';
+
+  @override
+  String folderFilesAdded(int count) =>
+      '$count fichiers ajoutés depuis le dossier';
+
+  @override
+  String get folderContainsNoFiles =>
+      'Le dossier sélectionné ne contient aucun fichier à envoyer';
 
   @override
   String get openFileFailed => 'Échec de l\'ouverture du fichier';
