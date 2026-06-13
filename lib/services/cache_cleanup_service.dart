@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/log_util.dart';
@@ -13,11 +14,73 @@ import '../utils/log_util.dart';
 class CacheCleanupService {
   final String logTag = LogTags.system;
 
+  /// Whether [filePath] is located inside the app temporary/cache directory.
+  Future<bool> isAppCacheFile(String filePath) async {
+    final cacheDir = await getTemporaryDirectory();
+    final cacheRoot = p.normalize(cacheDir.path);
+    final normalizedPath = p.normalize(filePath);
+    return p.isWithin(cacheRoot, normalizedPath) || normalizedPath == cacheRoot;
+  }
+
+  /// Delete specific files when they live in the app cache directory.
+  ///
+  /// Used to release space copied by share intent or file_picker once the
+  /// files are no longer needed.
+  Future<void> deleteCacheFilesIfPresent(Iterable<String> filePaths) async {
+    if (filePaths.isEmpty) {
+      return;
+    }
+
+    var deletedCount = 0;
+    var deletedSize = 0;
+
+    for (final filePath in filePaths) {
+      if (!await isAppCacheFile(filePath)) {
+        continue;
+      }
+
+      try {
+        final file = File(filePath);
+        if (!await file.exists()) {
+          continue;
+        }
+
+        final size = await file.length();
+        await file.delete();
+        deletedCount++;
+        deletedSize += size;
+        LogUtil.dTag(logTag, '删除临时缓存文件: $filePath');
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, '删除临时缓存文件失败: $filePath, 错误=$e', e, stackTrace);
+      }
+    }
+
+    if (deletedCount > 0) {
+      LogUtil.iTag(
+        logTag,
+        '临时缓存清理完成: 删除$deletedCount个文件, '
+        '释放${_formatSize(deletedSize)}',
+      );
+    }
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes >= 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)}GB';
+    }
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)}MB';
+  }
+
   /// Clean up file_picker cache directory
   ///
   /// file_picker on Android may cache large files in the app's cache directory,
   /// which can cause storage issues. This method cleans up those cached files.
-  Future<void> cleanupFilePickerCache() async {
+  ///
+  /// [excludePaths] can be used to preserve files received from a share intent
+  /// during cold start.
+  Future<void> cleanupFilePickerCache({
+    Set<String> excludePaths = const {},
+  }) async {
     try {
       // Get the cache directory
       final cacheDir = await getTemporaryDirectory();
@@ -32,6 +95,11 @@ class CacheCleanupService {
 
         for (final entity in files) {
           if (entity is File) {
+            if (excludePaths.contains(entity.path)) {
+              LogUtil.dTag(logTag, '跳过分享缓存文件: ${entity.path}');
+              continue;
+            }
+
             try {
               final size = await entity.length();
               await entity.delete();
@@ -46,7 +114,7 @@ class CacheCleanupService {
 
         LogUtil.iTag(
           logTag,
-          '缓存清理完成: 删除$deletedCount个文件, 释放${(deletedSize / (1024 * 1024)).toStringAsFixed(2)}MB空间',
+          '缓存清理完成: 删除$deletedCount个文件, 释放${_formatSize(deletedSize)}',
         );
       }
     } catch (e, stackTrace) {

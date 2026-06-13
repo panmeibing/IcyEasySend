@@ -6,8 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import '../l10n/app_localizations.dart';
+import '../services/cache_cleanup_service.dart';
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
+import '../services/screen_wake_lock_service.dart';
 import '../services/sharing_intent_service.dart';
 import '../services/validation_service.dart';
 import '../utils/constants.dart';
@@ -73,6 +75,7 @@ class HomePageState extends State<HomePage> {
   late final PreferencesService _preferencesService;
   late final FileTransferController _fileTransferController;
   late final ClipboardController _clipboardController;
+  late final CacheCleanupService _cacheCleanupService;
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
@@ -111,6 +114,7 @@ class HomePageState extends State<HomePage> {
     _preferencesService = PreferencesService();
     _fileTransferController = FileTransferController();
     _clipboardController = ClipboardController();
+    _cacheCleanupService = CacheCleanupService();
 
     // Set context for server manager
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -135,24 +139,36 @@ class HomePageState extends State<HomePage> {
     _loadIPHistory();
     _loadIPValidationEnabled();
 
-    // Listen for shared files from other apps
+    // Listen for shared files while the app is already running
     _sharingIntentSubscription = widget.sharingIntentService.sharedFilesStream
         .listen((files) {
           LogUtil.iTag(
             logTag,
-            "Monitored the files from sharing intent, files: ${files.toString()}",
+            '收到运行中分享: ${files.length} 个文件',
           );
           if (files.isNotEmpty && mounted) {
             _handleSharedFiles(files);
-          } else if (files.isNotEmpty) {
-            LogUtil.wTag(logTag, 'Sharing intent received empty files');
-          } else if (!mounted) {
-            LogUtil.wTag(
-              logTag,
-              'Sharing intent received files but page do not mounted',
-            );
           }
         });
+
+    // Cold start shares are buffered before HomePage subscribes to the stream
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _processInitialSharedFiles();
+    });
+  }
+
+  /// Handle share payload that opened the app before UI was ready
+  Future<void> _processInitialSharedFiles() async {
+    await widget.sharingIntentService.loadInitialSharingIfNeeded();
+    if (!mounted) return;
+
+    final pending = widget.sharingIntentService.takePendingSharedFiles();
+    if (pending.isEmpty) {
+      return;
+    }
+
+    LogUtil.iTag(logTag, '处理冷启动分享: ${pending.length} 个文件');
+    await _handleSharedFiles(pending);
   }
 
   @override
@@ -491,9 +507,13 @@ class HomePageState extends State<HomePage> {
                         onSelectFiles: _selectFiles,
                         onSelectFolder: _selectFolder,
                         onRemoveFile: (index) {
+                          final removed = selectedItems[index];
                           setState(() {
                             selectedItems.removeAt(index);
                           });
+                          _cacheCleanupService.deleteCacheFilesIfPresent([
+                            removed.file.path,
+                          ]);
                         },
                       ),
                       const SizedBox(height: 24),
@@ -617,9 +637,11 @@ class HomePageState extends State<HomePage> {
     final items = await _fileTransferController.selectFiles(context);
 
     if (items.isNotEmpty) {
+      final previousItems = List<TransferFileItem>.from(selectedItems);
       setState(() {
         selectedItems = items;
       });
+      await _cleanupShareCacheForItems(previousItems);
       _scrollToBottom();
     }
   }
@@ -629,9 +651,11 @@ class HomePageState extends State<HomePage> {
     final items = await _fileTransferController.selectFolder(context);
 
     if (items.isNotEmpty) {
+      final previousItems = List<TransferFileItem>.from(selectedItems);
       setState(() {
         selectedItems = items;
       });
+      await _cleanupShareCacheForItems(previousItems);
       _scrollToBottom();
 
       if (mounted) {
@@ -660,12 +684,16 @@ class HomePageState extends State<HomePage> {
 
   /// Handle shared files from other apps
   Future<void> _handleSharedFiles(List<File> sharedFiles) async {
-    LogUtil.wTag(LogTags.ui, 'Start processing the shared file');
+    LogUtil.iTag(logTag, '开始处理分享文件: ${sharedFiles.length} 个');
 
-    // Clear the shared files from the service
-    widget.sharingIntentService.clearSharedFiles();
+    Future<void> rejectShare() async {
+      await widget.sharingIntentService.cleanupSharedCacheFiles(sharedFiles);
+      widget.sharingIntentService.clearSharedFiles();
+    }
 
     if (!isServerRunning) {
+      await rejectShare();
+      if (!mounted) return;
       ToastHelper.showWarning(
         context,
         AppLocalizations.of(context).serverNotRunning,
@@ -674,6 +702,8 @@ class HomePageState extends State<HomePage> {
     }
 
     if (isSending) {
+      await rejectShare();
+      if (!mounted) return;
       ToastHelper.showWarning(
         context,
         AppLocalizations.of(context).sendingInProgress,
@@ -692,18 +722,35 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    if (validItems.isNotEmpty) {
-      setState(() {
-        selectedItems.addAll(validItems);
-      });
-
-      ToastHelper.showSuccess(
-        context,
-        AppLocalizations.of(context).filesAdded(validItems.length),
-      );
-
-      _scrollToBottom();
+    if (validItems.isEmpty) {
+      await rejectShare();
+      return;
     }
+
+    widget.sharingIntentService.clearSharedFiles();
+
+    setState(() {
+      selectedItems.addAll(validItems);
+    });
+
+    ToastHelper.showSuccess(
+      context,
+      AppLocalizations.of(context).filesAdded(validItems.length),
+    );
+
+    _scrollToBottom();
+  }
+
+  Future<void> _cleanupShareCacheForItems(
+    Iterable<TransferFileItem> items,
+  ) async {
+    if (items.isEmpty) {
+      return;
+    }
+
+    await _cacheCleanupService.deleteCacheFilesIfPresent(
+      items.map((item) => item.file.path),
+    );
   }
 
   /// Send multiple selected files to the target device
@@ -778,6 +825,7 @@ class HomePageState extends State<HomePage> {
           });
         },
         onTransferStart: () {
+          ScreenWakeLockService.acquire();
           setState(() {
             isSending = true;
             _completedFilesCount = 0;
@@ -796,6 +844,7 @@ class HomePageState extends State<HomePage> {
           _scrollToBottom();
         },
         onTransferEnd: () {
+          ScreenWakeLockService.release();
           if (mounted) {
             setState(() {
               isSending = false;

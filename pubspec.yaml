@@ -91,6 +91,7 @@ dependencies:
   
   # Receive sharing intent from other apps (supports Android and iOS)
   flutter_sharing_intent: ^2.0.4
+  wakelock_plus: ^1.5.2
 
 dev_dependencies:
   flutter_test:

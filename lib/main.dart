@@ -27,13 +27,23 @@ void main() async {
     '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
   );
 
-  // Clean up cache on Android startup to prevent storage issues
+  Set<String> pendingSharePaths = {};
+  if (Platform.isAndroid || Platform.isIOS) {
+    pendingSharePaths = await SharingIntentService.captureInitialSharingEarly();
+  }
+
+  // Clean up cache on Android startup to prevent storage issues.
+  // Shared files copied into cache must be preserved when opened via share intent.
   if (Platform.isAndroid) {
     LogUtil.iTag(LogTags.system, '应用启动时清理缓存');
     final cacheCleanupService = CacheCleanupService();
-    cacheCleanupService.cleanupFilePickerCache().catchError((e) {
+    try {
+      await cacheCleanupService.cleanupFilePickerCache(
+        excludePaths: pendingSharePaths,
+      );
+    } catch (e) {
       LogUtil.wTag(LogTags.system, '启动时清理缓存失败: $e');
-    });
+    }
   }
 
   runApp(const MyApp());
@@ -61,6 +71,7 @@ class _MyAppState extends State<MyApp> {
     _serverManager = HTTPServerManager();
     _permissionService = PermissionService();
     _sharingIntentService = SharingIntentService();
+    _sharingIntentService.initialize();
 
     _initializeApp();
   }
@@ -83,9 +94,6 @@ class _MyAppState extends State<MyApp> {
 
     // Step 3: Initialize the HTTP server
     await _initializeServer();
-
-    // Step 4: Initialize sharing intent service
-    _sharingIntentService.initialize();
   }
 
   /// Request necessary permissions on app startup

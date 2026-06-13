@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/constants.dart';
 import '../utils/format_util.dart';
 import '../utils/transfer_status_provider.dart';
+import 'screen_wake_lock_service.dart';
 
 /// Information about a file pending receive confirmation
 class PendingFileInfo {
@@ -404,6 +405,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     _countdownTimer?.cancel();
     _countdownTimer = null;
 
+    ScreenWakeLockService.acquire();
+
     setState(() {
       _isAccepted = true;
     });
@@ -451,6 +454,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     _disposed = true;
     _countdownTimer?.cancel();
     _updateTimer?.cancel();
+    if (_isAccepted) {
+      ScreenWakeLockService.release();
+    }
     super.dispose();
   }
 

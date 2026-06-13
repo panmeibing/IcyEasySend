@@ -386,10 +386,10 @@ class FileTransferController {
     } finally {
       onTransferEnd();
       
-      // Clean up file_picker cache after transfer completes (Android only)
-      // This is safe because files have already been read and sent
+      // Clean up app cache after transfer completes (Android only).
+      // Share intent and file_picker both copy large files into this directory.
       if (Platform.isAndroid) {
-        LogUtil.iTag(logTag, '文件传输完成，清理file_picker缓存');
+        LogUtil.iTag(logTag, '文件传输完成，清理应用临时缓存');
         _cacheCleanupService.cleanupFilePickerCache().catchError((e) {
           LogUtil.wTag(logTag, '清理缓存失败: $e');
         });
