@@ -2,12 +2,9 @@ package com.icyhope.icyEasySend
 
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
-import java.io.ByteArrayOutputStream
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.icyhope.icy_easy_send/clipboard"
@@ -45,6 +42,13 @@ class MainActivity : FlutterActivity() {
                         result.error("ERROR", "Failed to set image to clipboard: ${e.message}", null)
                     }
                 }
+                "getTextFromClipboard" -> {
+                    try {
+                        result.success(getTextFromClipboard())
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get text from clipboard: ${e.message}", null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -54,42 +58,132 @@ class MainActivity : FlutterActivity() {
 
     private fun getImageFromClipboard(): Map<String, Any>? {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        
+
         if (!clipboard.hasPrimaryClip()) {
             return null
         }
-        
+
         val clip = clipboard.primaryClip ?: return null
-        
         if (clip.itemCount == 0) {
             return null
         }
-        
-        val item = clip.getItemAt(0)
-        val uri = item.uri
-        
-        if (uri != null) {
+
+        for (index in 0 until clip.itemCount) {
+            val item = clip.getItemAt(index)
+            val uri = item.uri ?: continue
+
             try {
-                val inputStream = contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-                
-                if (bitmap != null) {
-                    val outputStream = ByteArrayOutputStream()
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                    val imageBytes = outputStream.toByteArray()
-                    bitmap.recycle()
-                    
-                    return mapOf(
-                        "imageData" to imageBytes,
-                        "format" to "png"
-                    )
+                val mimeType = contentResolver.getType(uri)
+                if (mimeType == null || !mimeType.startsWith("image/")) {
+                    continue
+                }
+
+                val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+                    stream.readBytes()
+                } ?: continue
+
+                if (bytes.isEmpty()) {
+                    continue
+                }
+
+                val fileName = queryDisplayName(uri) ?: defaultImageFileName(mimeType)
+                return mapOf(
+                    "imageData" to bytes,
+                    "fileName" to fileName,
+                    "mimeType" to mimeType,
+                    "format" to mimeType.substringAfter('/')
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        return null
+    }
+
+    private fun queryDisplayName(uri: android.net.Uri): String? {
+        if (uri.scheme != "content") {
+            return uri.lastPathSegment
+        }
+
+        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0 && cursor.moveToFirst()) {
+                    return cursor.getString(nameIndex)
+                }
+            }
+
+        return uri.lastPathSegment
+    }
+
+    private fun defaultImageFileName(mimeType: String): String {
+        return when {
+            mimeType.contains("jpeg") || mimeType.contains("jpg") -> "clipboard_image.jpg"
+            mimeType.contains("webp") -> "clipboard_image.webp"
+            mimeType.contains("gif") -> "clipboard_image.gif"
+            else -> "clipboard_image.png"
+        }
+    }
+
+    private fun isTextMimeType(mimeType: String): Boolean {
+        return mimeType.startsWith("text/") ||
+            mimeType == "application/json" ||
+            mimeType.endsWith("+json") ||
+            mimeType.endsWith("+xml")
+    }
+
+    private fun getTextFromClipboard(): String? {
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+        if (!clipboard.hasPrimaryClip()) {
+            return null
+        }
+
+        val clip = clipboard.primaryClip ?: return null
+        if (clip.itemCount == 0) {
+            return null
+        }
+
+        for (index in 0 until clip.itemCount) {
+            val item = clip.getItemAt(index)
+
+            val uri = item.uri
+            if (uri != null) {
+                val mimeType = contentResolver.getType(uri)
+                if (mimeType != null && !isTextMimeType(mimeType)) {
+                    continue
+                }
+            }
+
+            try {
+                val coerced = item.coerceToText(this)?.toString()?.trim()
+                if (!coerced.isNullOrEmpty()) {
+                    return coerced
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            try {
+                val plain = item.text?.toString()?.trim()
+                if (!plain.isNullOrEmpty()) {
+                    return plain
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+
+            try {
+                val html = item.htmlText?.trim()
+                if (!html.isNullOrEmpty()) {
+                    return html
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
-        
+
         return null
     }
 

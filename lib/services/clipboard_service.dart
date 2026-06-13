@@ -14,6 +14,7 @@ import '../utils/http_helper.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import '../utils/operation_result.dart';
+import 'native_clipboard_service.dart';
 
 /// 增强的剪切板服务类
 ///
@@ -114,54 +115,296 @@ class ClipboardService {
   /// 返回剪切板中的内容（文本或文件），如果剪切板为空或出错则返回null
   /// 优先级：文件 URI > 纯文本
   Future<ClipboardDataModel?> getClipboardContent() async {
-    try {
-      LogUtil.dTag(logTag, '正在读取本地剪切板...');
+    LogUtil.dTag(logTag, '正在读取本地剪切板...');
 
-      final clipboard = SystemClipboard.instance;
-      if (clipboard == null) {
-        LogUtil.wTag(logTag, '剪切板 API 不可用');
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final imageData = await _readNativeImage();
+        if (imageData != null) {
+          return imageData;
+        }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, '原生读取图片失败: $e', e, stackTrace);
+      }
+    }
+
+    ClipboardDataModel? imageData;
+    try {
+      imageData = await _readImageFromSuperClipboard();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '通过 super_clipboard 读取图片失败: $e', e, stackTrace);
+    }
+    if (imageData != null) {
+      return imageData;
+    }
+
+    ClipboardDataModel? fileData;
+    try {
+      fileData = await _readFileFromSuperClipboard();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '通过 super_clipboard 读取文件失败: $e', e, stackTrace);
+    }
+    if (fileData != null) {
+      return fileData;
+    }
+
+    // Native text after binary content — avoids treating copied images as text.
+    if (Platform.isAndroid || Platform.isIOS) {
+      try {
+        final nativeText = await _readNativeText();
+        if (nativeText != null) {
+          return nativeText;
+        }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, '原生读取文本失败: $e', e, stackTrace);
+      }
+    }
+
+    ClipboardDataModel? textData;
+    try {
+      textData = await _readTextFromSuperClipboard();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, 'super_clipboard 读取文本失败: $e', e, stackTrace);
+    }
+    if (textData != null) {
+      return textData;
+    }
+
+    LogUtil.wTag(logTag, '剪切板为空或不包含支持的格式');
+    return null;
+  }
+
+  Future<ClipboardDataModel?> _readNativeImage() async {
+    final image = await NativeClipboardService.getImageFromClipboard();
+    if (image == null) {
+      return null;
+    }
+
+    final mimeType = image.mimeType ?? 'image/png';
+    final extension = mimeType.contains('jpeg') || mimeType.contains('jpg')
+        ? 'jpg'
+        : mimeType.contains('png')
+        ? 'png'
+        : mimeType.contains('webp')
+        ? 'webp'
+        : 'png';
+    final fileName = image.fileName ?? 'clipboard_image.$extension';
+
+    LogUtil.iTag(
+      logTag,
+      '成功通过原生 API 读取图片剪切板，大小: ${image.bytes.length} bytes',
+    );
+
+    return ClipboardDataModel(
+      type: ClipboardDataType.file,
+      fileData: image.bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+  }
+
+  Future<ClipboardDataModel?> _readNativeText() async {
+    final nativeText = await NativeClipboardService.getTextFromClipboard();
+    if (nativeText == null) {
+      LogUtil.dTag(logTag, '原生 API 未读取到文本');
+      return null;
+    }
+
+    final text = _htmlToPlainText(nativeText);
+    if (text.isEmpty) {
+      LogUtil.dTag(logTag, '原生 API 读取结果为空文本');
+      return null;
+    }
+
+    LogUtil.iTag(logTag, '成功通过原生 API 读取剪切板，长度: ${text.length}');
+    return ClipboardDataModel(
+      type: ClipboardDataType.text,
+      textContent: text,
+    );
+  }
+
+  Future<ClipboardDataModel?> _readImageFromSuperClipboard() async {
+    final clipboard = SystemClipboard.instance;
+    if (clipboard == null) {
+      return null;
+    }
+
+    ClipboardDataReader reader;
+    try {
+      reader = await clipboard.read();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, 'super_clipboard 打开失败: $e', e, stackTrace);
+      return null;
+    }
+
+    LogUtil.dTag(logTag, '剪切板可用格式: ${reader.platformFormats}');
+
+    if (reader.canProvide(Formats.png)) {
+      try {
+        final bytes = await _readSuperClipboardFile(reader, Formats.png);
+        if (bytes != null && bytes.isNotEmpty) {
+          LogUtil.iTag(logTag, '成功读取 PNG 剪切板，大小: ${bytes.length} bytes');
+          return ClipboardDataModel(
+            type: ClipboardDataType.file,
+            fileData: bytes,
+            fileName: 'clipboard_image.png',
+            mimeType: 'image/png',
+          );
+        }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, 'super_clipboard 读取 PNG 失败: $e', e, stackTrace);
+      }
+    }
+
+    if (reader.canProvide(Formats.jpeg)) {
+      try {
+        final bytes = await _readSuperClipboardFile(reader, Formats.jpeg);
+        if (bytes != null && bytes.isNotEmpty) {
+          LogUtil.iTag(logTag, '成功读取 JPEG 剪切板，大小: ${bytes.length} bytes');
+          return ClipboardDataModel(
+            type: ClipboardDataType.file,
+            fileData: bytes,
+            fileName: 'clipboard_image.jpg',
+            mimeType: 'image/jpeg',
+          );
+        }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, 'super_clipboard 读取 JPEG 失败: $e', e, stackTrace);
+      }
+    }
+
+    return null;
+  }
+
+  Future<Uint8List?> _readSuperClipboardFile(
+    ClipboardDataReader reader,
+    FileFormat format,
+  ) async {
+    final completer = Completer<Uint8List?>();
+    final progress = reader.getFile(format, (file) async {
+      try {
+        completer.complete(await file.readAll());
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, '读取剪切板文件流失败: $e', e, stackTrace);
+        if (!completer.isCompleted) {
+          completer.complete(null);
+        }
+      }
+    }, onError: (error) {
+      LogUtil.wTag(logTag, 'getFile 失败: $error');
+      if (!completer.isCompleted) {
+        completer.complete(null);
+      }
+    });
+
+    if (progress == null) {
+      return null;
+    }
+
+    return completer.future;
+  }
+
+  Future<ClipboardDataModel?> _readFileFromSuperClipboard() async {
+    final clipboard = SystemClipboard.instance;
+    if (clipboard == null) {
+      LogUtil.wTag(logTag, '剪切板 API 不可用');
+      return null;
+    }
+
+    final reader = await clipboard.read();
+    LogUtil.dTag(logTag, '剪切板可用格式: ${reader.platformFormats}');
+
+    if (!reader.canProvide(Formats.fileUri)) {
+      return null;
+    }
+
+    LogUtil.dTag(logTag, '检测到文件 URI');
+    try {
+      final uri = await reader.readValue(Formats.fileUri);
+      if (uri == null) {
         return null;
       }
 
-      final reader = await clipboard.read();
+      return _readFileFromUri(uri);
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, 'super_clipboard 读取 fileUri 失败: $e', e, stackTrace);
+      return null;
+    }
+  }
 
-      // 打印所有可用的格式以便调试
-      LogUtil.dTag(logTag, '剪切板可用格式: ${reader.platformFormats}');
+  Future<ClipboardDataModel?> _readTextFromSuperClipboard() async {
+    final clipboard = SystemClipboard.instance;
+    if (clipboard == null) {
+      return null;
+    }
 
-      // 优先尝试读取文件 URI（当用户复制文件时）
-      if (reader.canProvide(Formats.fileUri)) {
-        LogUtil.dTag(logTag, '检测到文件 URI');
-        try {
-          final uri = await reader.readValue(Formats.fileUri);
-          if (uri != null) {
-            final fileData = await _readFileFromUri(uri);
-            if (fileData != null) {
-              return fileData;
-            }
-          }
-        } catch (e) {
-          LogUtil.wTag(logTag, '读取文件 URI 失败: $e');
-        }
-      }
+    ClipboardDataReader reader;
+    try {
+      reader = await clipboard.read();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, 'super_clipboard 打开失败: $e', e, stackTrace);
+      return null;
+    }
 
-      // 如果没有文件，尝试读取文本
-      if (reader.canProvide(Formats.plainText)) {
+    LogUtil.dTag(logTag, 'super_clipboard 可用格式: ${reader.platformFormats}');
+
+    if (reader.canProvide(Formats.plainText)) {
+      try {
         final text = await reader.readValue(Formats.plainText);
-        if (text != null && text.isNotEmpty) {
-          LogUtil.iTag(logTag, '成功读取文本剪切板，长度: ${text.length}');
+        if (text != null && text.trim().isNotEmpty) {
+          LogUtil.iTag(logTag, '成功读取纯文本剪切板，长度: ${text.length}');
+          return ClipboardDataModel(
+            type: ClipboardDataType.text,
+            textContent: text.trim(),
+          );
+        }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, 'super_clipboard 读取 plainText 失败: $e', e, stackTrace);
+      }
+    }
+
+    if (reader.canProvide(Formats.htmlText)) {
+      LogUtil.dTag(logTag, '检测到 HTML 剪切板，尝试提取文本');
+      try {
+        final html = await reader.readValue(Formats.htmlText);
+        final text = _htmlToPlainText(html);
+        if (text.isNotEmpty) {
+          LogUtil.iTag(logTag, '成功从 HTML 剪切板提取文本，长度: ${text.length}');
           return ClipboardDataModel(
             type: ClipboardDataType.text,
             textContent: text,
           );
         }
+      } catch (e, stackTrace) {
+        LogUtil.wTag(logTag, 'super_clipboard 读取 htmlText 失败: $e', e, stackTrace);
       }
-
-      LogUtil.wTag(logTag, '剪切板为空或不包含支持的格式');
-      return null;
-    } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '读取剪切板失败: $e', e, stackTrace);
-      return null;
     }
+
+    return null;
+  }
+
+  String _htmlToPlainText(String? html) {
+    if (html == null || html.trim().isEmpty) {
+      return '';
+    }
+
+    var text = html
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</div>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'");
+
+    text = text.replaceAll(RegExp(r'[ \t\f\v]+'), ' ');
+    text = text.replaceAll(RegExp(r'\n[ \t]+'), '\n');
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    return text.trim();
   }
 
   /// 创建临时文件

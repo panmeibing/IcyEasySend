@@ -31,6 +31,8 @@ import UIKit
         } else {
           result(FlutterError(code: "INVALID_ARGUMENT", message: "Invalid arguments", details: nil))
         }
+      case "getTextFromClipboard":
+        result(self?.getTextFromClipboard())
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -41,14 +43,38 @@ import UIKit
   
   private func getImageFromClipboard() -> [String: Any]? {
     let pasteboard = UIPasteboard.general
-    
+
     if let image = pasteboard.image {
       if let imageData = image.pngData() {
         return [
           "imageData": FlutterStandardTypedData(bytes: imageData),
+          "fileName": "clipboard_image.png",
+          "mimeType": "image/png",
           "format": "png"
         ]
       }
+    }
+
+    return nil
+  }
+  
+  private func getTextFromClipboard() -> String? {
+    let pasteboard = UIPasteboard.general
+
+    if pasteboard.hasImages || pasteboard.image != nil {
+      return nil
+    }
+
+    if let string = pasteboard.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !string.isEmpty {
+      return string
+    }
+    
+    if let htmlData = pasteboard.data(forPasteboardType: "public.html"),
+       let html = String(data: htmlData, encoding: .utf8)?
+         .trimmingCharacters(in: .whitespacesAndNewlines),
+       !html.isEmpty {
+      return html
     }
     
     return nil
