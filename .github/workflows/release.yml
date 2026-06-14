@@ -184,13 +184,15 @@ jobs:
           flutter build windows --release
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc "/DMyAppVersion=$version" "installers\Windows\setup_script.iss"
+          pwsh -File "installers\Windows\package_portable.ps1" -Version $version
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          Copy-Item "installers\Windows\Output\IcyEasySend_setup_$version.exe" "release\"
+          Copy-Item "installers\Windows\Output\IcyEasySend-windows-v$version-setup.exe" "release\"
+          Copy-Item "installers\Windows\Output\IcyEasySend-windows-v$version-portable.zip" "release\"
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64
-          path: release/IcyEasySend_setup_*.exe
+          path: release/*
           if-no-files-found: error
 
   macos:
@@ -312,7 +314,7 @@ jobs:
             ### 附件说明
             - Linux amd64: `.deb` / `.tar.gz`
             - Linux arm64: `.deb` / `.tar.gz`
-            - Windows x64: `.exe` 安装包
+            - Windows x64: `.exe` 安装包 / `.zip` 便携包
             - macOS: 未签名 `.dmg`
             - Android: `.apk` / `.aab`
           files: dist/**

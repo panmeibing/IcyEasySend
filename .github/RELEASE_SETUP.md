@@ -34,7 +34,7 @@ GitHub → Actions → Release → Run workflow
 |------|------------|
 | Linux amd64 | `IcyEasySend-linux-amd64-v1.3.0.deb` / `.tar.gz` |
 | Linux arm64 | `IcyEasySend-linux-arm64-v1.3.0.deb` / `.tar.gz` |
-| Windows x64 | `IcyEasySend_setup_1.3.0.exe` |
+| Windows x64 | `IcyEasySend-windows-v1.3.0-setup.exe` / `-portable.zip` |
 | macOS | `IcyEasySend-macOS-v1.3.0.dmg`（未签名） |
 | Android | `IcyEasySend-android-v1.3.0.apk` / `.aab` |
 

@@ -10,9 +10,16 @@ flutter build windows --release
 
 > 运行结束之后会把文件放在`build\windows\x64\runner\Release\IcyEasySend.exe`
 
-## 2. 打包文件
+## 2. 打包便携版（zip）
 
-编译生成的Windows程序会有很多文件，此时也就是所谓的绿色版，也许把它弄成压缩包更方便分享给用户使用
+将 Release 目录打包为绿色便携版：
+
+```powershell
+flutter build windows --release
+pwsh installers/Windows/package_portable.ps1 -Version 1.3.0
+```
+
+产物：`installers/Windows/Output/IcyEasySend-windows-v1.3.0-portable.zip`（解压即用，无需安装）
 
 ## 3. 打包为安装包
 
@@ -37,4 +44,4 @@ flutter build windows --release
 
 ### 3.5 安装包位置
 
-如果在`iss`脚本中没有指定`OutputDir`参数，则生成的安装包程序会在脚本文件所在的目录中的`Output`文件夹中
+安装包输出到 `installers/Windows/Output/`，文件名为 `IcyEasySend-windows-v1.3.0-setup.exe`。
