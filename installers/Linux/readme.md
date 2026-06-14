@@ -246,7 +246,12 @@ installers/Linux/
 ├── readme.md              # 本文档
 ├── build_deb.sh           # deb 打包脚本
 ├── package_release.sh     # tar.gz 打包脚本
+├── linux_bundle_lib.sh    # 架构/bundle 检测（供脚本复用）
 ├── wsl_flutter_fix.sh     # 环境修复脚本
 ├── wsl_flutter_diag.sh    # 环境诊断脚本
 └── dist/                  # 打包输出目录（tar.gz / deb）
 ```
+
+## 8. GitHub Actions 自动发版
+
+CI 配置见 [`.github/RELEASE_SETUP.md`](../../.github/RELEASE_SETUP.md)。打 tag（如 `v1.3.0`）后会自动构建 Linux / Windows / macOS / Android 安装包，并创建 **Draft Release**，需手动补充 Release Notes 后发布。

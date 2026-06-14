@@ -1,5 +1,7 @@
 #define MyAppName "IcyEasySend"
+#ifndef MyAppVersion
 #define MyAppVersion "1.3.0"
+#endif
 #define MyAppPublisher "IcyHope"
 #define MyAppURL "https://binglengdexiwang.top"
 #define MyAppExeName "IcyEasySend.exe"
@@ -19,6 +21,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 SetupIconFile=..\..\windows\runner\resources\app_icon.ico
+OutputDir=Output
 OutputBaseFilename={#MyAppName}_setup_{#MyAppVersion}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

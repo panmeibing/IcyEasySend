@@ -13,99 +13,18 @@ OUT_DIR="${ROOT}/installers/Linux/dist"
 STAGING="${TMPDIR:-/tmp}/icy-easy-send-deb-staging-$$"
 INSTALL_DIR="opt/${APP_NAME}"
 
-# Map `uname -m` to Flutter build output directory name.
-host_to_flutter_arch() {
-  case "$(uname -m)" in
-    x86_64) echo "x64" ;;
-    aarch64|arm64) echo "arm64" ;;
-    riscv64) echo "riscv64" ;;
-    *) echo "" ;;
-  esac
-}
+source "$(dirname "$0")/linux_bundle_lib.sh"
 
-# Map `file` output / machine arch to Debian package architecture.
-to_deb_arch() {
-  local hint="${1:-}"
-  case "${hint}" in
-    *x86-64*|*x86_64*|amd64) echo "amd64" ;;
-    *aarch64*|*ARM*64*|arm64) echo "arm64" ;;
-    *RISC-V*|*riscv64*) echo "riscv64" ;;
-    i386|i686) echo "i386" ;;
-    armhf|*ARM*,*EABI*) echo "armhf" ;;
-    *) echo "" ;;
-  esac
-}
+mapfile -t _resolved < <(resolve_bundle_and_arch "${ROOT}" || true)
+BUNDLE_SRC="${_resolved[0]:-}"
+ARCH="${_resolved[1]:-}"
 
-detect_deb_arch_from_binary() {
-  local binary="$1"
-  if [[ ! -f "${binary}" ]]; then
-    return 1
-  fi
-  if ! command -v file >/dev/null 2>&1; then
-    return 1
-  fi
-  to_deb_arch "$(file -b "${binary}")"
-}
-
-find_release_bundle() {
-  local host_arch preferred bundle binary deb_arch
-  host_arch="$(host_to_flutter_arch)"
-
-  preferred="${ROOT}/build/linux/${host_arch}/release/bundle"
-  if [[ -x "${preferred}/${APP_NAME}" ]]; then
-    echo "${preferred}"
-    return 0
-  fi
-
-  local -a candidates=()
-  shopt -s nullglob
-  for bundle in "${ROOT}"/build/linux/*/release/bundle; do
-    if [[ -x "${bundle}/${APP_NAME}" ]]; then
-      candidates+=("${bundle}")
-    fi
-  done
-  shopt -u nullglob
-
-  if [[ ${#candidates[@]} -eq 0 ]]; then
-    return 1
-  fi
-  if [[ ${#candidates[@]} -eq 1 ]]; then
-    echo "${candidates[0]}"
-    return 0
-  fi
-
-  echo "Multiple release bundles found; using host-matched build if present:" >&2
-  printf '  %s\n' "${candidates[@]}" >&2
-  for bundle in "${candidates[@]}"; do
-    if [[ "${host_arch}" != "" && "${bundle}" == *"/linux/${host_arch}/"* ]]; then
-      echo "${bundle}"
-      return 0
-    fi
-  done
-
-  echo "${candidates[0]}"
-}
-
-BUNDLE_SRC="$(find_release_bundle || true)"
 if [[ -z "${BUNDLE_SRC}" || ! -x "${BUNDLE_SRC}/${APP_NAME}" ]]; then
   echo "Release bundle not found. Run first:"
   echo "  flutter build linux --release"
   echo
   echo "Expected path (host): build/linux/$(host_to_flutter_arch)/release/bundle/"
   exit 1
-fi
-
-ARCH="$(detect_deb_arch_from_binary "${BUNDLE_SRC}/${APP_NAME}" || true)"
-if [[ -z "${ARCH}" ]]; then
-  case "$(uname -m)" in
-    x86_64) ARCH="amd64" ;;
-    aarch64|arm64) ARCH="arm64" ;;
-    riscv64) ARCH="riscv64" ;;
-    *)
-      echo "Unable to detect .deb architecture for bundle: ${BUNDLE_SRC}"
-      exit 1
-      ;;
-  esac
 fi
 
 DEB_FILE="${OUT_DIR}/${PACKAGE}_${VERSION}-${DEB_REVISION}_${ARCH}.deb"
