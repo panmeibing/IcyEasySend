@@ -64,6 +64,7 @@ jobs:
         with:
           channel: stable
           cache: true
+          cache-key: flutter-linux-amd64-${{ hashFiles('**/pubspec.lock') }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -71,9 +72,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang cmake ninja-build pkg-config patchelf \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            clang cmake ninja-build pkg-config patchelf file \
+            libgtk-3-dev liblzma-dev libstdc++-13-dev \
             libsecret-1-dev libayatana-appindicator3-dev dpkg
+
+      - name: Normalize shell scripts
+        run: find installers/Linux -name '*.sh' -exec sed -i 's/\r$//' {} +
 
       - name: Build and package
         run: |
@@ -97,13 +101,23 @@ jobs:
     name: Linux arm64
     needs: resolve-version
     runs-on: ubuntu-24.04-arm
+    env:
+      # Use official CDN on arm64: shared flutter-action cache keys can restore
+      # amd64 SDK artifacts and break arm64 builds; official CDN is more reliable here.
+      PUB_HOSTED_URL: https://pub.dev
+      FLUTTER_STORAGE_BASE_URL: https://storage.googleapis.com
     steps:
       - uses: actions/checkout@v4
+
+      - name: Show runner info
+        run: |
+          uname -a
+          dpkg --print-architecture
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          cache: false
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -111,9 +125,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            clang cmake ninja-build pkg-config patchelf \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            clang cmake ninja-build pkg-config patchelf file \
+            libgtk-3-dev liblzma-dev libstdc++-13-dev \
             libsecret-1-dev libayatana-appindicator3-dev dpkg
+
+      - name: Normalize shell scripts
+        run: find installers/Linux -name '*.sh' -exec sed -i 's/\r$//' {} +
+
+      - name: Verify Flutter toolchain
+        run: |
+          flutter --version
+          flutter doctor -v
 
       - name: Build and package
         run: |

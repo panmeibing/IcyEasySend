@@ -73,3 +73,16 @@ GitHub → Actions → Release → Run workflow
 - [ ] Android Secrets 已配置
 - [ ] `installers/Windows/ChineseSimplified.isl` 已提交
 - [ ] 在 `main` 分支（或合并后的发版分支）上打 tag
+
+## 常见问题
+
+### Linux arm64 job 失败（其他平台成功）
+
+常见原因与处理：
+
+1. **Flutter Actions 缓存污染**：amd64 job 缓存的 SDK 被 arm64 job 误恢复。arm64 job 已设置 `cache: false`，并使用官方 `storage.googleapis.com`。
+2. **依赖包名称**：Ubuntu 24.04 请使用 `libstdc++-13-dev`（不是 `-12-dev`）。
+3. **脚本换行符**：Windows 提交的 `.sh` 若含 CRLF 会在 Linux 上失败；CI 已自动执行 `sed` 修复。
+4. **GitHub arm runner 迁移**：2026-06-08 ~ 06-15 期间 `ubuntu-24.04-arm` 可能不稳定，可稍后重试或暂时改用 `ubuntu-22.04-arm`。
+
+重新触发 arm64 构建：删除失败的 tag/release 后重新 push tag，或在 Actions 里手动 Run workflow。
