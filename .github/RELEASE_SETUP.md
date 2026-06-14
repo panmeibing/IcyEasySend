@@ -80,9 +80,10 @@ GitHub → Actions → Release → Run workflow
 
 常见原因与处理：
 
-1. **Flutter Actions 缓存污染**：amd64 job 缓存的 SDK 被 arm64 job 误恢复。arm64 job 已设置 `cache: false`，并使用官方 `storage.googleapis.com`。
-2. **依赖包名称**：Ubuntu 24.04 请使用 `libstdc++-13-dev`（不是 `-12-dev`）。
-3. **脚本换行符**：Windows 提交的 `.sh` 若含 CRLF 会在 Linux 上失败；CI 已自动执行 `sed` 修复。
-4. **GitHub arm runner 迁移**：2026-06-08 ~ 06-15 期间 `ubuntu-24.04-arm` 可能不稳定，可稍后重试或暂时改用 `ubuntu-22.04-arm`。
+1. **`subosito/flutter-action` 不支持 Linux arm64 SDK 解析**（报错 `Unable to determine Flutter version ... architecture: arm64`）。arm64 job 已改为 `git clone` 安装 Flutter，不再使用 flutter-action。
+2. **Flutter Actions 缓存污染**：amd64 job 使用独立 cache key；arm64 不使用 flutter-action。
+3. **依赖包名称**：Ubuntu 24.04 请使用 `libstdc++-13-dev`（不是 `-12-dev`）。
+4. **脚本换行符**：Windows 提交的 `.sh` 若含 CRLF 会在 Linux 上失败；CI 已自动执行 `sed` 修复。
+5. **GitHub arm runner 迁移**：2026-06-08 ~ 06-15 期间 `ubuntu-24.04-arm` 可能不稳定，可稍后重试。
 
 重新触发 arm64 构建：删除失败的 tag/release 后重新 push tag，或在 Actions 里手动 Run workflow。
