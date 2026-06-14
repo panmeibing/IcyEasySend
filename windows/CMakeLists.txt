@@ -2,6 +2,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(IcyEasySend LANGUAGES CXX)
 
+# MSVC 14.51+ (VS 2026) hard-deprecates /await and <experimental/coroutine>.
+# permission_handler_windows and other plugins still rely on them until upstream migrates.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "IcyEasySend")
@@ -55,6 +59,7 @@ add_subdirectory("runner")
 
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
+include(cmake/fix_cargokit_symlinks.cmake)
 include(flutter/generated_plugins.cmake)
 
 
