@@ -120,7 +120,8 @@ jobs:
 
       - name: Install Flutter SDK
         run: |
-          git clone https://gitee.com/mirrors/Flutter.git -b stable --depth 1 "$HOME/flutter"
+          # Gitee mirror is unreliable on GitHub-hosted runners; clone from GitHub instead.
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$HOME/flutter"
           echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/flutter/bin:$PATH"
           flutter --version
