@@ -29,6 +29,46 @@ class AppConstants {
   /// Timeout for network requests (health check), seconds
   static const int checkHealthTimeout = 5;
 
+  // Device scan constants
+
+  /// Lower concurrency for retry / alternate-port passes to reduce router load
+  static const int deviceScanRetryConcurrency = 8;
+
+  /// Per-probe timeout during LAN scan (aligned with health check)
+  static const int deviceScanProbeTimeoutSeconds = checkHealthTimeout;
+
+  /// Max attempts per IP:port during a scan phase
+  static const int deviceScanMaxAttempts = 2;
+
+  /// Max attempts when retrying default port on previously missed IPs
+  static const int deviceScanDefaultPortRetryAttempts = 3;
+
+  /// Delay between retry attempts
+  static const Duration deviceScanRetryDelay = Duration(milliseconds: 400);
+
+  /// UDP multicast group for LAN discovery (224.0.0.0/24, LocalSend default).
+  /// Discovery UDP uses the same port as the HTTP server ([defaultPort]).
+  static const String multicastGroup = '224.0.0.167';
+
+  /// Background multicast announcement interval while the server runs.
+  static const Duration multicastBackgroundInterval = Duration(seconds: 20);
+
+  /// How long to listen for multicast responses during a scan.
+  static const Duration deviceScanMulticastWait = Duration(milliseconds: 2600);
+
+  /// Extra wait after burst announcements for TCP/UDP responses to arrive.
+  static const Duration deviceScanMulticastTailWait =
+      Duration(milliseconds: 500);
+
+  /// Delays between repeated multicast announcements (like LocalSend)
+  static const List<int> multicastAnnouncementDelaysMs = [100, 500, 2000];
+
+  /// Fast HTTP probe timeout for fallback discovery (milliseconds)
+  static const int deviceScanDiscoveryTimeoutMs = 1000;
+
+  /// HTTP fallback concurrency when multicast finds nothing
+  static const int deviceScanFallbackConcurrency = 50;
+
   /// Timeout for confirmation requests (longer to allow user to respond)
   /// User has 30 seconds to confirm, so we add 5 seconds buffer
   static const Duration confirmTimeout = Duration(seconds: 35);

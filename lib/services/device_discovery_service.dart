@@ -1,23 +1,38 @@
+import 'dart:async';
+import 'dart:collection';
+
 import '../models/discovered_device.dart';
 import '../utils/constants.dart';
 import '../utils/http_helper.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
+import 'multicast_discovery_service.dart';
 
-/// Scans the local subnet for devices running Icy Easy Send.
+/// Scans the local network for devices running Icy Easy Send.
+///
+/// Strategy (LocalSend-style):
+/// 1. UDP multicast — fast (~2.6s), devices respond automatically
+/// 2. HTTP subnet scan — fallback only when multicast finds nothing
 class DeviceDiscoveryService {
-  static const int _concurrency = 40;
-  static const Duration _probeTimeout = Duration(seconds: 2);
+  static final Duration _fastProbeTimeout = Duration(
+    milliseconds: AppConstants.deviceScanDiscoveryTimeoutMs,
+  );
+  static final Duration _reliableProbeTimeout = Duration(
+    seconds: AppConstants.deviceScanProbeTimeoutSeconds,
+  );
 
+  final MulticastDiscoveryService _multicast;
   final String logTag = LogTags.network;
 
   bool _cancelled = false;
+
+  DeviceDiscoveryService({MulticastDiscoveryService? multicast})
+    : _multicast = multicast ?? MulticastDiscoveryService.instance;
 
   void cancel() {
     _cancelled = true;
   }
 
-  /// Scan the local network in two phases: default port first, then the rest.
   Future<List<DiscoveredDevice>> scan({
     required Set<String> localIps,
     void Function(int scanned, int total, List<DiscoveredDevice> found)?
@@ -25,48 +40,137 @@ class DeviceDiscoveryService {
   }) async {
     _cancelled = false;
 
-    final ips = await NetworkUtil.getSubnetIPsForScan(excludeIps: localIps);
-    if (ips.isEmpty) {
-      LogUtil.wTag(logTag, '未找到可扫描的子网 IP');
-      return [];
-    }
-
-    LogUtil.iTag(
-      logTag,
-      '开始设备扫描: 子网 ${ips.length} 个 IP, 本机 IP=${localIps.join(", ")}',
-    );
-
     final found = <DiscoveredDevice>[];
     final foundIps = <String>{};
-    var scanned = 0;
-    final total = ips.length;
+    StreamSubscription<DiscoveredDevice>? multicastSubscription;
 
-    void reportProgress() {
+    void reportProgress({required int scanned, required int total}) {
       onProgress?.call(scanned, total, List.unmodifiable(found));
     }
 
-    // Phase 1: scan default port on all IPs.
-    await _scanIpsOnPorts(
+    void addDevice(DiscoveredDevice device) {
+      if (foundIps.add(device.ip)) {
+        found.add(device);
+        LogUtil.iTag(
+          logTag,
+          '发现设备: ${device.deviceName} (${device.displayAddress})',
+        );
+      }
+    }
+
+    multicastSubscription = _multicast.deviceStream.listen(addDevice);
+
+    try {
+      LogUtil.iTag(logTag, '阶段 0: UDP 组播发现');
+      reportProgress(scanned: 0, total: 0);
+
+      await _multicast.runDiscoveryRound(
+        localIps: localIps,
+        isCancelled: () => _cancelled,
+      );
+
+      reportProgress(scanned: 0, total: 0);
+
+      if (_cancelled) {
+        LogUtil.iTag(logTag, '设备扫描已取消, 已发现 ${found.length} 台设备');
+        return found;
+      }
+
+      if (found.isNotEmpty) {
+        LogUtil.iTag(
+          logTag,
+          '组播发现 ${found.length} 台设备，跳过 HTTP 全量扫描',
+        );
+        reportProgress(scanned: 1, total: 1);
+        return found;
+      }
+
+      await _scanViaHttp(
+        localIps: localIps,
+        foundIps: foundIps,
+        onDeviceFound: addDevice,
+        reportProgress: reportProgress,
+      );
+
+      return found;
+    } finally {
+      await multicastSubscription.cancel();
+    }
+  }
+
+  Future<void> _scanViaHttp({
+    required Set<String> localIps,
+    required Set<String> foundIps,
+    required void Function(DiscoveredDevice device) onDeviceFound,
+    required void Function({required int scanned, required int total})
+        reportProgress,
+  }) async {
+    final ips = await NetworkUtil.getSubnetIPsForScan(excludeIps: localIps);
+    if (ips.isEmpty) {
+      LogUtil.wTag(logTag, '未找到可扫描的子网 IP');
+      reportProgress(scanned: 1, total: 1);
+      return;
+    }
+
+    LogUtil.iTag(logTag, '组播未发现设备，开始 HTTP 扫描: ${ips.length} 个 IP');
+
+    final total = ips.length;
+    var scanned = 0;
+
+    await _scanIpsStreaming(
       ips: ips,
       ports: const [AppConstants.defaultPort],
       localIps: localIps,
-      found: found,
       foundIps: foundIps,
-      onBatchComplete: (batchSize) {
-        scanned += batchSize;
-        reportProgress();
+      onDeviceFound: (device) {
+        onDeviceFound(device);
+        reportProgress(scanned: scanned, total: total);
+      },
+      concurrency: AppConstants.deviceScanFallbackConcurrency,
+      timeout: _fastProbeTimeout,
+      maxAttempts: 1,
+      onScanned: (count) {
+        scanned = count;
+        reportProgress(scanned: scanned, total: total);
       },
     );
 
     if (_cancelled) {
-      LogUtil.iTag(logTag, '设备扫描已取消, 已发现 ${found.length} 台设备');
-      return found;
+      return;
     }
 
-    // Phase 2: scan remaining ports for IPs not found in phase 1.
-    final remainingIps = ips.where((ip) => !foundIps.contains(ip)).toList();
-    if (remainingIps.isNotEmpty) {
-      final remainingPorts = [
+    final missedAfterFastPass =
+        ips.where((ip) => !foundIps.contains(ip)).toList();
+    if (missedAfterFastPass.isNotEmpty) {
+      LogUtil.dTag(
+        logTag,
+        'HTTP 重试: ${missedAfterFastPass.length} 个 IP 的默认端口',
+      );
+
+      await _scanIpsStreaming(
+        ips: missedAfterFastPass,
+        ports: const [AppConstants.defaultPort],
+        localIps: localIps,
+        foundIps: foundIps,
+        onDeviceFound: (device) {
+          onDeviceFound(device);
+          reportProgress(scanned: scanned, total: total);
+        },
+        concurrency: AppConstants.deviceScanRetryConcurrency,
+        timeout: _reliableProbeTimeout,
+        maxAttempts: AppConstants.deviceScanDefaultPortRetryAttempts,
+        onScanned: (_) {
+          reportProgress(scanned: scanned, total: total);
+        },
+      );
+    }
+
+    if (_cancelled) {
+      return;
+    }
+
+    if (foundIps.isEmpty) {
+      final alternatePorts = [
         for (
           var port = AppConstants.defaultPort + 1;
           port <= AppConstants.maxServerPort;
@@ -77,72 +181,145 @@ class DeviceDiscoveryService {
 
       LogUtil.dTag(
         logTag,
-        '阶段 2: 扫描 ${remainingIps.length} 个 IP 的端口 '
-        '${remainingPorts.first}-${remainingPorts.last}',
+        'HTTP 备用端口扫描: ${alternatePorts.first}-${alternatePorts.last}',
       );
 
-      await _scanIpsOnPorts(
-        ips: remainingIps,
-        ports: remainingPorts,
+      await _scanIpsStreaming(
+        ips: ips,
+        ports: alternatePorts,
         localIps: localIps,
-        found: found,
         foundIps: foundIps,
-        onBatchComplete: (_) {
-          reportProgress();
+        onDeviceFound: (device) {
+          onDeviceFound(device);
+          reportProgress(scanned: scanned, total: total);
+        },
+        concurrency: AppConstants.deviceScanRetryConcurrency,
+        timeout: _reliableProbeTimeout,
+        maxAttempts: AppConstants.deviceScanMaxAttempts,
+        parallelPorts: true,
+        onScanned: (count) {
+          scanned = count;
+          reportProgress(scanned: scanned, total: total);
         },
       );
     }
 
-    LogUtil.iTag(logTag, '设备扫描完成, 发现 ${found.length} 台设备');
-    reportProgress();
-    return found;
+    LogUtil.iTag(logTag, '设备扫描完成, 发现 ${foundIps.length} 台设备');
+    reportProgress(scanned: total, total: total);
   }
 
-  Future<void> _scanIpsOnPorts({
+  Future<void> _scanIpsStreaming({
     required List<String> ips,
     required List<int> ports,
     required Set<String> localIps,
-    required List<DiscoveredDevice> found,
     required Set<String> foundIps,
-    required void Function(int batchSize) onBatchComplete,
+    required void Function(DiscoveredDevice device) onDeviceFound,
+    required void Function(int scanned) onScanned,
+    required int concurrency,
+    required Duration timeout,
+    required int maxAttempts,
+    bool parallelPorts = false,
   }) async {
-    for (var i = 0; i < ips.length; i += _concurrency) {
-      if (_cancelled) break;
+    final queue = Queue<String>.from(ips);
+    var scanned = 0;
 
-      final batch = ips.skip(i).take(_concurrency).toList();
-      final results = await Future.wait(
-        batch.map((ip) => _probeIp(ip, ports, localIps: localIps)),
-      );
+    Future<void> worker() async {
+      while (queue.isNotEmpty && !_cancelled) {
+        final ip = queue.removeFirst();
+        if (foundIps.contains(ip)) {
+          scanned++;
+          onScanned(scanned);
+          continue;
+        }
 
-      for (final device in results) {
-        if (device != null && foundIps.add(device.ip)) {
-          found.add(device);
-          LogUtil.iTag(
-            logTag,
-            '发现设备: ${device.deviceName} (${device.displayAddress})',
-          );
+        final device = await _probeIp(
+          ip,
+          ports,
+          localIps: localIps,
+          timeout: timeout,
+          maxAttempts: maxAttempts,
+          parallelPorts: parallelPorts,
+        );
+
+        scanned++;
+        onScanned(scanned);
+
+        if (device != null) {
+          onDeviceFound(device);
         }
       }
-
-      onBatchComplete(batch.length);
     }
+
+    await Future.wait(List.generate(concurrency, (_) => worker()));
   }
 
   Future<DiscoveredDevice?> _probeIp(
     String ip,
     List<int> ports, {
     required Set<String> localIps,
+    required Duration timeout,
+    required int maxAttempts,
+    bool parallelPorts = false,
   }) async {
     if (localIps.contains(ip)) {
       return null;
     }
 
-    for (final port in ports) {
-      if (_cancelled) return null;
+    if (parallelPorts && ports.length > 1) {
+      final results = await Future.wait(
+        ports.map(
+          (port) => _probeWithRetry(
+            ip,
+            port,
+            timeout: timeout,
+            maxAttempts: maxAttempts,
+          ),
+        ),
+      );
+      for (final device in results) {
+        if (device != null) {
+          return device;
+        }
+      }
+      return null;
+    }
 
-      final device = await _probe(ip, port, localIps: localIps);
+    for (final port in ports) {
+      if (_cancelled) {
+        return null;
+      }
+
+      final device = await _probeWithRetry(
+        ip,
+        port,
+        timeout: timeout,
+        maxAttempts: maxAttempts,
+      );
       if (device != null) {
         return device;
+      }
+    }
+    return null;
+  }
+
+  Future<DiscoveredDevice?> _probeWithRetry(
+    String ip,
+    int port, {
+    required Duration timeout,
+    required int maxAttempts,
+  }) async {
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (_cancelled) {
+        return null;
+      }
+
+      final device = await _probe(ip, port, timeout: timeout);
+      if (device != null) {
+        return device;
+      }
+
+      if (attempt < maxAttempts) {
+        await Future.delayed(AppConstants.deviceScanRetryDelay);
       }
     }
     return null;
@@ -151,19 +328,20 @@ class DeviceDiscoveryService {
   Future<DiscoveredDevice?> _probe(
     String ip,
     int port, {
-    required Set<String> localIps,
+    required Duration timeout,
   }) async {
-    if (localIps.contains(ip)) {
-      return null;
-    }
-
     final url = NetworkUtil.buildHttpUrl(ip, '/health', targetPort: port);
-    final result = await HttpHelper.get(url, timeout: _probeTimeout);
-    if (!result.isSuccess || !HttpHelper.isSuccessResponse(result.data!)) {
+    final result = await HttpHelper.get(url, timeout: timeout);
+    if (!result.isSuccess) {
       return null;
     }
 
-    final jsonResult = HttpHelper.parseJsonResponse(result.data!);
+    final response = result.data!;
+    if (!HttpHelper.isSuccessResponse(response)) {
+      return null;
+    }
+
+    final jsonResult = HttpHelper.parseJsonResponse(response);
     if (!jsonResult.isSuccess) {
       return null;
     }
@@ -179,6 +357,12 @@ class DeviceDiscoveryService {
     }
 
     final deviceName = data['deviceName'] as String? ?? ip;
-    return DiscoveredDevice(ip: ip, port: port, deviceName: deviceName);
+    final resolvedPort = (data['port'] as num?)?.toInt() ?? port;
+    LogUtil.dTag(logTag, 'HTTP 探测成功 $ip:$resolvedPort ($deviceName)');
+    return DiscoveredDevice(
+      ip: ip,
+      port: resolvedPort,
+      deviceName: deviceName,
+    );
   }
 }

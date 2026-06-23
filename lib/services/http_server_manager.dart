@@ -12,8 +12,11 @@ import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import 'clipboard_handler.dart';
+import 'discover_register_handler.dart';
 import 'file_transfer_handler.dart';
 import 'health_check_handler.dart';
+import 'multicast_discovery_service.dart';
+import 'preferences_service.dart';
 
 /// Result of server start operation
 class ServerStartResult {
@@ -41,6 +44,7 @@ class HTTPServerManager {
 
   // API handlers
   final HealthCheckHandler _healthCheckHandler;
+  final DiscoverRegisterHandler _discoverRegisterHandler;
   late final FileTransferHandler _fileTransferHandler;
   late final ClipboardHandler _clipboardHandler;
 
@@ -51,9 +55,12 @@ class HTTPServerManager {
 
   HTTPServerManager({
     HealthCheckHandler? healthCheckHandler,
+    DiscoverRegisterHandler? discoverRegisterHandler,
     FileTransferHandler? fileTransferHandler,
     ClipboardHandler? clipboardHandler,
-  }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler() {
+  }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler(),
+       _discoverRegisterHandler =
+           discoverRegisterHandler ?? DiscoverRegisterHandler() {
     // Create file transfer handler with a context getter if not provided
     _fileTransferHandler =
         fileTransferHandler ??
@@ -212,6 +219,10 @@ class HTTPServerManager {
 
         // Configure health check endpoint
         router.get('/health', _healthCheckHandler.handleHealthCheck);
+        router.post(
+          '/discover/register',
+          _discoverRegisterHandler.handleRegister,
+        );
 
         // Configure batch confirm receive endpoint (preferred for multiple files)
         router.post(
@@ -253,6 +264,8 @@ class HTTPServerManager {
 
         // 测试健康检查端点
         _testHealthEndpoint(localIP, tryPort);
+
+        await _startMulticastDiscovery(tryPort);
 
         return ServerStartResult(success: true, serverAddress: _serverAddress);
       } on SocketException catch (e) {
@@ -317,6 +330,8 @@ class HTTPServerManager {
 
   /// Stop the HTTP server
   Future<void> stopServer() async {
+    await _stopMulticastDiscovery();
+
     if (_server != null) {
       LogUtil.iTag(logTag, '正在停止HTTP服务器...');
       try {
@@ -351,5 +366,36 @@ class HTTPServerManager {
   /// Get the file transfer handler for registering progress callbacks
   FileTransferHandler getFileTransferHandler() {
     return _fileTransferHandler;
+  }
+
+  Future<void> _startMulticastDiscovery(int port) async {
+    try {
+      final prefs = PreferencesService();
+      final deviceId = await prefs.getOrCreateDeviceId();
+      final customName = await prefs.getDeviceName();
+      final deviceName = customName ?? await NetworkUtil.getDeviceName();
+      final localIps = await NetworkUtil.getLocalPrivateIPs();
+
+      final multicast = MulticastDiscoveryService.instance;
+      await multicast.stopListener();
+      await multicast.configure(
+        deviceId: deviceId,
+        deviceName: deviceName,
+        serverPort: port,
+        localIps: localIps,
+        serverRunning: true,
+      );
+      await multicast.startListener();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '组播发现服务启动失败: $e', e, stackTrace);
+    }
+  }
+
+  Future<void> _stopMulticastDiscovery() async {
+    try {
+      await MulticastDiscoveryService.instance.stopListener();
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '组播发现服务停止失败: $e', e, stackTrace);
+    }
   }
 }

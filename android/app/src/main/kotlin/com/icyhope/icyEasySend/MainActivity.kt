@@ -2,18 +2,43 @@ package com.icyhope.icyEasySend
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.wifi.WifiManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.icyhope.icy_easy_send/clipboard"
+    private val CLIPBOARD_CHANNEL = "com.icyhope.icy_easy_send/clipboard"
+    private val NETWORK_CHANNEL = "com.icyhope.icy_easy_send/network"
+    private var multicastLock: WifiManager.MulticastLock? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "acquireMulticastLock" -> {
+                    try {
+                        acquireMulticastLock()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to acquire multicast lock: ${e.message}", null)
+                    }
+                }
+                "releaseMulticastLock" -> {
+                    try {
+                        releaseMulticastLock()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to release multicast lock: ${e.message}", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
         
         // Clipboard channel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLIPBOARD_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getImageFromClipboard" -> {
                     try {
@@ -54,6 +79,27 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+    }
+
+    private fun acquireMulticastLock() {
+        if (multicastLock?.isHeld == true) {
+            return
+        }
+
+        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        multicastLock = wifi.createMulticastLock("icyEasySendMulticast").apply {
+            setReferenceCounted(true)
+            acquire()
+        }
+    }
+
+    private fun releaseMulticastLock() {
+        multicastLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
+        multicastLock = null
     }
 
     private fun getImageFromClipboard(): Map<String, Any>? {

@@ -124,6 +124,12 @@ class NetworkUtil {
       'tunnel',
       'bridge',
       'vmbr',
+      'meta',
+      'wintun',
+      'clash',
+      'sing-box',
+      'tailscale',
+      'zerotier',
       'virbr',
       'br-',
       'vmnet',
@@ -331,18 +337,37 @@ class NetworkUtil {
     return '${parts[0]}.${parts[1]}.${parts[2]}.';
   }
 
-  /// Generate all host IPs in a /24 subnet, excluding [excludeIp].
-  static List<String> getSubnetIPs(String localIp, {String? excludeIp}) {
-    final prefix = getSubnetPrefix(localIp);
+  /// Broadcast address for a /24 private IPv4 subnet (e.g. 10.92.31.255).
+  static String? getSubnetBroadcast(String ip) {
+    final prefix = getSubnetPrefix(ip);
     if (prefix == null) {
-      return [];
+      return null;
     }
+    return '${prefix}255';
+  }
 
-    final exclude = excludeIp ?? localIp;
-    return [
-      for (var host = 1; host <= 254; host++)
-        if ('$prefix$host' != exclude) '$prefix$host',
-    ];
+  /// Returns the first private IPv4 address on [interface], if any.
+  static String? getPrimaryPrivateIpv4(NetworkInterface interface) {
+    for (final addr in interface.addresses) {
+      if (addr.type == InternetAddressType.IPv4 &&
+          !addr.isLoopback &&
+          isPrivateNetwork(addr.address)) {
+        return addr.address;
+      }
+    }
+    return null;
+  }
+
+  /// Returns LAN-capable IPv4 network interfaces.
+  static Future<List<NetworkInterface>> getLanNetworkInterfaces() async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLinkLocal: false,
+    );
+
+    return interfaces
+        .where((interface) => isLanDiscoveryInterface(interface.name))
+        .toList();
   }
 
   /// Collect unique scan targets from LAN-capable private IPv4 interfaces.

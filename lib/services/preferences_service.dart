@@ -13,6 +13,7 @@ class PreferencesService {
   static const String _keyLastUsedPort = 'last_used_port';
   static const String _keyIPHistory = 'ip_history';
   static const String _keyDeviceName = 'device_name';
+  static const String _keyDeviceId = 'device_id';
   static const String _keyConcurrentTransfers = 'concurrent_transfers';
   static const String _keyMaxHistoryItems = 'max_history_items';
   static const String _keyMaxClipboardSize = 'max_clipboard_size';
@@ -220,6 +221,25 @@ class PreferencesService {
       return prefs.getString(_keyDeviceName);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Persistent ID used to filter this device from multicast discovery results.
+  Future<String> getOrCreateDeviceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final existing = prefs.getString(_keyDeviceId);
+      if (existing != null && existing.isNotEmpty) {
+        return existing;
+      }
+
+      final id =
+          '${DateTime.now().microsecondsSinceEpoch}-'
+          '${DateTime.now().millisecondsSinceEpoch.hashCode.abs()}';
+      await prefs.setString(_keyDeviceId, id);
+      return id;
+    } catch (_) {
+      return '${DateTime.now().microsecondsSinceEpoch}';
     }
   }
 
