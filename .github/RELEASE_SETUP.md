@@ -64,7 +64,7 @@ GitHub → Actions → Release → Run workflow
 - 使用国内 Flutter 镜像：`pub.flutter-io.cn` / `storage.flutter-io.cn`
 - Flutter git 源：`gitee.com/mirrors/Flutter.git`
 - Windows 安装包使用 Inno Setup，中文语言包来自 `installers/Windows/ChineseSimplified.isl`
-- Linux 构建依赖 Rust（`super_native_extensions`）
+- Linux / Windows 构建依赖 Rust（`super_native_extensions`，来自 `super_clipboard`）
 - macOS 产物未签名，用户首次打开可能需要右键 → 打开
 
 ## 发版前检查清单
@@ -87,3 +87,13 @@ GitHub → Actions → Release → Run workflow
 5. **GitHub arm runner 迁移**：2026-06-08 ~ 06-15 期间 `ubuntu-24.04-arm` 可能不稳定，可稍后重试。
 
 重新触发 arm64 构建：删除失败的 tag/release 后重新 push tag，或在 Actions 里手动 Run workflow。
+
+### Windows job 失败（`failed to get syn` / Inno Setup 找不到 Release 目录）
+
+根因通常是 `super_native_extensions` 的 Rust 编译失败，后续 Inno Setup / 便携包步骤只是连锁报错。
+
+1. **缺少 Rust**：Windows job 需安装 Rust（与 Linux 相同），用于 Cargokit 编译 `super_native_extensions`。
+2. **crates.io 网络超时**：日志中 `failed to get syn as a dependency of async-trait` 多为 crates.io 下载失败；CI 已配置 `CARGO_NET_RETRY`、Rust cache 与 `cargo fetch` 重试。
+3. **Release 目录不存在**：若 `flutter build windows --release` 未成功，`installers/Windows/setup_script.iss` 会报 `No files found matching ...\Release\*`，需先修复 Rust 编译问题。
+
+重新触发：在 Actions 中手动 Run workflow，或删除 tag 后重新 push。

@@ -160,6 +160,8 @@ jobs:
     name: Windows x64
     needs: resolve-version
     runs-on: windows-latest
+    env:
+      CARGO_NET_RETRY: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -167,6 +169,12 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: windows-rust-${{ hashFiles('**/pubspec.lock') }}
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
@@ -182,6 +190,24 @@ jobs:
         run: |
           $version = "${{ needs.resolve-version.outputs.version }}"
           flutter pub get
+
+          # super_clipboard -> super_native_extensions uses Cargokit (Rust).
+          # Prefetch crates.io deps before MSBuild to avoid transient download failures.
+          $config = Get-Content ".dart_tool\package_config.json" | ConvertFrom-Json
+          $rootUri = ($config.packages | Where-Object { $_.name -eq "super_native_extensions" }).rootUri
+          if (-not $rootUri) { throw "super_native_extensions not found in package_config.json" }
+          $pluginRoot = ([Uri]$rootUri).LocalPath
+          $cargoToml = Join-Path $pluginRoot "rust\Cargo.toml"
+          if (-not (Test-Path $cargoToml)) { throw "Cargo.toml not found at $cargoToml" }
+          $maxAttempts = 3
+          for ($i = 1; $i -le $maxAttempts; $i++) {
+            cargo fetch --manifest-path $cargoToml
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq $maxAttempts) { exit $LASTEXITCODE }
+            Write-Host "cargo fetch attempt $i failed, retrying in 15s..."
+            Start-Sleep -Seconds 15
+          }
+
           flutter build windows --release
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           & $iscc "/DMyAppVersion=$version" "installers\Windows\setup_script.iss"
