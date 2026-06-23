@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/constants.dart';
 import '../utils/format_util.dart';
+import '../utils/transfer_progress_throttle.dart';
 import '../utils/transfer_status_provider.dart';
 import 'screen_wake_lock_service.dart';
 
@@ -51,6 +52,8 @@ class BatchReceiveManager {
 
   // Timer to batch requests within a short time window
   final Map<String, Timer> _batchTimers = {};
+  final TransferProgressThrottle _receiveProgressThrottle =
+      TransferProgressThrottle();
 
   /// Request batch receive confirmation for multiple files at once
   /// This is the preferred method when sending multiple files
@@ -161,6 +164,7 @@ class BatchReceiveManager {
       }
     } finally {
       // Always clean up resources
+      _receiveProgressThrottle.reset();
       _activeDialogKeys.remove(senderIP);
       _pendingFilesBySender.remove(senderIP);
 
@@ -182,6 +186,26 @@ class BatchReceiveManager {
     int bytesReceived,
     int totalBytes,
   ) {
+    _receiveProgressThrottle.maybeEmit(
+      key: transferId,
+      progress: progress,
+      bytesTransferred: bytesReceived,
+      totalBytes: totalBytes,
+      onEmit: (progress, bytesReceived, totalBytes) {
+        _applyReceiveProgress(
+          transferId: transferId,
+          progress: progress,
+          bytesReceived: bytesReceived,
+        );
+      },
+    );
+  }
+
+  void _applyReceiveProgress({
+    required String transferId,
+    required double progress,
+    required int bytesReceived,
+  }) {
     final statusProvider = TransferStatusProvider();
 
     // Find the file info

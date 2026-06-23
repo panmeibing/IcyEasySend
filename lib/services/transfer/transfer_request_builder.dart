@@ -1,21 +1,18 @@
-import 'package:http/http.dart' as http;
-
 import '../../utils/network_util.dart';
 
 /// Builder for creating HTTP transfer requests
 class TransferRequestBuilder {
-  /// Build HTTP streaming request for file transfer
-  http.StreamedRequest buildTransferRequest({
+  /// Build the target URI for a file transfer POST request.
+  Uri buildTransferUri({
     required String targetIP,
     required String fileName,
     required int fileSize,
     required String senderIP,
     String? deviceName,
     required String transferId,
-    String? secretKey,
   }) {
     final baseUrl = NetworkUtil.buildHttpUrl(targetIP, '/transfer');
-    final uri = Uri.parse(baseUrl).replace(
+    return Uri.parse(baseUrl).replace(
       queryParameters: {
         'fileName': fileName,
         'fileSize': fileSize.toString(),
@@ -24,17 +21,23 @@ class TransferRequestBuilder {
         'transferId': transferId,
       },
     );
+  }
 
-    final request = http.StreamedRequest('POST', uri);
-    request.headers['Content-Type'] = 'application/octet-stream';
-    request.contentLength = fileSize;
-    
-    // Add secret key to headers if provided
+  /// Build HTTP headers for a file transfer POST request.
+  Map<String, String> buildTransferHeaders({
+    required int fileSize,
+    String? secretKey,
+  }) {
+    final headers = <String, String>{
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': fileSize.toString(),
+    };
+
     if (secretKey != null && secretKey.isNotEmpty) {
-      request.headers['X-Secret-Key'] = secretKey;
+      headers['X-Secret-Key'] = secretKey;
     }
 
-    return request;
+    return headers;
   }
 
   /// Build batch confirmation URL

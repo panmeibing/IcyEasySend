@@ -19,6 +19,7 @@ import '../models/transfer_file_item.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
+import '../utils/transfer_progress_throttle.dart';
 import 'home/controllers/clipboard_controller.dart';
 import 'home/controllers/file_transfer_controller.dart';
 import 'home/widgets/device_scan_dialog.dart';
@@ -69,6 +70,10 @@ class HomePageState extends State<HomePage> {
   final Map<int, double> _fileProgress = {};
   final Map<int, String> _fileStatus = {};
   final Set<int> _completedFileIndices = {};
+  final TransferProgressThrottle _overallProgressThrottle =
+      TransferProgressThrottle();
+  final TransferProgressThrottle _fileProgressThrottle =
+      TransferProgressThrottle();
 
   // Services
   late final ValidationService _validationService;
@@ -775,49 +780,67 @@ class HomePageState extends State<HomePage> {
         targetPort: port,
         secretKey: _secretKeyController.text.trim(),
         onProgress: (progress, bytesTransferred, totalBytes) {
-          setState(() {
-            _transferProgress = progress;
-            _bytesTransferred = bytesTransferred;
-            _totalBytes = totalBytes;
+          _overallProgressThrottle.maybeEmit(
+            key: 'overall',
+            progress: progress,
+            bytesTransferred: bytesTransferred,
+            totalBytes: totalBytes,
+            onEmit: (progress, bytesTransferred, totalBytes) {
+              setState(() {
+                _transferProgress = progress;
+                _bytesTransferred = bytesTransferred;
+                _totalBytes = totalBytes;
 
-            // Calculate transfer speed
-            if (_transferStartTime != null) {
-              final elapsed = DateTime.now().difference(_transferStartTime!);
-              if (elapsed.inMilliseconds > 0) {
-                _transferSpeed =
-                    bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-
-                if (_transferSpeed > 0) {
-                  final remainingBytes = totalBytes - bytesTransferred;
-                  final remainingSeconds = remainingBytes / _transferSpeed;
-                  _estimatedTimeRemaining = Duration(
-                    seconds: remainingSeconds.toInt(),
+                // Calculate transfer speed
+                if (_transferStartTime != null) {
+                  final elapsed = DateTime.now().difference(
+                    _transferStartTime!,
                   );
+                  if (elapsed.inMilliseconds > 0) {
+                    _transferSpeed =
+                        bytesTransferred / (elapsed.inMilliseconds / 1000.0);
+
+                    if (_transferSpeed > 0) {
+                      final remainingBytes = totalBytes - bytesTransferred;
+                      final remainingSeconds = remainingBytes / _transferSpeed;
+                      _estimatedTimeRemaining = Duration(
+                        seconds: remainingSeconds.toInt(),
+                      );
+                    }
+                  }
                 }
-              }
-            }
-          });
+              });
+            },
+          );
         },
         onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
-          setState(() {
-            _fileProgress[fileIndex] = progress;
-            final fileName = selectedItems[fileIndex].transferName;
-            final l10n = AppLocalizations.of(context);
+          _fileProgressThrottle.maybeEmit(
+            key: fileIndex,
+            progress: progress,
+            bytesTransferred: bytesTransferred,
+            totalBytes: totalBytes,
+            onEmit: (progress, bytesTransferred, totalBytes) {
+              setState(() {
+                _fileProgress[fileIndex] = progress;
+                final fileName = selectedItems[fileIndex].transferName;
+                final l10n = AppLocalizations.of(context);
 
-            if (progress < 1.0) {
-              _fileStatus[fileIndex] = l10n.transferringProgress(
-                progress * 100,
-              );
-              _transferStatus =
-                  '[${fileIndex + 1}/${selectedItems.length}] $fileName: ${l10n.transferring}...';
-            } else {
-              if (!_completedFileIndices.contains(fileIndex)) {
-                _completedFileIndices.add(fileIndex);
-                _completedFilesCount++;
-              }
-              _fileStatus[fileIndex] = l10n.sendSuccess;
-            }
-          });
+                if (progress < 1.0) {
+                  _fileStatus[fileIndex] = l10n.transferringProgress(
+                    progress * 100,
+                  );
+                  _transferStatus =
+                      '[${fileIndex + 1}/${selectedItems.length}] $fileName: ${l10n.transferring}...';
+                } else {
+                  if (!_completedFileIndices.contains(fileIndex)) {
+                    _completedFileIndices.add(fileIndex);
+                    _completedFilesCount++;
+                  }
+                  _fileStatus[fileIndex] = l10n.sendSuccess;
+                }
+              });
+            },
+          );
         },
         onStatusChange: (status) {
           setState(() {
@@ -826,6 +849,8 @@ class HomePageState extends State<HomePage> {
         },
         onTransferStart: () {
           ScreenWakeLockService.acquire();
+          _overallProgressThrottle.reset();
+          _fileProgressThrottle.reset();
           setState(() {
             isSending = true;
             _completedFilesCount = 0;
