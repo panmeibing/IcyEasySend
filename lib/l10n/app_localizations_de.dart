@@ -983,6 +983,36 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get serverInternalError => 'Interner Serverfehler';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'Gerät ist im Hintergrund. Nur automatische Sync/Empfang mit passendem Geheimschlüssel wird unterstützt.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Wartet im Hintergrund auf Dateiübertragung und Zwischenablage-Sync';
+
+  @override
+  String get androidBackgroundReceiveHint => 'Im Hintergrund können nur Geräte mit passendem Geheimschlüssel automatisch synchronisieren oder senden. Behalten Sie die Dauerbenachrichtigung bei.';
+
+  @override
+  String get clipboardOverlay => 'Zwischenablage-Floating-Button';
+
+  @override
+  String get clipboardOverlayDesc => 'Tippen Sie auf den Floating-Button, um Text-/Bild-Cache für Hintergrund-Sync zu aktualisieren';
+
+  @override
+  String get clipboardOverlayHint => 'Im Hintergrund wird nur der zuletzt aktualisierte Inhalt synchronisiert. Ausschalten löscht den Cache und blendet den Button aus.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Erlauben Sie in den Systemeinstellungen "Über anderen Apps einblenden". Der Button erscheint nach der Rückkehr.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Zwischenablage-Floating-Button aktiviert';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Zwischenablage im Hintergrund nicht lesbar und kein Cache verfügbar. App öffnen oder Floating-Button tippen zum Aktualisieren.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Zwischenablage wird angefordert...';

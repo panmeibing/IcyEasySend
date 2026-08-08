@@ -1,6 +1,5 @@
 package com.icyhope.icyEasySend
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.net.wifi.WifiManager
 import io.flutter.embedding.android.FlutterActivity
@@ -8,64 +7,62 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CLIPBOARD_CHANNEL = "com.icyhope.icy_easy_send/clipboard"
-    private val NETWORK_CHANNEL = "com.icyhope.icy_easy_send/network"
+    companion object {
+        private const val CLIPBOARD_CHANNEL = "com.icyhope.icy_easy_send/clipboard"
+        private const val NETWORK_CHANNEL = "com.icyhope.icy_easy_send/network"
+    }
+
     private var multicastLock: WifiManager.MulticastLock? = null
+    private var clipboardChannel: MethodChannel? = null
+    private var overlayHelper: ClipboardOverlayHelper? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "acquireMulticastLock" -> {
-                    try {
-                        acquireMulticastLock()
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("ERROR", "Failed to acquire multicast lock: ${e.message}", null)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "acquireMulticastLock" -> {
+                        try {
+                            acquireMulticastLock()
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("ERROR", "Failed to acquire multicast lock: ${e.message}", null)
+                        }
                     }
-                }
-                "releaseMulticastLock" -> {
-                    try {
-                        releaseMulticastLock()
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("ERROR", "Failed to release multicast lock: ${e.message}", null)
+                    "releaseMulticastLock" -> {
+                        try {
+                            releaseMulticastLock()
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("ERROR", "Failed to release multicast lock: ${e.message}", null)
+                        }
                     }
+                    else -> result.notImplemented()
                 }
-                else -> result.notImplemented()
             }
-        }
-        
-        // Clipboard channel
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CLIPBOARD_CHANNEL).setMethodCallHandler { call, result ->
+
+        val channel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            CLIPBOARD_CHANNEL,
+        )
+        clipboardChannel = channel
+        ClipboardBridge.channel = channel
+        val overlay = ClipboardOverlayHelper(this, channel)
+        overlayHelper = overlay
+
+        channel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getImageFromClipboard" -> {
                     try {
-                        val imageData = getImageFromClipboard()
-                        if (imageData != null) {
-                            result.success(imageData)
-                        } else {
-                            result.success(null)
-                        }
+                        result.success(getImageFromClipboard())
                     } catch (e: Exception) {
                         result.error("ERROR", "Failed to get image from clipboard: ${e.message}", null)
                     }
                 }
                 "setImageToClipboard" -> {
-                    try {
-                        val imageData = call.argument<ByteArray>("imageData")
-                        val format = call.argument<String>("format") ?: "png"
-                        
-                        if (imageData != null) {
-                            val success = setImageToClipboard(imageData, format)
-                            result.success(success)
-                        } else {
-                            result.error("INVALID_ARGUMENT", "Image data is null", null)
-                        }
-                    } catch (e: Exception) {
-                        result.error("ERROR", "Failed to set image to clipboard: ${e.message}", null)
-                    }
+                    // Kept for channel parity with other platforms; Android write uses super_clipboard.
+                    result.success(false)
                 }
                 "getTextFromClipboard" -> {
                     try {
@@ -74,17 +71,74 @@ class MainActivity : FlutterActivity() {
                         result.error("ERROR", "Failed to get text from clipboard: ${e.message}", null)
                     }
                 }
-                else -> {
-                    result.notImplemented()
+                "isOverlayPermissionGranted" -> {
+                    result.success(overlay.isOverlayPermissionGranted())
                 }
+                "requestOverlayPermission" -> {
+                    try {
+                        overlay.requestOverlayPermission()
+                        result.success(overlay.isOverlayPermissionGranted())
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to request overlay permission: ${e.message}", null)
+                    }
+                }
+                "showClipboardOverlay" -> {
+                    try {
+                        result.success(overlay.showOverlay())
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to show overlay: ${e.message}", null)
+                    }
+                }
+                "hideClipboardOverlay" -> {
+                    try {
+                        overlay.hideOverlay()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to hide overlay: ${e.message}", null)
+                    }
+                }
+                "overlayRefreshResult" -> {
+                    try {
+                        val success = call.argument<Boolean>("success") ?: false
+                        overlay.showRefreshResult(success)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to show overlay result: ${e.message}", null)
+                    }
+                }
+                "startClipboardChangeListening" -> {
+                    try {
+                        overlay.startClipboardChangeListening()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to start clipboard listening: ${e.message}", null)
+                    }
+                }
+                "stopClipboardChangeListening" -> {
+                    try {
+                        overlay.stopClipboardChangeListening()
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to stop clipboard listening: ${e.message}", null)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
     }
 
-    private fun acquireMulticastLock() {
-        if (multicastLock?.isHeld == true) {
-            return
+    override fun onDestroy() {
+        overlayHelper?.dispose()
+        overlayHelper = null
+        if (ClipboardBridge.channel === clipboardChannel) {
+            ClipboardBridge.channel = null
         }
+        clipboardChannel = null
+        super.onDestroy()
+    }
+
+    private fun acquireMulticastLock() {
+        if (multicastLock?.isHeld == true) return
 
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         multicastLock = wifi.createMulticastLock("icyEasySendMulticast").apply {
@@ -95,153 +149,23 @@ class MainActivity : FlutterActivity() {
 
     private fun releaseMulticastLock() {
         multicastLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
+            if (it.isHeld) it.release()
         }
         multicastLock = null
     }
 
     private fun getImageFromClipboard(): Map<String, Any>? {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        if (!clipboard.hasPrimaryClip()) {
-            return null
-        }
-
-        val clip = clipboard.primaryClip ?: return null
-        if (clip.itemCount == 0) {
-            return null
-        }
-
-        for (index in 0 until clip.itemCount) {
-            val item = clip.getItemAt(index)
-            val uri = item.uri ?: continue
-
-            try {
-                val mimeType = contentResolver.getType(uri)
-                if (mimeType == null || !mimeType.startsWith("image/")) {
-                    continue
-                }
-
-                val bytes = contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.readBytes()
-                } ?: continue
-
-                if (bytes.isEmpty()) {
-                    continue
-                }
-
-                val fileName = queryDisplayName(uri) ?: defaultImageFileName(mimeType)
-                return mapOf(
-                    "imageData" to bytes,
-                    "fileName" to fileName,
-                    "mimeType" to mimeType,
-                    "format" to mimeType.substringAfter('/')
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        return null
-    }
-
-    private fun queryDisplayName(uri: android.net.Uri): String? {
-        if (uri.scheme != "content") {
-            return uri.lastPathSegment
-        }
-
-        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                if (nameIndex >= 0 && cursor.moveToFirst()) {
-                    return cursor.getString(nameIndex)
-                }
-            }
-
-        return uri.lastPathSegment
-    }
-
-    private fun defaultImageFileName(mimeType: String): String {
-        return when {
-            mimeType.contains("jpeg") || mimeType.contains("jpg") -> "clipboard_image.jpg"
-            mimeType.contains("webp") -> "clipboard_image.webp"
-            mimeType.contains("gif") -> "clipboard_image.gif"
-            else -> "clipboard_image.png"
-        }
-    }
-
-    private fun isTextMimeType(mimeType: String): Boolean {
-        return mimeType.startsWith("text/") ||
-            mimeType == "application/json" ||
-            mimeType.endsWith("+json") ||
-            mimeType.endsWith("+xml")
+        val image = NativeClipboardReader.readImage(this) ?: return null
+        val mimeType = image["mimeType"] as? String ?: "image/png"
+        return mapOf(
+            "imageData" to (image["imageData"] as ByteArray),
+            "fileName" to (image["fileName"] as String),
+            "mimeType" to mimeType,
+            "format" to mimeType.substringAfter('/'),
+        )
     }
 
     private fun getTextFromClipboard(): String? {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        if (!clipboard.hasPrimaryClip()) {
-            return null
-        }
-
-        val clip = clipboard.primaryClip ?: return null
-        if (clip.itemCount == 0) {
-            return null
-        }
-
-        for (index in 0 until clip.itemCount) {
-            val item = clip.getItemAt(index)
-
-            val uri = item.uri
-            if (uri != null) {
-                val mimeType = contentResolver.getType(uri)
-                if (mimeType != null && !isTextMimeType(mimeType)) {
-                    continue
-                }
-            }
-
-            try {
-                val coerced = item.coerceToText(this)?.toString()?.trim()
-                if (!coerced.isNullOrEmpty()) {
-                    return coerced
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            try {
-                val plain = item.text?.toString()?.trim()
-                if (!plain.isNullOrEmpty()) {
-                    return plain
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            try {
-                val html = item.htmlText?.trim()
-                if (!html.isNullOrEmpty()) {
-                    return html
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        return null
-    }
-
-    private fun setImageToClipboard(imageData: ByteArray, format: String): Boolean {
-        return try {
-            // Android clipboard doesn't directly support setting images
-            // This would require saving to a content provider first
-            // For now, return false to indicate not supported
-            false
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
+        return NativeClipboardReader.readText(this)?.get("textContent") as? String
     }
 }

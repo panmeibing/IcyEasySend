@@ -187,6 +187,31 @@ class PermissionService {
     }
   }
 
+  /// Request notification permission (Android 13+).
+  ///
+  /// Required to display the foreground service notification used for
+  /// background keepalive. Returns true if granted or not applicable.
+  Future<bool> requestNotificationPermission() async {
+    try {
+      if (!Platform.isAndroid) return true;
+
+      final status = await ph.Permission.notification.status;
+      if (status.isGranted) return true;
+
+      final result = await ph.Permission.notification.request();
+      if (result.isGranted) {
+        LogUtil.iTag(logTag, '通知权限已授予');
+        return true;
+      }
+
+      LogUtil.wTag(logTag, '通知权限未授予: $result');
+      return false;
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, '请求通知权限失败: $e', e, stackTrace);
+      return false;
+    }
+  }
+
   /// Request all necessary permissions for the app
   ///
   /// Requests both storage and network permissions.
@@ -205,6 +230,9 @@ class PermissionService {
     if (!networkResult.granted) {
       return networkResult;
     }
+
+    // Android 13+: notification for foreground service (non-blocking)
+    await requestNotificationPermission();
 
     return PermissionRequestResult(granted: true);
   }

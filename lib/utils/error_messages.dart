@@ -79,6 +79,24 @@ class ErrorMessages {
 
   static String get userRejected => _provider.userRejected;
 
+  static String get backgroundRejectNeedsSecretKey =>
+      _provider.backgroundRejectNeedsSecretKey;
+
+  static String get clipboardBackgroundCacheMiss =>
+      _provider.clipboardBackgroundCacheMiss;
+
+  static String get foregroundServiceNotificationTitle =>
+      _provider.foregroundServiceNotificationTitle;
+
+  static String get foregroundServiceNotificationText =>
+      _provider.foregroundServiceNotificationText;
+
+  static String get foregroundServiceChannelName =>
+      _provider.foregroundServiceChannelName;
+
+  static String get foregroundServiceChannelDescription =>
+      _provider.foregroundServiceChannelDescription;
+
   // Validation errors
   static String get ipAddressEmpty => _provider.ipAddressEmpty;
 

@@ -4,6 +4,9 @@
 *.swo
 
 
+# Copyright registration generated outputs
+copyright_output/
+
 # Build outputs
 dist/
 .deb-staging/
@@ -19,6 +22,7 @@ pods/
 *.class
 logs/
 *.log
+installers/HarmonyOS/*.log
 *.pyc
 *.swp
 .DS_Store
@@ -66,3 +70,5 @@ app.*.map.json
 /android/key.properties
 /android/app/*.jks
 *.jks
+
+ohos/

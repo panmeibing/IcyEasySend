@@ -965,6 +965,36 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get serverInternalError => 'Server internal error';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'Device is in the background. Only secret-key auto sync/receive is supported. Open the app or configure a matching device secret key.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Waiting for file transfers and clipboard sync in the background';
+
+  @override
+  String get androidBackgroundReceiveHint => 'While backgrounded, only peers with a matching secret key can auto-sync clipboard or send files. Keep the persistent notification running.';
+
+  @override
+  String get clipboardOverlay => 'Clipboard floating button';
+
+  @override
+  String get clipboardOverlayDesc => 'Tap the floating button to refresh cached text/images for background sync';
+
+  @override
+  String get clipboardOverlayHint => 'While backgrounded, only the last refreshed content can be synced. Turning this off clears the cache and hides the button.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Allow "Display over other apps" in system settings. The floating button will appear after you return.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Clipboard floating button enabled';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Cannot read the system clipboard in the background and no cache is available. Open the app or tap the floating button to refresh, then sync again.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Requesting clipboard...';

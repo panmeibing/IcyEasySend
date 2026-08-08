@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -131,6 +133,17 @@ class ServerStatusCard extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ],
+          if (Platform.isAndroid && isServerRunning) ...[
+            const SizedBox(height: 12),
+            Text(
+              l10n.androidBackgroundReceiveHint,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+                height: 1.35,
+              ),
             ),
           ],
         ],

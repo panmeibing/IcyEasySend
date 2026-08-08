@@ -19,6 +19,7 @@ import 'transfer/transfer_history_manager.dart';
 /// Provides a RESTful endpoint to receive files from other devices.
 class FileTransferHandler {
   final BuildContext? Function()? contextGetter;
+  final bool Function()? isInBackgroundGetter;
   final FileTransferService _fileTransferService;
   final BatchReceiveManager _batchReceiveManager;
   final TransferHistoryManager _historyManager;
@@ -40,6 +41,7 @@ class FileTransferHandler {
 
   FileTransferHandler({
     this.contextGetter,
+    this.isInBackgroundGetter,
     this.historyRefreshCallbackGetter,
     FileTransferService? fileTransferService,
     BatchReceiveManager? batchReceiveManager,
@@ -47,6 +49,8 @@ class FileTransferHandler {
   }) : _fileTransferService = fileTransferService ?? FileTransferService(),
        _batchReceiveManager = batchReceiveManager ?? BatchReceiveManager(),
        _historyManager = historyManager ?? TransferHistoryManager();
+
+  bool get _isInBackground => isInBackgroundGetter?.call() ?? false;
 
   /// Register a progress callback for a transfer
   void registerProgressCallback(
@@ -128,7 +132,7 @@ class FileTransferHandler {
 
       LogUtil.dTag(
         logTag,
-        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}',
+        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}, 后台=$_isInBackground',
       );
 
       // Validate required parameters
@@ -150,19 +154,7 @@ class FileTransferHandler {
         );
       }
 
-      // Check if context is available for showing dialogs
-      final ctx = contextGetter?.call();
-
-      if (ctx == null || !ctx.mounted) {
-        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-        return Response(
-          500,
-          body: jsonEncode({'accepted': false, 'message': '无法显示确认对话框：缺少上下文'}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-
-      // Check if secret key matches
+      // Check secret key before requiring UI context
       bool skipConfirmation = false;
       if (secretKey != null && secretKey.isNotEmpty) {
         final preferencesService = PreferencesService();
@@ -174,9 +166,10 @@ class FileTransferHandler {
           skipConfirmation = true;
           LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
 
-          // Show toast notification instead of dialog
           final currentCtx = contextGetter?.call();
-          if (currentCtx != null && currentCtx.mounted) {
+          if (!_isInBackground &&
+              currentCtx != null &&
+              currentCtx.mounted) {
             ToastHelper.showSuccess(
               currentCtx,
               '${senderDeviceName ?? senderIP} 使用秘钥验证通过，自动接收 ${files.length} 个文件',
@@ -228,64 +221,73 @@ class FileTransferHandler {
         );
       }
 
-      LogUtil.iTag(logTag, '显示批量接收确认对话框: ${pendingFiles.length}个文件');
+      LogUtil.iTag(logTag, '处理批量接收确认: ${pendingFiles.length}个文件');
 
-      // If secret key is valid, auto-accept but still show dialog for progress
       bool accepted;
-      if (skipConfirmation) {
-        // Show dialog but auto-accept immediately
-        // This allows users to see the progress
-        if (!ctx.mounted) {
-          LogUtil.wTag(logTag, 'Context已销毁，无法显示进度对话框');
-          // Still accept the files even if we can't show progress
-          for (final fileInfo in pendingFiles) {
-            fileInfo.isAccepted = true;
-            fileInfo.status = '准备接收...';
-            fileInfo.completer.complete(true);
-          }
-          accepted = true;
-        } else {
-          // Show dialog with auto-accept
-          LogUtil.iTag(logTag, '使用密钥自动接受，显示进度对话框');
-
-          // Track expected file count for this sender to auto-save history later
+      if (skipConfirmation && _isInBackground) {
+        // Background + secret key: accept without any UI
+        LogUtil.iTag(logTag, '后台密钥自动接受（无进度对话框）');
+        _expectedFileCounts[senderIP] = pendingFiles.length;
+        _completedFileCounts[senderIP] = 0;
+        accepted = await _batchReceiveManager.acceptBatchHeadless(
+          files: pendingFiles,
+          senderIP: senderIP,
+        );
+      } else if (skipConfirmation) {
+        final ctx = contextGetter?.call();
+        if (ctx == null || !ctx.mounted) {
+          LogUtil.wTag(logTag, 'Context不可用，使用无UI自动接受');
           _expectedFileCounts[senderIP] = pendingFiles.length;
           _completedFileCounts[senderIP] = 0;
-
-          // Show dialog and auto-accept
+          accepted = await _batchReceiveManager.acceptBatchHeadless(
+            files: pendingFiles,
+            senderIP: senderIP,
+          );
+        } else {
+          LogUtil.iTag(logTag, '使用密钥自动接受，显示进度对话框');
+          _expectedFileCounts[senderIP] = pendingFiles.length;
+          _completedFileCounts[senderIP] = 0;
           accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
             context: ctx,
             files: pendingFiles,
             senderIP: senderIP,
             senderDeviceName: senderDeviceName,
             autoAccept: true,
-            // Auto-accept immediately
             onComplete: () async {
-              // Save all transfer histories for this sender in batch
               await saveBatchHistories(senderIP);
             },
           );
         }
+      } else if (_isInBackground) {
+        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
+        return Response(
+          403,
+          body: jsonEncode({
+            'accepted': false,
+            'message': ErrorMessages.backgroundRejectNeedsSecretKey,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
       } else {
-        // Check if context is still mounted before showing dialog
-        if (!ctx.mounted) {
-          LogUtil.wTag(logTag, 'Context已销毁，拒绝批量确认请求');
+        final ctx = contextGetter?.call();
+        if (ctx == null || !ctx.mounted) {
+          LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
           return Response(
-            400,
-            body: jsonEncode({'accepted': false, 'message': 'Context已销毁'}),
+            500,
+            body: jsonEncode({
+              'accepted': false,
+              'message': '无法显示确认对话框：缺少上下文',
+            }),
             headers: {'Content-Type': 'application/json'},
           );
         }
 
-        // Show batch dialog with all files at once
-        // When dialog closes (all files received), save histories in batch
         accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
           context: ctx,
           files: pendingFiles,
           senderIP: senderIP,
           senderDeviceName: senderDeviceName,
           onComplete: () async {
-            // Save all transfer histories for this sender in batch
             await saveBatchHistories(senderIP);
           },
         );
@@ -502,6 +504,7 @@ class FileTransferHandler {
           // Clean up tracking data
           _expectedFileCounts.remove(senderIP);
           _completedFileCounts.remove(senderIP);
+          _batchReceiveManager.clearPendingForSender(senderIP);
         }
       }
 

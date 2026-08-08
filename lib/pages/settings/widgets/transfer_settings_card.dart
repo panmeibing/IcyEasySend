@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -37,6 +39,10 @@ class TransferSettingsCard extends StatelessWidget {
   final VoidCallback onSaveMaxClipboardSize;
   final VoidCallback onCancelMaxClipboardSize;
 
+  // Android clipboard overlay
+  final bool clipboardOverlayEnabled;
+  final ValueChanged<bool>? onClipboardOverlayChanged;
+
   // IP validation
   final bool enableIPValidation;
   final Function(bool) onIPValidationChanged;
@@ -74,6 +80,8 @@ class TransferSettingsCard extends StatelessWidget {
     required this.onEditMaxClipboardSize,
     required this.onSaveMaxClipboardSize,
     required this.onCancelMaxClipboardSize,
+    this.clipboardOverlayEnabled = false,
+    this.onClipboardOverlayChanged,
     required this.enableIPValidation,
     required this.onIPValidationChanged,
     required this.deviceSecretKey,
@@ -142,6 +150,13 @@ class TransferSettingsCard extends StatelessWidget {
 
             // Max clipboard size setting
             _buildMaxClipboardSizeSection(),
+
+            if (Platform.isAndroid && onClipboardOverlayChanged != null) ...[
+              const SizedBox(height: 24),
+              Divider(height: 1, color: Colors.grey[300]),
+              const SizedBox(height: 24),
+              _buildClipboardOverlaySection(),
+            ],
 
             const SizedBox(height: 24),
             Divider(height: 1, color: Colors.grey[300]),
@@ -645,6 +660,73 @@ class TransferSettingsCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       l10n.clipboardSyncLimit,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Android-only: floating bubble to refresh clipboard cache.
+  Widget _buildClipboardOverlaySection() {
+    return Builder(
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.clipboardOverlay,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF212121),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.clipboardOverlayDesc,
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: clipboardOverlayEnabled,
+                  onChanged: onClipboardOverlayChanged,
+                  activeTrackColor: const Color(0xFF2196F3),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Color(0xFF1976D2),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.clipboardOverlayHint,
                       style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                     ),
                   ),

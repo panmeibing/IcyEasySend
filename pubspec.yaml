@@ -93,6 +93,7 @@ dependencies:
   flutter_sharing_intent: ^2.0.4
   wakelock_plus: ^1.5.2
   dio: ^5.9.2
+  flutter_foreground_task: ^10.0.0
 
 dev_dependencies:
   flutter_test:

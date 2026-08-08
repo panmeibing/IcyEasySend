@@ -926,6 +926,36 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get serverInternalError => '服务器内部错误';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => '设备处于后台，仅支持密钥自动同步/接收。请打开应用或配置匹配的设备密钥。';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => '正在后台等待文件传输与剪切板同步';
+
+  @override
+  String get androidBackgroundReceiveHint => '后台时仅密钥匹配的设备可自动同步剪切板或发送文件，请保留通知栏常驻服务。';
+
+  @override
+  String get clipboardOverlay => '剪切板悬浮窗';
+
+  @override
+  String get clipboardOverlayDesc => '点击悬浮窗可刷新可同步的文本/图片缓存，便于后台同步';
+
+  @override
+  String get clipboardOverlayHint => '后台只能同步上次刷新的内容。关闭开关会清空缓存并隐藏悬浮窗。';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => '请在系统设置中允许「显示在其他应用上层」，返回后悬浮窗将自动显示';
+
+  @override
+  String get clipboardOverlayEnabledToast => '剪切板悬浮窗已开启';
+
+  @override
+  String get clipboardBackgroundCacheMiss => '后台无法读取系统剪切板，且无可用缓存。请打开应用或点击悬浮窗刷新后再同步。';
   // Clipboard sync
   @override
   String get requestingClipboard => '正在请求剪切板...';

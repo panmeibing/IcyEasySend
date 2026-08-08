@@ -987,6 +987,36 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get serverInternalError => 'Error interno del servidor';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'El dispositivo está en segundo plano. Solo se admite sincronización/recepción automática con clave secreta coincidente.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Esperando transferencias y sincronización del portapapeles en segundo plano';
+
+  @override
+  String get androidBackgroundReceiveHint => 'En segundo plano, solo los dispositivos con clave secreta coincidente pueden sincronizar o enviar automáticamente. Mantenga la notificación persistente.';
+
+  @override
+  String get clipboardOverlay => 'Botón flotante del portapapeles';
+
+  @override
+  String get clipboardOverlayDesc => 'Toque el botón flotante para actualizar la caché de texto/imagen para sincronizar en segundo plano';
+
+  @override
+  String get clipboardOverlayHint => 'En segundo plano solo se sincroniza el último contenido actualizado. Desactivar borra la caché y oculta el botón.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Permita "Mostrar sobre otras aplicaciones" en ajustes. El botón aparecerá al volver.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Botón flotante del portapapeles activado';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'No se puede leer el portapapeles del sistema en segundo plano y no hay caché. Abra la app o toque el botón flotante para actualizar.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Solicitando portapapeles...';

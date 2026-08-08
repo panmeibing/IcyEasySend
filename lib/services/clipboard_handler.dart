@@ -7,8 +7,9 @@ import 'package:shelf/shelf.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/clipboard_data_model.dart';
-import '../services/clipboard_service.dart';
+import '../services/clipboard_cache_service.dart';
 import '../services/preferences_service.dart';
+import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/toast_helper.dart';
 
@@ -17,16 +18,17 @@ import '../utils/toast_helper.dart';
 /// 处理来自其他设备的剪切板请求
 class ClipboardHandler {
   final BuildContext? Function()? contextGetter;
-  final ClipboardService _clipboardService;
+  final bool Function()? isInBackgroundGetter;
   final PreferencesService _preferencesService;
   final String logTag = LogTags.clipboard;
 
   ClipboardHandler({
     this.contextGetter,
-    ClipboardService? clipboardService,
+    this.isInBackgroundGetter,
     PreferencesService? preferencesService,
-  }) : _clipboardService = clipboardService ?? ClipboardService(),
-       _preferencesService = preferencesService ?? PreferencesService();
+  }) : _preferencesService = preferencesService ?? PreferencesService();
+
+  bool get _isInBackground => isInBackgroundGetter?.call() ?? false;
 
   /// 处理 POST /clipboard-request 请求
   ///
@@ -76,18 +78,10 @@ class ClipboardHandler {
 
       LogUtil.dTag(
         logTag,
-        '请求设备: $requesterDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}',
+        '请求设备: $requesterDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}, 后台=$_isInBackground',
       );
 
-      // 检查上下文是否可用
-      final ctx = contextGetter?.call();
-
-      if (ctx == null || !ctx.mounted) {
-        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-        return _buildErrorResponse('Server internal error');
-      }
-
-      // Check if secret key matches
+      // Check secret key before requiring UI context
       bool skipConfirmation = false;
       if (secretKey != null && secretKey.isNotEmpty) {
         final savedSecretKey = await _preferencesService.getDeviceSecretKey();
@@ -98,9 +92,11 @@ class ClipboardHandler {
           skipConfirmation = true;
           LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
 
-          // Show toast notification instead of dialog
+          // Toast only when UI is available (foreground)
           final currentCtx = contextGetter?.call();
-          if (currentCtx != null && currentCtx.mounted) {
+          if (!_isInBackground &&
+              currentCtx != null &&
+              currentCtx.mounted) {
             final l10n = AppLocalizations.of(currentCtx);
             ToastHelper.showSuccess(
               currentCtx,
@@ -112,13 +108,17 @@ class ClipboardHandler {
         }
       }
 
-      // 显示确认对话框或自动接受
       bool userAccepted;
       if (skipConfirmation) {
         userAccepted = true;
+      } else if (_isInBackground) {
+        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝剪切板请求');
+        return _buildBackgroundRejectedResponse();
       } else {
-        if (!ctx.mounted) {
-          return _buildRejectedResponse();
+        final ctx = contextGetter?.call();
+        if (ctx == null || !ctx.mounted) {
+          LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
+          return _buildErrorResponse('Server internal error');
         }
         userAccepted = await _showClipboardRequestDialog(
           ctx,
@@ -131,12 +131,25 @@ class ClipboardHandler {
         return _buildRejectedResponse();
       }
 
-      // 用户同意，获取剪切板内容
-      final clipboardData = await _clipboardService.getClipboardContent();
+      // 用户同意，获取剪切板内容（后台可回退到单槽缓存）
+      final shareResult = await ClipboardCacheService.instance
+          .getContentForSharing(
+            allowCacheFallback: _isInBackground,
+            preferencesService: _preferencesService,
+          );
+      final clipboardData = shareResult.data;
 
       if (clipboardData == null) {
+        if (shareResult.cacheMissInBackground) {
+          LogUtil.wTag(logTag, '后台无可用剪切板缓存');
+          return _buildBackgroundCacheMissResponse();
+        }
         LogUtil.wTag(logTag, '剪切板为空，无法分享');
         return _buildEmptyClipboardResponse();
+      }
+
+      if (shareResult.fromCache) {
+        LogUtil.iTag(logTag, '使用缓存剪切板内容分享');
       }
 
       // 检查剪切板大小
@@ -257,6 +270,18 @@ class ClipboardHandler {
     );
   }
 
+  /// 构建后台拒绝响应（无有效密钥）
+  Response _buildBackgroundRejectedResponse() {
+    return Response(
+      200,
+      body: jsonEncode({
+        'accepted': false,
+        'message': ErrorMessages.backgroundRejectNeedsSecretKey,
+      }),
+      headers: {'Content-Type': 'application/json'},
+    );
+  }
+
   /// 构建剪切板为空的响应
   Response _buildEmptyClipboardResponse() {
     final ctx = contextGetter?.call();
@@ -267,6 +292,18 @@ class ClipboardHandler {
     return Response(
       200,
       body: jsonEncode({'accepted': false, 'message': message}),
+      headers: {'Content-Type': 'application/json'},
+    );
+  }
+
+  /// 后台无法读系统剪切板且无可用缓存
+  Response _buildBackgroundCacheMissResponse() {
+    return Response(
+      200,
+      body: jsonEncode({
+        'accepted': false,
+        'message': ErrorMessages.clipboardBackgroundCacheMiss,
+      }),
       headers: {'Content-Type': 'application/json'},
     );
   }

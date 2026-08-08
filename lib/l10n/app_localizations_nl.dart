@@ -977,6 +977,36 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get serverInternalError => 'Interne serverfout';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'Apparaat is op de achtergrond. Alleen automatische sync/ontvangst met overeenkomende geheime sleutel wordt ondersteund.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Wacht op bestandoverdracht en klembordsync op de achtergrond';
+
+  @override
+  String get androidBackgroundReceiveHint => 'Op de achtergrond kunnen alleen apparaten met een overeenkomende geheime sleutel automatisch synchroniseren of verzenden. Houd de blijvende melding aan.';
+
+  @override
+  String get clipboardOverlay => 'Zwevende klembordknop';
+
+  @override
+  String get clipboardOverlayDesc => 'Tik op de zwevende knop om tekst-/afbeeldingscache te vernieuwen voor synchronisatie op de achtergrond';
+
+  @override
+  String get clipboardOverlayHint => 'Op de achtergrond wordt alleen de laatst vernieuwde inhoud gesynchroniseerd. Uitschakelen wist de cache en verbergt de knop.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Sta "Weergeven over andere apps" toe in de systeeminstellingen. De knop verschijnt na terugkeer.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Zwevende klembordknop ingeschakeld';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Systeemklembord is op de achtergrond niet leesbaar en er is geen cache. Open de app of tik op de zwevende knop om te vernieuwen.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Klembord aanvragen...';

@@ -4,6 +4,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+    <!-- Foreground service to keep LAN HTTP server alive in background -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     
     <!-- Storage permissions for Android 12 and below (API 32 and below) -->
     <!-- These are needed to save files to the public Downloads directory -->
@@ -65,6 +72,19 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+
+        <!-- Transparent Activity: obtain input focus for clipboard reads without flashing MainActivity -->
+        <activity
+            android:name=".ClipboardRefreshActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ClipboardRefresh"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="com.icyhope.icyEasySend.clipboardRefresh"
+            android:launchMode="singleInstance"
+            android:finishOnTaskLaunch="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|smallestScreenSize|screenLayout|density" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -78,6 +98,13 @@
             android:exported="true"
             android:grantUriPermissions="true" >
         </provider>
+
+        <!-- Keep LAN HTTP server alive while app is backgrounded -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="connectedDevice"
+            android:exported="false"
+            android:stopWithTask="true" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

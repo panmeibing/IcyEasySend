@@ -939,6 +939,36 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get serverInternalError => '서버 내부 오류';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => '기기가 백그라운드에 있습니다. 일치하는 비밀 키가 있을 때만 자동 동기화/수신이 가능합니다.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => '백그라운드에서 파일 전송 및 클립보드 동기화를 대기 중';
+
+  @override
+  String get androidBackgroundReceiveHint => '백그라운드에서는 일치하는 비밀 키가 있는 기기만 자동 동기화/전송할 수 있습니다. 상시 알림을 유지하세요.';
+
+  @override
+  String get clipboardOverlay => '클립보드 플로팅 버튼';
+
+  @override
+  String get clipboardOverlayDesc => '플로팅 버튼을 눌러 백그라운드 동기화용 텍스트/이미지 캐시를 새로고침합니다';
+
+  @override
+  String get clipboardOverlayHint => '백그라운드에서는 마지막 새로고침 내용만 동기화됩니다. 끄면 캐시가 비워지고 버튼이 숨겨집니다.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => '시스템 설정에서 "다른 앱 위에 표시"를 허용하세요. 돌아오면 플로팅 버튼이 표시됩니다.';
+
+  @override
+  String get clipboardOverlayEnabledToast => '클립보드 플로팅 버튼이 켜졌습니다';
+
+  @override
+  String get clipboardBackgroundCacheMiss => '백그라운드에서는 시스템 클립보드를 읽을 수 없고 사용 가능한 캐시도 없습니다. 앱을 열거나 플로팅 버튼을 눌러 새로고침한 뒤 동기화하세요.';
   // Clipboard sync
   @override
   String get requestingClipboard => '클립보드 요청 중...';

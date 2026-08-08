@@ -926,6 +926,36 @@ class AppLocalizationsZhHk extends AppLocalizations {
   @override
   String get serverInternalError => '伺服器內部錯誤';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => '裝置處於背景，僅支援密鑰自動同步/接收。請打開應用程式或設定相符的裝置密鑰。';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => '正在背景等待檔案傳輸與剪貼簿同步';
+
+  @override
+  String get androidBackgroundReceiveHint => '背景時僅密鑰相符的裝置可自動同步剪貼簿或傳送檔案，請保留通知列常駐服務。';
+
+  @override
+  String get clipboardOverlay => '剪貼簿懸浮窗';
+
+  @override
+  String get clipboardOverlayDesc => '點擊懸浮窗可重新整理可同步的文字/圖片快取，方便背景同步';
+
+  @override
+  String get clipboardOverlayHint => '背景只能同步上次重新整理的內容。關閉開關會清空快取並隱藏懸浮窗。';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => '請在系統設定中允許「顯示在其他應用程式上層」，返回後懸浮窗將自動顯示';
+
+  @override
+  String get clipboardOverlayEnabledToast => '剪貼簿懸浮窗已開啟';
+
+  @override
+  String get clipboardBackgroundCacheMiss => '背景無法讀取系統剪貼簿，且無可用快取。請打開應用程式或點擊懸浮窗重新整理後再同步。';
   // Clipboard sync
   @override
   String get requestingClipboard => '正在請求剪貼簿...';

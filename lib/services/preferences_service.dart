@@ -21,6 +21,7 @@ class PreferencesService {
   static const String _keyDeviceSecretKey = 'device_secret_key';
   static const String _keyTargetDeviceSecretKey = 'target_device_secret_key';
   static const String _keyCustomReceiveSavePath = 'custom_receive_save_path';
+  static const String _keyClipboardOverlayEnabled = 'clipboard_overlay_enabled';
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -465,6 +466,27 @@ class PreferencesService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyTargetDeviceSecretKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Whether the Android clipboard floating overlay is enabled (default: false).
+  Future<bool> getClipboardOverlayEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_keyClipboardOverlayEnabled) ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Persist clipboard floating overlay preference.
+  Future<bool> saveClipboardOverlayEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyClipboardOverlayEnabled, enabled);
       return true;
     } catch (e) {
       return false;

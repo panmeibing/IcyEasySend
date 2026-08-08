@@ -5,7 +5,9 @@ import 'dart:io';
 
 import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
+import 'services/android_foreground_service.dart';
 import 'services/cache_cleanup_service.dart';
+import 'services/clipboard_overlay_service.dart';
 import 'services/http_server_manager.dart';
 import 'services/language_service.dart';
 import 'services/permission_service.dart';
@@ -17,6 +19,9 @@ import 'utils/toast_helper.dart';
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Android: port for foreground-task <-> UI communication
+  AndroidForegroundService.initCommunicationPort();
 
   // Initialize logger explicitly to ensure log file is created
   await LogUtil.init();
@@ -56,7 +61,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final HTTPServerManager _serverManager;
   late final PermissionService _permissionService;
   late final SharingIntentService _sharingIntentService;
@@ -66,6 +71,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Initialize services
     _serverManager = HTTPServerManager();
@@ -78,9 +84,59 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // dispose() also clears the in-memory clipboard cache.
+    ClipboardOverlayService.instance.dispose();
     _serverManager.dispose();
     _sharingIntentService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Treat only paused/hidden as true background for inbound request policy.
+    // `inactive` can occur during system dialogs while still visible.
+    final treatAsBackground =
+        state == AppLifecycleState.paused || state == AppLifecycleState.hidden;
+    _serverManager.setInBackground(treatAsBackground);
+
+    LogUtil.dTag(
+      LogTags.ui,
+      'AppLifecycleState=$state, background=$treatAsBackground',
+    );
+
+    if (state == AppLifecycleState.resumed) {
+      _ensureServerRunningOnResume();
+      _onAppResumed();
+    } else if (treatAsBackground) {
+      _onAppGoingBackground();
+    }
+  }
+
+  Future<void> _onAppResumed() async {
+    if (!Platform.isAndroid) return;
+    ClipboardOverlayService.instance.ensureInitialized();
+    await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
+    await ClipboardOverlayService.instance.startClipboardChangeListening();
+    await ClipboardOverlayService.instance.refreshCache();
+  }
+
+  Future<void> _onAppGoingBackground() async {
+    if (!Platform.isAndroid) return;
+    // Best-effort refresh while we may still have focus briefly.
+    await ClipboardOverlayService.instance.refreshCache();
+    await ClipboardOverlayService.instance.stopClipboardChangeListening();
+  }
+
+  Future<void> _ensureServerRunningOnResume() async {
+    if (!_isInitialized) return;
+    if (_serverManager.isRunning()) return;
+
+    LogUtil.wTag(LogTags.server, '应用回到前台但服务器未运行，尝试重启');
+    final result = await _serverManager.startServer();
+    if (!result.success) {
+      LogUtil.eTag(LogTags.server, '恢复服务器失败: ${result.errorMessage}');
+    }
   }
 
   /// Initialize the app: request permissions and start HTTP server
@@ -142,6 +198,15 @@ class _MyAppState extends State<MyApp> {
         });
       }
     }
+
+    // Android 13+: notification permission for foreground service
+    if (Platform.isAndroid) {
+      final notificationGranted =
+          await _permissionService.requestNotificationPermission();
+      if (!notificationGranted) {
+        LogUtil.wTag(LogTags.permission, '通知权限未授予，后台保活通知可能无法显示');
+      }
+    }
   }
 
   /// Initialize the HTTP server on app startup
@@ -164,6 +229,13 @@ class _MyAppState extends State<MyApp> {
         });
       }
     });
+
+    if (Platform.isAndroid) {
+      ClipboardOverlayService.instance.ensureInitialized();
+      await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
+      await ClipboardOverlayService.instance.startClipboardChangeListening();
+      await ClipboardOverlayService.instance.refreshCache();
+    }
   }
 
   @override

@@ -980,6 +980,36 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get serverInternalError => 'Erro interno do servidor';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'O dispositivo está em segundo plano. Somente sincronização/recebimento automático com chave secreta correspondente é suportado.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Aguardando transferências e sincronização da área de transferência em segundo plano';
+
+  @override
+  String get androidBackgroundReceiveHint => 'Em segundo plano, apenas dispositivos com chave secreta correspondente podem sincronizar ou enviar automaticamente. Mantenha a notificação persistente.';
+
+  @override
+  String get clipboardOverlay => 'Botão flutuante da área de transferência';
+
+  @override
+  String get clipboardOverlayDesc => 'Toque no botão flutuante para atualizar o cache de texto/imagem para sincronização em segundo plano';
+
+  @override
+  String get clipboardOverlayHint => 'Em segundo plano, apenas o último conteúdo atualizado pode ser sincronizado. Desativar limpa o cache e oculta o botão.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Permita "Exibir sobre outros apps" nas configurações. O botão aparecerá ao retornar.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Botão flutuante da área de transferência ativado';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Não é possível ler a área de transferência do sistema em segundo plano e não há cache. Abra o app ou toque no botão flutuante para atualizar.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Solicitando área de transferência...';

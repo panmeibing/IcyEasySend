@@ -11,6 +11,7 @@ import '../utils/constants.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
+import 'android_foreground_service.dart';
 import 'clipboard_handler.dart';
 import 'discover_register_handler.dart';
 import 'file_transfer_handler.dart';
@@ -39,6 +40,7 @@ class HTTPServerManager {
   BuildContext? _context;
   VoidCallback? _historyRefreshCallback;
   final List<VoidCallback> _networkChangeCallbacks = [];
+  bool _isInBackground = false;
 
   final String logTag = LogTags.server;
 
@@ -66,6 +68,7 @@ class HTTPServerManager {
         fileTransferHandler ??
         FileTransferHandler(
           contextGetter: () => _context,
+          isInBackgroundGetter: () => _isInBackground,
           historyRefreshCallbackGetter: () => _historyRefreshCallback,
         );
     
@@ -74,7 +77,18 @@ class HTTPServerManager {
         clipboardHandler ??
         ClipboardHandler(
           contextGetter: () => _context,
+          isInBackgroundGetter: () => _isInBackground,
         );
+  }
+
+  /// Whether the app UI is currently in the background.
+  bool get isInBackground => _isInBackground;
+
+  /// Update background state from [WidgetsBindingObserver].
+  void setInBackground(bool value) {
+    if (_isInBackground == value) return;
+    _isInBackground = value;
+    LogUtil.iTag(logTag, '应用后台状态: $_isInBackground');
   }
 
   /// Set the BuildContext for showing dialogs
@@ -267,6 +281,11 @@ class HTTPServerManager {
 
         await _startMulticastDiscovery(tryPort);
 
+        // Keep process alive on Android so inbound transfers work when backgrounded.
+        if (Platform.isAndroid) {
+          await AndroidForegroundService.start();
+        }
+
         return ServerStartResult(success: true, serverAddress: _serverAddress);
       } on SocketException catch (e) {
         // Port is in use or other socket error, try next port
@@ -332,6 +351,10 @@ class HTTPServerManager {
   Future<void> stopServer() async {
     await _stopMulticastDiscovery();
 
+    if (Platform.isAndroid) {
+      await AndroidForegroundService.stop();
+    }
+
     if (_server != null) {
       LogUtil.iTag(logTag, '正在停止HTTP服务器...');
       try {
@@ -353,9 +376,9 @@ class HTTPServerManager {
   }
 
   /// Dispose resources
-  void dispose() {
+  Future<void> dispose() async {
     stopNetworkMonitoring();
-    stopServer();
+    await stopServer();
   }
 
   /// Get the current port number

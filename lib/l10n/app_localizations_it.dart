@@ -982,6 +982,36 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get serverInternalError => 'Errore interno del server';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'Il dispositivo è in background. È supportata solo la sincronizzazione/ricezione automatica con chiave segreta corrispondente.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'In attesa di trasferimenti e sync appunti in background';
+
+  @override
+  String get androidBackgroundReceiveHint => 'In background solo i dispositivi con chiave segreta corrispondente possono sincronizzare o inviare automaticamente. Mantieni la notifica persistente.';
+
+  @override
+  String get clipboardOverlay => 'Pulsante flottante appunti';
+
+  @override
+  String get clipboardOverlayDesc => 'Tocca il pulsante flottante per aggiornare la cache testo/immagine per la sync in background';
+
+  @override
+  String get clipboardOverlayHint => 'In background viene sincronizzato solo l\'ultimo contenuto aggiornato. Disattivare cancella la cache e nasconde il pulsante.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Consenti "Visualizza sopra altre app" nelle impostazioni. Il pulsante apparirà al ritorno.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Pulsante flottante appunti attivato';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Impossibile leggere gli appunti di sistema in background e nessuna cache disponibile. Apri l\'app o tocca il pulsante flottante per aggiornare.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Richiesta appunti...';

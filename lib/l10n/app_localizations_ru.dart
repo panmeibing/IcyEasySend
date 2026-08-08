@@ -976,6 +976,36 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get serverInternalError => 'Внутренняя ошибка сервера';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'Устройство в фоне. Поддерживается только автосинхронизация/приём при совпадении секретного ключа.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'Ожидание передачи файлов и синхронизации буфера в фоне';
+
+  @override
+  String get androidBackgroundReceiveHint => 'В фоне только устройства с совпадающим секретным ключом могут автоматически синхронизировать или отправлять. Сохраняйте постоянное уведомление.';
+
+  @override
+  String get clipboardOverlay => 'Плавающая кнопка буфера обмена';
+
+  @override
+  String get clipboardOverlayDesc => 'Нажмите плавающую кнопку, чтобы обновить кэш текста/изображений для фоновой синхронизации';
+
+  @override
+  String get clipboardOverlayHint => 'В фоне синхронизируется только последнее обновлённое содержимое. Отключение очищает кэш и скрывает кнопку.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Разрешите «Поверх других приложений» в настройках. Кнопка появится после возврата.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Плавающая кнопка буфера обмена включена';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'В фоне системный буфер недоступен и нет кэша. Откройте приложение или нажмите плавающую кнопку для обновления.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Запрос буфера обмена...';

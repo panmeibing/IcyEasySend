@@ -26,6 +26,9 @@ class SettingsState {
   final String deviceSecretKey;
   final bool isEditingSecretKey;
 
+  // Android clipboard floating overlay
+  final bool clipboardOverlayEnabled;
+
   // Developer mode
   final int versionTapCount;
   final DateTime? lastVersionTapTime;
@@ -50,6 +53,7 @@ class SettingsState {
     this.isCustomReceiveSavePath = false,
     this.deviceSecretKey = '',
     this.isEditingSecretKey = false,
+    this.clipboardOverlayEnabled = false,
     this.versionTapCount = 0,
     this.lastVersionTapTime,
     this.isLoading = true,
@@ -72,6 +76,7 @@ class SettingsState {
     bool? isCustomReceiveSavePath,
     String? deviceSecretKey,
     bool? isEditingSecretKey,
+    bool? clipboardOverlayEnabled,
     int? versionTapCount,
     DateTime? lastVersionTapTime,
     bool? isLoading,
@@ -97,6 +102,8 @@ class SettingsState {
           isCustomReceiveSavePath ?? this.isCustomReceiveSavePath,
       deviceSecretKey: deviceSecretKey ?? this.deviceSecretKey,
       isEditingSecretKey: isEditingSecretKey ?? this.isEditingSecretKey,
+      clipboardOverlayEnabled:
+          clipboardOverlayEnabled ?? this.clipboardOverlayEnabled,
       versionTapCount: versionTapCount ?? this.versionTapCount,
       lastVersionTapTime: lastVersionTapTime ?? this.lastVersionTapTime,
       isLoading: isLoading ?? this.isLoading,

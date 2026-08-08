@@ -661,6 +661,36 @@ abstract class AppLocalizations {
 
   String get serverInternalError;
 
+  /// Shown when peer requests clipboard/files while this device is backgrounded without secret key.
+  String get backgroundRejectNeedsSecretKey;
+
+  /// Android foreground service notification title.
+  String get foregroundServiceNotificationTitle;
+
+  /// Android foreground service notification body.
+  String get foregroundServiceNotificationText;
+
+  /// Hint under server status on Android about background receive rules.
+  String get androidBackgroundReceiveHint;
+
+  /// Android clipboard floating overlay toggle title.
+  String get clipboardOverlay;
+
+  /// Android clipboard floating overlay description.
+  String get clipboardOverlayDesc;
+
+  /// Hint under the overlay toggle.
+  String get clipboardOverlayHint;
+
+  /// Shown when overlay enabled but system permission still missing.
+  String get clipboardOverlayPermissionNeeded;
+
+  /// Shown when overlay is shown successfully.
+  String get clipboardOverlayEnabledToast;
+
+  /// Background clipboard cache miss message (also in ErrorMessages).
+  String get clipboardBackgroundCacheMiss;
+
   // Clipboard sync
   String get requestingClipboard;
 

@@ -936,6 +936,36 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get serverInternalError => 'サーバー内部エラー';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'デバイスはバックグラウンドです。一致する秘密鍵がある場合のみ自動同期/受信できます。';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'バックグラウンドでファイル転送とクリップボード同期を待機中';
+
+  @override
+  String get androidBackgroundReceiveHint => 'バックグラウンドでは一致する秘密鍵の端末のみ自動同期/送信できます。常駐通知を維持してください。';
+
+  @override
+  String get clipboardOverlay => 'クリップボードフローティングボタン';
+
+  @override
+  String get clipboardOverlayDesc => 'フローティングボタンをタップして、バックグラウンド同期用のテキスト/画像キャッシュを更新します';
+
+  @override
+  String get clipboardOverlayHint => 'バックグラウンドでは最後に更新した内容のみ同期できます。オフにするとキャッシュを消去しボタンを非表示にします。';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'システム設定で「他のアプリの上に表示」を許可してください。戻るとフローティングボタンが表示されます。';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'クリップボードフローティングボタンを有効にしました';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'バックグラウンドではシステムクリップボードを読めず、有効なキャッシュもありません。アプリを開くかフローティングボタンで更新してから同期してください。';
   // Clipboard sync
   @override
   String get requestingClipboard => 'クリップボードをリクエスト中...';

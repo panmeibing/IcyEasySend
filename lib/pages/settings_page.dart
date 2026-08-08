@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/http_server_manager.dart';
+import '../services/clipboard_overlay_service.dart';
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import '../services/transfer_history_service.dart';
@@ -134,6 +137,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _loadIPValidationEnabled(),
       _loadReceiveSavePath(),
       _loadDeviceSecretKey(),
+      _loadClipboardOverlayEnabled(),
     ]);
     _loadServerInfo(); // This is synchronous
   }
@@ -241,6 +245,35 @@ class _SettingsPageState extends State<SettingsPage> {
         _state = _state.copyWith(deviceSecretKey: secretKey ?? '');
         _secretKeyController.text = secretKey ?? '';
       });
+    }
+  }
+
+  Future<void> _loadClipboardOverlayEnabled() async {
+    if (!Platform.isAndroid) return;
+    final enabled = await _preferencesService.getClipboardOverlayEnabled();
+    if (mounted) {
+      setState(() {
+        _state = _state.copyWith(clipboardOverlayEnabled: enabled);
+      });
+    }
+  }
+
+  Future<void> _onClipboardOverlayChanged(bool enabled) async {
+    final l10n = AppLocalizations.of(context);
+    final shown = await ClipboardOverlayService.instance.applyOverlayPreference(
+      enabled,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _state = _state.copyWith(clipboardOverlayEnabled: enabled);
+    });
+
+    if (enabled && !shown) {
+      _showWarningSnackBar(l10n.clipboardOverlayPermissionNeeded);
+    } else if (enabled && shown) {
+      _showSuccessSnackBar(l10n.clipboardOverlayEnabledToast);
     }
   }
 
@@ -761,6 +794,12 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  void _showWarningSnackBar(String message) {
+    if (mounted) {
+      ToastHelper.showWarning(context, message);
+    }
+  }
+
   /// Show error snackbar
   void _showErrorSnackBar(String message) {
     if (mounted) {
@@ -874,6 +913,10 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         });
                       },
+                      clipboardOverlayEnabled: _state.clipboardOverlayEnabled,
+                      onClipboardOverlayChanged: Platform.isAndroid
+                          ? _onClipboardOverlayChanged
+                          : null,
                       enableIPValidation: _state.enableIPValidation,
                       onIPValidationChanged: _saveIPValidationEnabled,
                       deviceSecretKey: _state.deviceSecretKey,

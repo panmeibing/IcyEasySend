@@ -988,6 +988,36 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get serverInternalError => 'Erreur interne du serveur';
 
+
+  @override
+  String get backgroundRejectNeedsSecretKey => 'L\'appareil est en arrière-plan. Seule la synchronisation/réception automatique avec clé secrète correspondante est prise en charge.';
+
+  @override
+  String get foregroundServiceNotificationTitle => 'IcyEasySend';
+
+  @override
+  String get foregroundServiceNotificationText => 'En attente des transferts et de la synchro presse-papiers en arrière-plan';
+
+  @override
+  String get androidBackgroundReceiveHint => 'En arrière-plan, seuls les appareils avec une clé secrète correspondante peuvent synchroniser ou envoyer automatiquement. Conservez la notification persistante.';
+
+  @override
+  String get clipboardOverlay => 'Bouton flottant presse-papiers';
+
+  @override
+  String get clipboardOverlayDesc => 'Appuyez sur le bouton flottant pour actualiser le cache texte/image pour la synchro en arrière-plan';
+
+  @override
+  String get clipboardOverlayHint => 'En arrière-plan, seul le dernier contenu actualisé peut être synchronisé. Désactiver vide le cache et masque le bouton.';
+
+  @override
+  String get clipboardOverlayPermissionNeeded => 'Autorisez "Afficher par-dessus d\'autres applications" dans les paramètres. Le bouton apparaîtra à votre retour.';
+
+  @override
+  String get clipboardOverlayEnabledToast => 'Bouton flottant presse-papiers activé';
+
+  @override
+  String get clipboardBackgroundCacheMiss => 'Impossible de lire le presse-papiers système en arrière-plan et aucun cache disponible. Ouvrez l\'app ou appuyez sur le bouton flottant pour actualiser.';
   // Clipboard sync
   @override
   String get requestingClipboard => 'Demande du presse-papiers...';

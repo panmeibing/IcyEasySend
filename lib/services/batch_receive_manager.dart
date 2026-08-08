@@ -93,6 +93,38 @@ class BatchReceiveManager {
     return results.every((accepted) => accepted);
   }
 
+  /// Accept a batch without showing any UI (background + secret-key path).
+  Future<bool> acceptBatchHeadless({
+    required List<PendingFileInfo> files,
+    required String senderIP,
+  }) async {
+    if (files.isEmpty) return false;
+
+    _pendingFilesBySender.putIfAbsent(senderIP, () => []).addAll(files);
+    _batchTimers[senderIP]?.cancel();
+    _batchTimers.remove(senderIP);
+
+    for (final fileInfo in files) {
+      fileInfo.isAccepted = true;
+      if (fileInfo.status.isEmpty) {
+        fileInfo.status = '准备接收...';
+      }
+      if (!fileInfo.completer.isCompleted) {
+        fileInfo.completer.complete(true);
+      }
+    }
+
+    return true;
+  }
+
+  /// Remove pending entries for a sender after headless transfers finish.
+  void clearPendingForSender(String senderIP) {
+    _batchTimers[senderIP]?.cancel();
+    _batchTimers.remove(senderIP);
+    _activeDialogKeys.remove(senderIP);
+    _pendingFilesBySender.remove(senderIP);
+  }
+
   /// Show batch receive dialog for all pending files from a sender
   Future<void> _showBatchDialog(
     BuildContext context,

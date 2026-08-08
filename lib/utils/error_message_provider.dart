@@ -479,6 +479,120 @@ class ErrorMessageProvider extends BaseI18nProvider {
     'en': 'User rejected file transfer',
   });
 
+  String get backgroundRejectNeedsSecretKey => getMessage({
+    'zh': '设备处于后台，仅支持密钥自动同步/接收。请打开应用或配置匹配的设备密钥。',
+    'zh_HK': '裝置處於背景，僅支援密鑰自動同步/接收。請打開應用程式或設定相符的裝置密鑰。',
+    'ko': '기기가 백그라운드에 있습니다. 일치하는 비밀 키가 있을 때만 자동 동기화/수신이 가능합니다.',
+    'ja': 'デバイスはバックグラウンドです。一致する秘密鍵がある場合のみ自動同期/受信できます。',
+    'fr':
+        'L\'appareil est en arrière-plan. Seule la synchronisation/réception automatique avec clé secrète correspondante est prise en charge.',
+    'de':
+        'Gerät ist im Hintergrund. Nur automatische Sync/Empfang mit passendem Geheimschlüssel wird unterstützt.',
+    'es':
+        'El dispositivo está en segundo plano. Solo se admite sincronización/recepción automática con clave secreta coincidente.',
+    'pt':
+        'O dispositivo está em segundo plano. Somente sincronização/recebimento automático com chave secreta correspondente é suportado.',
+    'ru':
+        'Устройство в фоне. Поддерживается только автосинхронизация/приём при совпадении секретного ключа.',
+    'it':
+        'Il dispositivo è in background. È supportata solo la sincronizzazione/ricezione automatica con chiave segreta corrispondente.',
+    'nl':
+        'Apparaat is op de achtergrond. Alleen automatische sync/ontvangst met overeenkomende geheime sleutel wordt ondersteund.',
+    'en':
+        'Device is in the background. Only secret-key auto sync/receive is supported. Open the app or configure a matching device secret key.',
+  });
+
+  String get clipboardBackgroundCacheMiss => getMessage({
+    'zh': '后台无法读取系统剪切板，且无可用缓存。请打开应用或点击悬浮窗刷新后再同步。',
+    'zh_HK': '背景無法讀取系統剪貼簿，且無可用快取。請打開應用程式或點擊懸浮窗重新整理後再同步。',
+    'ko': '백그라운드에서는 시스템 클립보드를 읽을 수 없고 사용 가능한 캐시도 없습니다. 앱을 열거나 플로팅 버튼을 눌러 새로고침한 뒤 동기화하세요.',
+    'ja': 'バックグラウンドではシステムクリップボードを読めず、有効なキャッシュもありません。アプリを開くかフローティングボタンで更新してから同期してください。',
+    'fr':
+        'Impossible de lire le presse-papiers système en arrière-plan et aucun cache disponible. Ouvrez l\'app ou appuyez sur le bouton flottant pour actualiser.',
+    'de':
+        'Zwischenablage im Hintergrund nicht lesbar und kein Cache verfügbar. App öffnen oder Floating-Button tippen zum Aktualisieren.',
+    'es':
+        'No se puede leer el portapapeles del sistema en segundo plano y no hay caché. Abra la app o toque el botón flotante para actualizar.',
+    'pt':
+        'Não é possível ler a área de transferência do sistema em segundo plano e não há cache. Abra o app ou toque no botão flutuante para atualizar.',
+    'ru':
+        'В фоне системный буфер недоступен и нет кэша. Откройте приложение или нажмите плавающую кнопку для обновления.',
+    'it':
+        'Impossibile leggere gli appunti di sistema in background e nessuna cache disponibile. Apri l\'app o tocca il pulsante flottante per aggiornare.',
+    'nl':
+        'Systeemklembord is op de achtergrond niet leesbaar en er is geen cache. Open de app of tik op de zwevende knop om te vernieuwen.',
+    'en':
+        'Cannot read the system clipboard in the background and no cache is available. Open the app or tap the floating button to refresh, then sync again.',
+  });
+
+  String get foregroundServiceNotificationTitle => getMessage({
+    'zh': 'IcyEasySend',
+    'zh_HK': 'IcyEasySend',
+    'ko': 'IcyEasySend',
+    'ja': 'IcyEasySend',
+    'fr': 'IcyEasySend',
+    'de': 'IcyEasySend',
+    'es': 'IcyEasySend',
+    'pt': 'IcyEasySend',
+    'ru': 'IcyEasySend',
+    'it': 'IcyEasySend',
+    'nl': 'IcyEasySend',
+    'en': 'IcyEasySend',
+  });
+
+  String get foregroundServiceNotificationText => getMessage({
+    'zh': '正在后台等待文件传输与剪切板同步',
+    'zh_HK': '正在背景等待檔案傳輸與剪貼簿同步',
+    'ko': '백그라운드에서 파일 전송 및 클립보드 동기화를 대기 중',
+    'ja': 'バックグラウンドでファイル転送とクリップボード同期を待機中',
+    'fr': 'En attente des transferts et de la synchro presse-papiers en arrière-plan',
+    'de': 'Wartet im Hintergrund auf Dateiübertragung und Zwischenablage-Sync',
+    'es': 'Esperando transferencias y sincronización del portapapeles en segundo plano',
+    'pt': 'Aguardando transferências e sincronização da área de transferência em segundo plano',
+    'ru': 'Ожидание передачи файлов и синхронизации буфера в фоне',
+    'it': 'In attesa di trasferimenti e sync appunti in background',
+    'nl': 'Wacht op bestandoverdracht en klembordsync op de achtergrond',
+    'en': 'Waiting for file transfers and clipboard sync in the background',
+  });
+
+  String get foregroundServiceChannelName => getMessage({
+    'zh': '后台传输服务',
+    'zh_HK': '背景傳輸服務',
+    'ko': '백그라운드 전송 서비스',
+    'ja': 'バックグラウンド転送サービス',
+    'fr': 'Service de transfert en arrière-plan',
+    'de': 'Hintergrund-Übertragungdienst',
+    'es': 'Servicio de transferencia en segundo plano',
+    'pt': 'Serviço de transferência em segundo plano',
+    'ru': 'Фоновая служба передачи',
+    'it': 'Servizio trasferimento in background',
+    'nl': 'Achtergrond-overdrachtservice',
+    'en': 'Background transfer service',
+  });
+
+  String get foregroundServiceChannelDescription => getMessage({
+    'zh': '保持应用在后台可接收局域网文件与剪切板请求',
+    'zh_HK': '保持應用程式在背景可接收區域網路檔案與剪貼簿請求',
+    'ko': '앱이 백그라운드에서도 LAN 파일 및 클립보드 요청을 받을 수 있도록 유지',
+    'ja': 'バックグラウンドでもLANファイルとクリップボード要求を受信できるようにします',
+    'fr':
+        'Maintient l\'app capable de recevoir fichiers LAN et requêtes presse-papiers en arrière-plan',
+    'de':
+        'Hält die App bereit, LAN-Dateien und Zwischenablage-Anfragen im Hintergrund zu empfangen',
+    'es':
+        'Mantiene la app lista para recibir archivos LAN y solicitudes del portapapeles en segundo plano',
+    'pt':
+        'Mantém o app pronto para receber arquivos LAN e pedidos da área de transferência em segundo plano',
+    'ru':
+        'Позволяет приложению принимать LAN-файлы и запросы буфера обмена в фоне',
+    'it':
+        'Mantiene l\'app in grado di ricevere file LAN e richieste appunti in background',
+    'nl':
+        'Houdt de app klaar om LAN-bestanden en klembordverzoeken op de achtergrond te ontvangen',
+    'en':
+        'Keeps the app able to receive LAN files and clipboard requests in the background',
+  });
+
   // Validation errors
   String get ipAddressEmpty => getMessage({
     'zh': 'IP 地址不能为空',

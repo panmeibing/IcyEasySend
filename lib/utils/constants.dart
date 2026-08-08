@@ -147,8 +147,11 @@ class AppConstants {
   /// Maximum clipboard size
   static const int maxClipboardSizeMB = 10;
 
-  /// Keep the lastest temp file count from clipboard
+  /// Keep the latest temp file count from clipboard
   static const int maxClipboardKeepCount = 5;
+
+  /// In-memory clipboard cache max age (background fallback).
+  static const Duration clipboardCacheMaxAge = Duration(hours: 24);
 
   // File name constants
   static const String defaultLoggerFileName = "IcyEasySend.log";
