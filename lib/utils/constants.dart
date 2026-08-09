@@ -153,6 +153,12 @@ class AppConstants {
   /// In-memory clipboard cache max age (background fallback).
   static const Duration clipboardCacheMaxAge = Duration(hours: 24);
 
+  /// Default lifetime for guest web-share sessions (QR download links).
+  static const Duration webShareSessionDuration = Duration(minutes: 30);
+
+  /// Peer IP placeholder stored in transfer history for web-share sessions.
+  static const String webShareHistoryPeerIp = 'web-share';
+
   // File name constants
   static const String defaultLoggerFileName = "IcyEasySend.log";
   static const String historyFileName = "IcyEasySendTransferHistory.json";

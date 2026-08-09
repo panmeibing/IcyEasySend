@@ -328,6 +328,32 @@ abstract class AppLocalizations {
 
   String get sendFile;
 
+  String get shareViaQr;
+
+  String get webShareTitle;
+
+  String get webShareHint;
+
+  String get webShareCopyLink;
+
+  String get webShareLinkCopied;
+
+  String get webShareStopSharing;
+
+  String get webShareStopped;
+
+  String get webShareServerRequired;
+
+  String get webShareCreated;
+
+  String get webShareFailed;
+
+  String get webSharePeerName;
+
+  String webShareFilesSummary(int count, String size);
+
+  String webShareExpiresIn(String time);
+
   String get releaseToAdd;
 
   String get serverNotRunning;

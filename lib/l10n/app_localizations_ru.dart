@@ -434,6 +434,49 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sendFile => 'Отправить файл';
 
   @override
+  String get shareViaQr => 'Поделиться по QR';
+
+  @override
+  String get webShareTitle => 'Сканируйте для получения';
+
+  @override
+  String get webShareHint =>
+      'Получатель сканирует системной камерой и скачивает в браузере — без установки приложения. Будьте в одной Wi‑Fi / LAN. Некоторые сторонние сканеры блокируют локальные ссылки; используйте «Копировать ссылку».';
+
+  @override
+  String get webShareCopyLink => 'Копировать ссылку';
+
+  @override
+  String get webShareLinkCopied => 'Ссылка скопирована';
+
+  @override
+  String get webShareStopSharing => 'Остановить раздачу';
+
+  @override
+  String get webShareStopped => 'Веб-раздача остановлена';
+
+  @override
+  String get webShareServerRequired =>
+      'Сначала запустите локальный сервер, затем делитесь по QR';
+
+  @override
+  String get webShareCreated =>
+      'Веб-раздача создана. Получатель может сканировать и скачать.';
+
+  @override
+  String get webShareFailed => 'Не удалось создать веб-раздачу';
+
+  @override
+  String get webSharePeerName => 'Веб-раздача';
+
+  @override
+  String webShareFilesSummary(int count, String size) =>
+      '$count файл(ов) · $size';
+
+  @override
+  String webShareExpiresIn(String time) => 'Истекает через $time';
+
+  @override
   String get releaseToAdd => 'Отпустите мышь, чтобы добавить файлы';
 
   @override

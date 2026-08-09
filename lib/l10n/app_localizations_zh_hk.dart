@@ -425,6 +425,46 @@ class AppLocalizationsZhHk extends AppLocalizations {
   String get sendFile => '傳送檔案';
 
   @override
+  String get shareViaQr => '二維碼分享';
+
+  @override
+  String get webShareTitle => '掃碼接收檔案';
+
+  @override
+  String get webShareHint =>
+      '對方使用系統相機掃碼即可在瀏覽器中下載，無需安裝本應用。請保持同一 Wi‑Fi / 局域網；微信等第三方掃碼器可能無法開啟，可複製連結傳送。';
+
+  @override
+  String get webShareCopyLink => '複製連結';
+
+  @override
+  String get webShareLinkCopied => '連結已複製';
+
+  @override
+  String get webShareStopSharing => '停止分享';
+
+  @override
+  String get webShareStopped => '已停止網頁分享';
+
+  @override
+  String get webShareServerRequired => '請先啟動本機服務後再使用二維碼分享';
+
+  @override
+  String get webShareCreated => '網頁分享已建立，對方掃碼即可下載';
+
+  @override
+  String get webShareFailed => '建立網頁分享失敗';
+
+  @override
+  String get webSharePeerName => '網頁分享';
+
+  @override
+  String webShareFilesSummary(int count, String size) => '$count 個檔案 · $size';
+
+  @override
+  String webShareExpiresIn(String time) => '剩餘有效時間 $time';
+
+  @override
   String get releaseToAdd => '放開滑鼠以新增檔案';
 
   @override

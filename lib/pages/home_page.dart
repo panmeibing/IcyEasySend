@@ -6,16 +6,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import '../l10n/app_localizations.dart';
+import '../models/discovered_device.dart';
+import '../models/transfer_file_item.dart';
+import '../models/transfer_history.dart';
 import '../services/cache_cleanup_service.dart';
 import '../services/http_server_manager.dart';
 import '../services/preferences_service.dart';
 import '../services/screen_wake_lock_service.dart';
 import '../services/sharing_intent_service.dart';
+import '../services/transfer/transfer_history_manager.dart';
 import '../services/validation_service.dart';
+import '../services/web_share_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
-import '../models/discovered_device.dart';
-import '../models/transfer_file_item.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
 import '../utils/toast_helper.dart';
@@ -29,6 +32,7 @@ import 'home/widgets/port_input_section.dart';
 import 'home/widgets/secret_key_input_section.dart';
 import 'home/widgets/server_status_card.dart';
 import 'home/widgets/transfer_progress_card.dart';
+import 'home/widgets/web_share_qr_dialog.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {
@@ -81,6 +85,8 @@ class HomePageState extends State<HomePage> {
   late final FileTransferController _fileTransferController;
   late final ClipboardController _clipboardController;
   late final CacheCleanupService _cacheCleanupService;
+  late final TransferHistoryManager _historyManager;
+  bool _isCreatingWebShare = false;
 
   // Controllers and validation
   final TextEditingController _ipController = TextEditingController();
@@ -120,6 +126,7 @@ class HomePageState extends State<HomePage> {
     _fileTransferController = FileTransferController();
     _clipboardController = ClipboardController();
     _cacheCleanupService = CacheCleanupService();
+    _historyManager = TransferHistoryManager();
 
     // Set context for server manager
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -551,6 +558,31 @@ class HomePageState extends State<HomePage> {
                           foregroundColor: Colors.white,
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      // QR web share (guest browser download, no app install)
+                      OutlinedButton.icon(
+                        onPressed: _canShareViaQr() ? _shareViaQr : null,
+                        icon: _isCreatingWebShare
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.qr_code_2),
+                        label: Text(AppLocalizations.of(context).shareViaQr),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          foregroundColor: Colors.blue,
+                          side: BorderSide(
+                            color: _canShareViaQr()
+                                ? Colors.blue
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
 
                       // Progress indicator
                       if (isSending) ...[
@@ -635,6 +667,97 @@ class HomePageState extends State<HomePage> {
         selectedItems.isNotEmpty &&
         isIPValid &&
         isPortValid;
+  }
+
+  /// QR share only needs a running server and selected files.
+  bool _canShareViaQr() {
+    return isServerRunning &&
+        !isSending &&
+        !_isCreatingWebShare &&
+        selectedItems.isNotEmpty;
+  }
+
+  /// Create a temporary web-share session and show QR for guest downloads.
+  Future<void> _shareViaQr() async {
+    if (!_canShareViaQr()) {
+      return;
+    }
+
+    final l10n = AppLocalizations.of(context);
+    if (!widget.serverManager.isRunning()) {
+      ToastHelper.showError(context, l10n.webShareServerRequired);
+      return;
+    }
+
+    final serverAddress = widget.serverManager.getServerAddress();
+    if (serverAddress == null || serverAddress.isEmpty) {
+      ToastHelper.showError(context, l10n.webShareServerRequired);
+      return;
+    }
+
+    setState(() => _isCreatingWebShare = true);
+    _disableFocusNodes();
+
+    try {
+      final session = await WebShareService.instance.createSession(
+        items: selectedItems,
+      );
+      final shareUrl = WebShareService.instance.buildShareUrl(
+        serverAddress,
+        session.token,
+      );
+
+      await _saveWebShareHistory(session.files.map((f) {
+        return TransferHistory(
+          fileName: f.displayName,
+          fileSize: f.size,
+          peerIP: AppConstants.webShareHistoryPeerIp,
+          peerDeviceName: l10n.webSharePeerName,
+          timestamp: session.createdAt,
+          isReceived: false,
+          success: true,
+        );
+      }).toList());
+
+      if (!mounted) return;
+
+      ToastHelper.showSuccess(context, l10n.webShareCreated);
+
+      await WebShareQrDialog.show(
+        context,
+        session: session,
+        shareUrl: shareUrl,
+        shareUrlBuilder: () {
+          final address = widget.serverManager.getServerAddress();
+          if (address == null || address.isEmpty) {
+            return shareUrl;
+          }
+          return WebShareService.instance.buildShareUrl(address, session.token);
+        },
+        onStopSharing: () async {
+          WebShareService.instance.stopSession(token: session.token);
+          if (mounted) {
+            ToastHelper.showInfo(context, l10n.webShareStopped);
+          }
+        },
+      );
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '创建网页分享失败: $e', e, stackTrace);
+      if (mounted) {
+        ToastHelper.showError(context, l10n.webShareFailed);
+      }
+    } finally {
+      _enableFocusNodes();
+      if (mounted) {
+        setState(() => _isCreatingWebShare = false);
+      }
+    }
+  }
+
+  Future<void> _saveWebShareHistory(List<TransferHistory> histories) async {
+    if (histories.isEmpty) return;
+    await _historyManager.saveTransferHistoryBatch(histories);
+    widget.serverManager.refreshHistory();
   }
 
   /// Select multiple files

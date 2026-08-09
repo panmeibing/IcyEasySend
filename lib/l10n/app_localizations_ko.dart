@@ -428,6 +428,46 @@ class AppLocalizationsKo extends AppLocalizations {
   String get sendFile => '파일 전송';
 
   @override
+  String get shareViaQr => 'QR로 공유';
+
+  @override
+  String get webShareTitle => '스캔하여 받기';
+
+  @override
+  String get webShareHint =>
+      '상대방은 시스템 카메라로 스캔해 브라우저에서 다운로드할 수 있습니다(앱 설치 불필요). 같은 Wi‑Fi / LAN에 있어야 합니다. 일부 서드파티 스캐너는 LAN 링크를 열지 못할 수 있으니 링크 복사를 사용하세요.';
+
+  @override
+  String get webShareCopyLink => '링크 복사';
+
+  @override
+  String get webShareLinkCopied => '링크가 복사되었습니다';
+
+  @override
+  String get webShareStopSharing => '공유 중지';
+
+  @override
+  String get webShareStopped => '웹 공유가 중지되었습니다';
+
+  @override
+  String get webShareServerRequired => 'QR 공유 전에 로컬 서버를 시작하세요';
+
+  @override
+  String get webShareCreated => '웹 공유가 생성되었습니다. 상대방이 스캔하여 다운로드할 수 있습니다.';
+
+  @override
+  String get webShareFailed => '웹 공유 생성 실패';
+
+  @override
+  String get webSharePeerName => '웹 공유';
+
+  @override
+  String webShareFilesSummary(int count, String size) => '$count개 파일 · $size';
+
+  @override
+  String webShareExpiresIn(String time) => '남은 시간 $time';
+
+  @override
   String get releaseToAdd => '마우스를 놓아 파일 추가';
 
   @override

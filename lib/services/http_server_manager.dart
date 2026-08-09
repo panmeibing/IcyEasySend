@@ -18,6 +18,9 @@ import 'file_transfer_handler.dart';
 import 'health_check_handler.dart';
 import 'multicast_discovery_service.dart';
 import 'preferences_service.dart';
+import 'web_share_asset_handler.dart';
+import 'web_share_handler.dart';
+import 'web_share_service.dart';
 
 /// Result of server start operation
 class ServerStartResult {
@@ -49,6 +52,8 @@ class HTTPServerManager {
   final DiscoverRegisterHandler _discoverRegisterHandler;
   late final FileTransferHandler _fileTransferHandler;
   late final ClipboardHandler _clipboardHandler;
+  late final WebShareHandler _webShareHandler;
+  late final WebShareAssetHandler _webShareAssetHandler;
 
   // Network connectivity monitoring
   final Connectivity _connectivity = Connectivity();
@@ -60,6 +65,8 @@ class HTTPServerManager {
     DiscoverRegisterHandler? discoverRegisterHandler,
     FileTransferHandler? fileTransferHandler,
     ClipboardHandler? clipboardHandler,
+    WebShareHandler? webShareHandler,
+    WebShareAssetHandler? webShareAssetHandler,
   }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler(),
        _discoverRegisterHandler =
            discoverRegisterHandler ?? DiscoverRegisterHandler() {
@@ -71,7 +78,7 @@ class HTTPServerManager {
           isInBackgroundGetter: () => _isInBackground,
           historyRefreshCallbackGetter: () => _historyRefreshCallback,
         );
-    
+
     // Create clipboard handler with a context getter if not provided
     _clipboardHandler =
         clipboardHandler ??
@@ -79,6 +86,9 @@ class HTTPServerManager {
           contextGetter: () => _context,
           isInBackgroundGetter: () => _isInBackground,
         );
+
+    _webShareHandler = webShareHandler ?? WebShareHandler();
+    _webShareAssetHandler = webShareAssetHandler ?? WebShareAssetHandler();
   }
 
   /// Whether the app UI is currently in the background.
@@ -250,6 +260,19 @@ class HTTPServerManager {
         // Configure clipboard request endpoint
         router.post('/clipboard-request', _clipboardHandler.handleClipboardRequest);
 
+        // Guest web-share download endpoints (QR / browser receive).
+        // Register more specific paths before `/s/<token>`.
+        router.get(
+          WebShareAssetHandler.logoRoutePath,
+          _webShareAssetHandler.handleLogo,
+        );
+        router.get(
+          '/s/<token>/file/<fileId>',
+          _webShareHandler.handleFileDownload,
+        );
+        router.get('/s/<token>/meta', _webShareHandler.handleShareMeta);
+        router.get('/s/<token>', _webShareHandler.handleSharePage);
+
         // Create handler with middleware
         final handler = Pipeline()
             .addMiddleware(logRequests())
@@ -378,6 +401,7 @@ class HTTPServerManager {
   /// Dispose resources
   Future<void> dispose() async {
     stopNetworkMonitoring();
+    WebShareService.instance.clearAll();
     await stopServer();
   }
 

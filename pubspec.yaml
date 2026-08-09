@@ -94,6 +94,7 @@ dependencies:
   wakelock_plus: ^1.5.2
   dio: ^5.9.2
   flutter_foreground_task: ^10.0.0
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -127,6 +128,7 @@ flutter:
   
   assets:
     - lib/images/icon.jpg
+    - lib/images/icon_256x256.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

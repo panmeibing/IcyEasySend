@@ -437,6 +437,49 @@ class AppLocalizationsIt extends AppLocalizations {
   String get sendFile => 'Invia File';
 
   @override
+  String get shareViaQr => 'Condividi con QR';
+
+  @override
+  String get webShareTitle => 'Scansiona per ricevere';
+
+  @override
+  String get webShareHint =>
+      'Il destinatario può scansionare con la fotocamera di sistema e scaricare nel browser, senza installare l’app. Restate sulla stessa Wi‑Fi / LAN. Alcuni scanner di terze parti possono bloccare i link LAN; usa Copia link.';
+
+  @override
+  String get webShareCopyLink => 'Copia link';
+
+  @override
+  String get webShareLinkCopied => 'Link copiato';
+
+  @override
+  String get webShareStopSharing => 'Interrompi condivisione';
+
+  @override
+  String get webShareStopped => 'Condivisione web interrotta';
+
+  @override
+  String get webShareServerRequired =>
+      'Avvia il server locale prima di condividere con QR';
+
+  @override
+  String get webShareCreated =>
+      'Condivisione web creata. Il destinatario può scansionare per scaricare.';
+
+  @override
+  String get webShareFailed => 'Creazione della condivisione web non riuscita';
+
+  @override
+  String get webSharePeerName => 'Condivisione web';
+
+  @override
+  String webShareFilesSummary(int count, String size) =>
+      '$count file · $size';
+
+  @override
+  String webShareExpiresIn(String time) => 'Scade tra $time';
+
+  @override
   String get releaseToAdd => 'Rilascia per aggiungere file';
 
   @override

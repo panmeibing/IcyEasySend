@@ -33,24 +33,22 @@ class FileSelectionSection extends StatelessWidget {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: isEnabled ? onSelectFiles : null,
-                icon: const Icon(Icons.insert_drive_file),
-                label: Text(l10n.selectFiles),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: isEnabled ? onSelectFolder : null,
-                icon: const Icon(Icons.folder),
-                label: Text(l10n.selectFolder),
-              ),
-            ),
-          ],
+        OutlinedButton.icon(
+          onPressed: isEnabled ? onSelectFiles : null,
+          icon: const Icon(Icons.insert_drive_file),
+          label: Text(l10n.selectFiles),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: isEnabled ? onSelectFolder : null,
+          icon: const Icon(Icons.folder),
+          label: Text(l10n.selectFolder),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
         ),
         if (selectedItems.isNotEmpty) ...[
           const SizedBox(height: 8),

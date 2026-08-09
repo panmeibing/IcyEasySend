@@ -433,6 +433,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sendFile => 'Send File';
 
   @override
+  String get shareViaQr => 'Share via QR';
+
+  @override
+  String get webShareTitle => 'Scan to receive files';
+
+  @override
+  String get webShareHint =>
+      'The receiver can scan with the system camera and download in a browser—no app install needed. Stay on the same Wi‑Fi / LAN. Some third-party scanners (e.g. WeChat) may block LAN links; use Copy Link as a fallback.';
+
+  @override
+  String get webShareCopyLink => 'Copy link';
+
+  @override
+  String get webShareLinkCopied => 'Link copied';
+
+  @override
+  String get webShareStopSharing => 'Stop sharing';
+
+  @override
+  String get webShareStopped => 'Web share stopped';
+
+  @override
+  String get webShareServerRequired =>
+      'Start the local server before sharing via QR';
+
+  @override
+  String get webShareCreated =>
+      'Web share created. The receiver can scan to download.';
+
+  @override
+  String get webShareFailed => 'Failed to create web share';
+
+  @override
+  String get webSharePeerName => 'Web Share';
+
+  @override
+  String webShareFilesSummary(int count, String size) =>
+      '$count file(s) · $size';
+
+  @override
+  String webShareExpiresIn(String time) => 'Expires in $time';
+
+  @override
   String get releaseToAdd => 'Release to add files';
 
   @override

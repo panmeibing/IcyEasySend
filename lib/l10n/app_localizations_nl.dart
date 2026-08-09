@@ -436,6 +436,49 @@ class AppLocalizationsNl extends AppLocalizations {
   String get sendFile => 'Bestand verzenden';
 
   @override
+  String get shareViaQr => 'Delen via QR';
+
+  @override
+  String get webShareTitle => 'Scan om te ontvangen';
+
+  @override
+  String get webShareHint =>
+      'De ontvanger scant met de systeemcamera en downloadt in de browser — zonder app. Blijf op hetzelfde Wi‑Fi / LAN. Sommige scanners van derden blokkeren LAN-links; gebruik Link kopiëren.';
+
+  @override
+  String get webShareCopyLink => 'Link kopiëren';
+
+  @override
+  String get webShareLinkCopied => 'Link gekopieerd';
+
+  @override
+  String get webShareStopSharing => 'Delen stoppen';
+
+  @override
+  String get webShareStopped => 'Webdeling gestopt';
+
+  @override
+  String get webShareServerRequired =>
+      'Start de lokale server voordat je via QR deelt';
+
+  @override
+  String get webShareCreated =>
+      'Webdeling gemaakt. De ontvanger kan scannen om te downloaden.';
+
+  @override
+  String get webShareFailed => 'Webdeling maken mislukt';
+
+  @override
+  String get webSharePeerName => 'Webdeling';
+
+  @override
+  String webShareFilesSummary(int count, String size) =>
+      '$count bestand(en) · $size';
+
+  @override
+  String webShareExpiresIn(String time) => 'Verloopt over $time';
+
+  @override
   String get releaseToAdd => 'Loslaten om bestanden toe te voegen';
 
   @override

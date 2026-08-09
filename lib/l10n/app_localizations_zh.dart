@@ -425,6 +425,46 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sendFile => '发送文件';
 
   @override
+  String get shareViaQr => '二维码分享';
+
+  @override
+  String get webShareTitle => '扫码接收文件';
+
+  @override
+  String get webShareHint =>
+      '对方使用系统相机扫码即可在浏览器中下载，无需安装本应用。请保持同一 Wi‑Fi / 局域网；微信等第三方扫码器可能无法打开，可复制链接发送。';
+
+  @override
+  String get webShareCopyLink => '复制链接';
+
+  @override
+  String get webShareLinkCopied => '链接已复制';
+
+  @override
+  String get webShareStopSharing => '停止分享';
+
+  @override
+  String get webShareStopped => '已停止网页分享';
+
+  @override
+  String get webShareServerRequired => '请先启动本机服务后再使用二维码分享';
+
+  @override
+  String get webShareCreated => '网页分享已创建，对方扫码即可下载';
+
+  @override
+  String get webShareFailed => '创建网页分享失败';
+
+  @override
+  String get webSharePeerName => '网页分享';
+
+  @override
+  String webShareFilesSummary(int count, String size) => '$count 个文件 · $size';
+
+  @override
+  String webShareExpiresIn(String time) => '剩余有效时间 $time';
+
+  @override
   String get releaseToAdd => '松开鼠标以添加文件';
 
   @override
