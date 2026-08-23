@@ -11,6 +11,16 @@ class MulticastAnnouncement {
   final int port;
   final bool announcement;
 
+  /// Base64 Ed25519 public key, null on peers older than the identity release.
+  ///
+  /// Broadcasting it lets a discovered device be recognised as already paired
+  /// without a round trip, and lets pairing start straight from the device
+  /// list.
+  final String? publicKey;
+
+  /// Null on peers that predate [AppConstants.protocolVersion].
+  final String? protocolVersion;
+
   const MulticastAnnouncement({
     required this.app,
     required this.deviceName,
@@ -18,6 +28,8 @@ class MulticastAnnouncement {
     required this.deviceId,
     required this.port,
     required this.announcement,
+    this.publicKey,
+    this.protocolVersion,
   });
 
   /// Build a payload describing this device.
@@ -26,6 +38,7 @@ class MulticastAnnouncement {
     required String deviceId,
     required int port,
     required bool announcement,
+    String? publicKey,
   }) {
     return MulticastAnnouncement(
       app: AppConstants.projectNameTight,
@@ -34,6 +47,8 @@ class MulticastAnnouncement {
       deviceId: deviceId,
       port: port,
       announcement: announcement,
+      publicKey: publicKey,
+      protocolVersion: AppConstants.protocolVersion,
     );
   }
 
@@ -44,6 +59,8 @@ class MulticastAnnouncement {
     'deviceId': deviceId,
     'port': port,
     'announcement': announcement,
+    if (publicKey != null) 'publicKey': publicKey,
+    if (protocolVersion != null) 'protocolVersion': protocolVersion,
   };
 
   List<int> toBytes() => utf8.encode(jsonEncode(toJson()));
@@ -70,6 +87,8 @@ class MulticastAnnouncement {
         deviceId: deviceId,
         port: port.toInt(),
         announcement: json['announcement'] as bool? ?? false,
+        publicKey: json['publicKey'] as String?,
+        protocolVersion: json['protocolVersion'] as String?,
       );
     } catch (_) {
       return null;

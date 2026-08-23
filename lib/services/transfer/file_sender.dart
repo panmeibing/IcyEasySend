@@ -10,6 +10,7 @@ import '../../utils/constants.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
+import 'transfer_http.dart';
 import 'transfer_request_builder.dart';
 
 /// Service for sending files to target devices
@@ -65,7 +66,8 @@ class FileSender {
       "sendFileWithTransferId() transferId: [$transferId], targetIP: [$targetIP], fileSize: [$fileSize], fileName: [$fileName]",
     );
 
-    final dio = _dioFactory?.call(fileSize) ?? _createDio(fileSize);
+    final dio =
+        _dioFactory?.call(fileSize) ?? TransferHttp.createForUpload(fileSize);
 
     try {
       final uri = _requestBuilder.buildTransferUri(
@@ -124,7 +126,15 @@ class FileSender {
 
       return result;
     } on DioException catch (e, stackTrace) {
-      return _handleDioException(e, stackTrace, fileName);
+      LogUtil.eTag(
+        logTag,
+        'Dio error sending file $fileName: ${e.message}',
+        e,
+        stackTrace,
+      );
+      return OperationResult.failure(
+        TransferHttp.describeFailure(e, transport: TransferTransport.lan),
+      );
     } on FileSystemException catch (e) {
       LogUtil.eTag(logTag, 'File system error for $fileName: ${e.toString()}');
       return OperationResult.failure('文件访问错误: ${e.message}');
@@ -142,63 +152,6 @@ class FileSender {
   }
 
   static const double _kStreamingProgressCap = 0.99;
-
-  Dio _createDio(int fileSize) {
-    final transferTimeout = _transferTimeout(fileSize);
-    return Dio(
-      BaseOptions(
-        connectTimeout: Duration(seconds: AppConstants.requestTimeout),
-        sendTimeout: transferTimeout,
-        receiveTimeout: transferTimeout,
-      ),
-    );
-  }
-
-  Duration _transferTimeout(int fileSize) {
-    return Duration(seconds: fileSize ~/ (AppConstants.bytesPerMB)) +
-        Duration(seconds: AppConstants.requestTimeout);
-  }
-
-  OperationResult<TransferData> _handleDioException(
-    DioException e,
-    StackTrace stackTrace,
-    String fileName,
-  ) {
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        LogUtil.eTag(logTag, 'Timeout sending file $fileName: ${e.message}');
-        return OperationResult.failure('文件传输超时');
-      case DioExceptionType.connectionError:
-        final error = e.error;
-        if (error is SocketException) {
-          LogUtil.eTag(
-            logTag,
-            'Socket error sending file $fileName: ${error.toString()}',
-          );
-          return OperationResult.failure('网络连接失败\n错误: ${error.message}');
-        }
-        LogUtil.eTag(
-          logTag,
-          'Connection error sending file $fileName: ${e.message}',
-          e,
-          stackTrace,
-        );
-        return OperationResult.failure('网络连接失败\n错误: ${e.message}');
-      case DioExceptionType.cancel:
-        LogUtil.wTag(logTag, 'Upload cancelled for $fileName');
-        return OperationResult.failure('文件传输已取消');
-      default:
-        LogUtil.eTag(
-          logTag,
-          'Dio error sending file $fileName: ${e.message}',
-          e,
-          stackTrace,
-        );
-        return OperationResult.failure('网络请求失败: ${e.message}');
-    }
-  }
 
   /// Handle server response
   Future<OperationResult<TransferData>> _handleTransferResponse({

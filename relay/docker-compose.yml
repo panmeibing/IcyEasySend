@@ -1,0 +1,41 @@
+services:
+  relayd:
+    build:
+      context: .
+      args:
+        VERSION: dev
+    image: icy-easy-send/relayd:dev
+    restart: unless-stopped
+    environment:
+      RELAY_LISTEN: ":8443"
+      # Generate one with: openssl rand -base64 48
+      # Startup fails if this is shorter than 32 characters.
+      RELAY_TOKEN: ${RELAY_TOKEN:?RELAY_TOKEN is required}
+      RELAY_MAX_CONCURRENT_STREAMS: "8"
+      RELAY_STREAM_RENDEZVOUS_TIMEOUT: "30s"
+      RELAY_STREAM_IDLE_TIMEOUT: "60s"
+      RELAY_PAIR_RATE_PER_MIN: "5"
+      RELAY_LOG_LEVEL: "info"
+    # Bound to loopback because TLS is expected to be terminated by the proxy
+    # below. Publish 0.0.0.0 only if you set RELAY_TLS_CERT and RELAY_TLS_KEY.
+    ports:
+      - "127.0.0.1:8443:8443"
+
+  # Caddy obtains and renews a Let's Encrypt certificate on its own and streams
+  # request and response bodies without buffering, which is what a relay needs.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - relayd
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

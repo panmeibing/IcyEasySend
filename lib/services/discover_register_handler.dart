@@ -45,6 +45,8 @@ class DiscoverRegisterHandler {
         ip: clientIp,
         port: announcement.port,
         deviceName: announcement.deviceName,
+        deviceId: announcement.deviceId,
+        publicKey: announcement.publicKey,
       );
 
       final accepted = MulticastDiscoveryService.instance

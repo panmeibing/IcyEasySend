@@ -12,6 +12,7 @@ import '../../../services/file_transfer_service.dart';
 import '../../../services/permission_service.dart';
 import '../../../services/preferences_service.dart';
 import '../../../services/validation_service.dart';
+import '../../../transport/transport_channel.dart';
 import '../../../utils/dialog_helper.dart';
 import '../../../utils/error_messages.dart';
 import '../../../utils/log_util.dart';
@@ -265,6 +266,7 @@ class FileTransferController {
     required List<TransferFileItem> files,
     required String targetIP,
     required int targetPort,
+    PeerRef? peer,
     String? secretKey,
     required Function(double, int, int) onProgress,
     required Function(int, double, int, int) onFileProgress,
@@ -273,14 +275,17 @@ class FileTransferController {
     required Function() onTransferEnd,
     VoidCallback? onHistoryUpdated,
   }) async {
-    if (files.isEmpty || targetIP.isEmpty) {
+    final resolvedPeer = peer ??
+        (targetIP.isEmpty
+            ? null
+            : PeerRef.lanAddress('$targetIP:$targetPort'));
+    if (files.isEmpty || resolvedPeer == null) {
       return;
     }
 
-    final targetAddress = '$targetIP:$targetPort';
     LogUtil.iTag(
       logTag,
-      "sendFiles() ready to send files, targetAddress: $targetAddress",
+      'sendFiles() ready to send files, peer: ${resolvedPeer.describe()}',
     );
 
     onTransferStart();
@@ -289,8 +294,8 @@ class FileTransferController {
       final l10n = AppLocalizations.of(context);
       onStatusChange(l10n.waitingForReceiverConfirmation);
 
-      final results = await _fileTransferService.sendFilesWithBatchConfirm(
-        targetIP: targetAddress,
+      final results = await _fileTransferService.sendFilesTo(
+        peer: resolvedPeer,
         files: files,
         secretKey: secretKey,
         onProgress: onProgress,
@@ -326,9 +331,11 @@ class FileTransferController {
             confirmText: l10n.confirm,
           );
 
-          // Save the IP address and port for next time
-          await _preferencesService.saveLastUsedIP(targetIP);
-          await _preferencesService.saveLastUsedPort(targetPort);
+          // Save the IP address and port for next time (LAN peers only).
+          if (resolvedPeer.hasLan) {
+            await _preferencesService.saveLastUsedIP(targetIP);
+            await _preferencesService.saveLastUsedPort(targetPort);
+          }
         } else if (successCount == 0) {
           await DialogHelper.showErrorDialog(
             context,
@@ -349,8 +356,10 @@ class FileTransferController {
             confirmText: l10n.confirm,
           );
 
-          await _preferencesService.saveLastUsedIP(targetIP);
-          await _preferencesService.saveLastUsedPort(targetPort);
+          if (resolvedPeer.hasLan) {
+            await _preferencesService.saveLastUsedIP(targetIP);
+            await _preferencesService.saveLastUsedPort(targetPort);
+          }
         }
       }
     } on SocketException {

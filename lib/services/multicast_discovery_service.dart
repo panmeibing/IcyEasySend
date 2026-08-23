@@ -10,6 +10,7 @@ import '../utils/log_util.dart';
 import '../utils/multicast_lock_helper.dart';
 import '../utils/multicast_socket_options.dart';
 import '../utils/network_util.dart';
+import 'identity_service.dart';
 
 /// UDP multicast / broadcast LAN discovery (LocalSend-style).
 ///
@@ -295,6 +296,8 @@ class MulticastDiscoveryService {
       ip: datagram.address.address,
       port: announcement.port,
       deviceName: announcement.deviceName,
+      deviceId: announcement.deviceId,
+      publicKey: announcement.publicKey,
     );
 
     if (announcement.announcement && _serverRunning) {
@@ -357,6 +360,9 @@ class MulticastDiscoveryService {
       deviceId: _deviceId!,
       port: _httpPort!,
       announcement: announcement,
+      // Null until the identity has loaded; peers treat a missing key as
+      // "cannot pair yet" and the next announcement will carry it.
+      publicKey: IdentityService.instance.publicKeyBase64OrNull,
     ).toBytes();
   }
 

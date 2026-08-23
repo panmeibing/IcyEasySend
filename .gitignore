@@ -72,3 +72,11 @@ app.*.map.json
 *.jks
 
 ohos/
+
+# Go relay service build outputs
+relay/relayd
+relay/relayd.exe
+relay/dist/
+
+# Local relayd runs used by the live tests
+relay/relayd.live.*

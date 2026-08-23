@@ -16,8 +16,11 @@ import 'clipboard_handler.dart';
 import 'discover_register_handler.dart';
 import 'file_transfer_handler.dart';
 import 'health_check_handler.dart';
+import 'identity_service.dart';
 import 'multicast_discovery_service.dart';
+import 'pairing_handler.dart';
 import 'preferences_service.dart';
+import 'relay/relay_service.dart';
 import 'web_share_asset_handler.dart';
 import 'web_share_handler.dart';
 import 'web_share_service.dart';
@@ -54,6 +57,7 @@ class HTTPServerManager {
   late final ClipboardHandler _clipboardHandler;
   late final WebShareHandler _webShareHandler;
   late final WebShareAssetHandler _webShareAssetHandler;
+  late final PairingHandler _pairingHandler;
 
   // Network connectivity monitoring
   final Connectivity _connectivity = Connectivity();
@@ -67,6 +71,7 @@ class HTTPServerManager {
     ClipboardHandler? clipboardHandler,
     WebShareHandler? webShareHandler,
     WebShareAssetHandler? webShareAssetHandler,
+    PairingHandler? pairingHandler,
   }) : _healthCheckHandler = healthCheckHandler ?? HealthCheckHandler(),
        _discoverRegisterHandler =
            discoverRegisterHandler ?? DiscoverRegisterHandler() {
@@ -89,6 +94,23 @@ class HTTPServerManager {
 
     _webShareHandler = webShareHandler ?? WebShareHandler();
     _webShareAssetHandler = webShareAssetHandler ?? WebShareAssetHandler();
+
+    _pairingHandler =
+        pairingHandler ??
+        PairingHandler(
+          contextGetter: () => _context,
+          isInBackgroundGetter: () => _isInBackground,
+        );
+
+    // The relay reaches the user through the same dialogs as the LAN, so it
+    // needs the same accessors. It is bound here rather than started, because
+    // whether it connects at all depends on settings this object knows
+    // nothing about.
+    RelayService.instance.bindUi(
+      contextGetter: () => _context,
+      isInBackgroundGetter: () => _isInBackground,
+      historyRefreshCallbackGetter: () => _historyRefreshCallback,
+    );
   }
 
   /// Whether the app UI is currently in the background.
@@ -260,6 +282,10 @@ class HTTPServerManager {
         // Configure clipboard request endpoint
         router.post('/clipboard-request', _clipboardHandler.handleClipboardRequest);
 
+        // Configure device pairing endpoints
+        router.post('/pair/request', _pairingHandler.handlePairRequest);
+        router.post('/pair/confirm', _pairingHandler.handlePairConfirm);
+
         // Guest web-share download endpoints (QR / browser receive).
         // Register more specific paths before `/s/<token>`.
         router.get(
@@ -303,6 +329,10 @@ class HTTPServerManager {
         _testHealthEndpoint(localIP, tryPort);
 
         await _startMulticastDiscovery(tryPort);
+
+        // Independent of the LAN server, but started with it so there is one
+        // moment at which the app becomes reachable by any route.
+        await RelayService.instance.start();
 
         // Keep process alive on Android so inbound transfers work when backgrounded.
         if (Platform.isAndroid) {
@@ -373,6 +403,8 @@ class HTTPServerManager {
   /// Stop the HTTP server
   Future<void> stopServer() async {
     await _stopMulticastDiscovery();
+    await RelayService.instance.stop();
+    _pairingHandler.dispose();
 
     if (Platform.isAndroid) {
       await AndroidForegroundService.stop();
@@ -415,10 +447,21 @@ class HTTPServerManager {
     return _fileTransferHandler;
   }
 
+  /// Prefers the public-key fingerprint so peers can recognise an already
+  /// paired device straight from an announcement.
+  Future<String> _resolveAnnouncedDeviceId(PreferencesService prefs) async {
+    try {
+      return await IdentityService.instance.getDeviceId();
+    } catch (e) {
+      LogUtil.wTag(logTag, '设备身份不可用，组播回退到本地随机 ID: $e');
+      return prefs.getOrCreateDeviceId();
+    }
+  }
+
   Future<void> _startMulticastDiscovery(int port) async {
     try {
       final prefs = PreferencesService();
-      final deviceId = await prefs.getOrCreateDeviceId();
+      final deviceId = await _resolveAnnouncedDeviceId(prefs);
       final customName = await prefs.getDeviceName();
       final deviceName = customName ?? await NetworkUtil.getDeviceName();
       final localIps = await NetworkUtil.getLocalPrivateIPs();

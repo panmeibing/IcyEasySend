@@ -10,7 +10,14 @@ class HealthChecker {
   String logTag = LogTags.network;
 
   /// Check if target device is healthy and ready to receive files
-  Future<OperationResult<HealthCheckData>> checkHealth(String targetIP) async {
+  ///
+  /// [timeout] defaults to [AppConstants.checkHealthTimeout]. Channel probing
+  /// passes a shorter one so that a dead LAN address cannot stall route
+  /// selection.
+  Future<OperationResult<HealthCheckData>> checkHealth(
+    String targetIP, {
+    Duration? timeout,
+  }) async {
     LogUtil.dTag(logTag, 'checkHealth() targetIP: $targetIP');
 
     final url = NetworkUtil.buildHttpUrl(targetIP, '/health');
@@ -24,7 +31,7 @@ class HealthChecker {
 
     final result = await HttpHelper.get(
       url,
-      timeout: Duration(seconds: AppConstants.checkHealthTimeout),
+      timeout: timeout ?? Duration(seconds: AppConstants.checkHealthTimeout),
     );
 
     if (!result.isSuccess) {
@@ -51,6 +58,9 @@ class HealthChecker {
           deviceName: data['deviceName'] as String? ?? 'Unknown',
           version: data['version'] as String? ?? 'Unknown',
           isReady: true,
+          deviceId: data['deviceId'] as String?,
+          publicKey: data['publicKey'] as String?,
+          protocolVersion: data['protocolVersion'] as String?,
         );
         return OperationResult.success(data: healthData, metadata: data);
       } else {
@@ -72,9 +82,25 @@ class HealthCheckData {
   final String version;
   final bool isReady;
 
+  /// Identity fields, absent on clients older than [AppConstants.protocolVersion].
+  final String? deviceId;
+  final String? publicKey;
+  final String? protocolVersion;
+
   HealthCheckData({
     required this.deviceName,
     required this.version,
     required this.isReady,
+    this.deviceId,
+    this.publicKey,
+    this.protocolVersion,
   });
+
+  /// Whether the peer advertises an Ed25519 identity and can therefore pair.
+  bool get supportsPairing =>
+      protocolVersion != null &&
+      deviceId != null &&
+      deviceId!.isNotEmpty &&
+      publicKey != null &&
+      publicKey!.isNotEmpty;
 }

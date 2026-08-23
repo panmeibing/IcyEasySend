@@ -5,6 +5,7 @@ import 'package:shelf/shelf.dart';
 
 import '../utils/constants.dart';
 import '../utils/network_util.dart';
+import 'identity_service.dart';
 
 /// Handler for health check endpoint
 ///
@@ -13,8 +14,10 @@ import '../utils/network_util.dart';
 class HealthCheckHandler {
   final String logTag = LogTags.server;
   int? Function()? serverPortGetter;
+  final IdentityService _identityService;
 
-  HealthCheckHandler({this.serverPortGetter});
+  HealthCheckHandler({this.serverPortGetter, IdentityService? identityService})
+    : _identityService = identityService ?? IdentityService.instance;
 
   /// Handle GET /health requests
   ///
@@ -22,6 +25,12 @@ class HealthCheckHandler {
   /// - status: "ok" indicating the device is healthy
   /// - timestamp: current timestamp in milliseconds
   /// - deviceName: name of the device
+  /// - deviceId / publicKey / protocolVersion: this device's Ed25519 identity,
+  ///   which a peer needs before it can start pairing
+  ///
+  /// Publishing the public key here is intentional: it is public by
+  /// definition, and letting the initiator fetch it up front means both
+  /// devices can display the same pairing code at the same time.
   Future<Response> handleHealthCheck(Request request) async {
     LogUtil.dTag(LogTags.server, '收到健康检查请求: ${request.url}');
 
@@ -37,7 +46,17 @@ class HealthCheckHandler {
         'app': AppConstants.projectNameTight,
         'version': AppConstants.version,
         'port': port,
+        'protocolVersion': AppConstants.protocolVersion,
       };
+
+      // A failure here must not take the endpoint down: legacy transfers work
+      // fine without an identity, so degrade to the old payload instead.
+      try {
+        response['deviceId'] = await _identityService.getDeviceId();
+        response['publicKey'] = await _identityService.getPublicKeyBase64();
+      } catch (e) {
+        LogUtil.wTag(logTag, '健康检查未能附带设备身份: $e');
+      }
 
       LogUtil.dTag(logTag, '健康检查响应: 设备名=$deviceName, 端口=$port');
 

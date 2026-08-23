@@ -15,6 +15,7 @@ class LogTags {
   static const String ui = 'UI';
   static const String clipboard = 'Clipboard';
   static const String system = 'System';
+  static const String pairing = 'Pairing';
 }
 
 class MyLogPrinter extends LogPrinter {

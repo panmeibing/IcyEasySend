@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/relay_blocked_peer.dart';
+import '../models/relay_config.dart';
 import '../utils/constants.dart';
 
 /// Service for managing app preferences and settings
@@ -22,6 +26,19 @@ class PreferencesService {
   static const String _keyTargetDeviceSecretKey = 'target_device_secret_key';
   static const String _keyCustomReceiveSavePath = 'custom_receive_save_path';
   static const String _keyClipboardOverlayEnabled = 'clipboard_overlay_enabled';
+  static const String _keyRelayConfig = 'relay_config';
+  static const String _keyRelayPairingEnabled = 'relay_pairing_enabled';
+  static const String _keyRelayPairBlocklist = 'relay_pair_blocklist';
+
+  /// Upper bound on remembered blocks.
+  static const int _maxRelayPairBlocklist = 200;
+
+  /// Legacy cooldown entries: `deviceId:expiryEpochMs`.
+  static final RegExp _legacyBlocklistExpiryPattern =
+      RegExp(r'^([0-9a-f]{32}):(\d+)$');
+
+  /// Legacy plain device ids.
+  static final RegExp _legacyBlocklistIdPattern = RegExp(r'^[0-9a-f]{32}$');
 
   // Maximum number of IP addresses to keep in history
   static const int _maxIpHistorySize = 10;
@@ -226,6 +243,11 @@ class PreferencesService {
   }
 
   /// Persistent ID used to filter this device from multicast discovery results.
+  ///
+  /// Superseded by [IdentityService.getDeviceId], which derives the id from
+  /// the Ed25519 public key so it cannot be forged. This remains as the
+  /// fallback for the case where the identity key cannot be loaded, since
+  /// discovery must keep working even then.
   Future<String> getOrCreateDeviceId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -491,5 +513,221 @@ class PreferencesService {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Relay server settings, or [RelayConfig.empty] when none are stored.
+  ///
+  /// Stored as one JSON object rather than separate keys so that supporting
+  /// more than one relay later does not require migrating existing users.
+  Future<RelayConfig> getRelayConfig() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_keyRelayConfig);
+      if (raw == null || raw.isEmpty) {
+        return RelayConfig.empty;
+      }
+
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) {
+        return RelayConfig.empty;
+      }
+      return RelayConfig.fromJson(decoded);
+    } catch (e) {
+      return RelayConfig.empty;
+    }
+  }
+
+  Future<bool> saveRelayConfig(RelayConfig config) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyRelayConfig, jsonEncode(config.toJson()));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> clearRelayConfig() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyRelayConfig);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Whether this device shows a dialog for pairing requests arriving over the
+  /// relay. On by default: without it the only way to pair is to be on the
+  /// same network, which is the thing the relay exists to avoid.
+  Future<bool> getRelayPairingEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_keyRelayPairingEnabled) ?? true;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  Future<bool> saveRelayPairingEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyRelayPairingEnabled, enabled);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Peers this device has explicitly blocked from relay pairing.
+  ///
+  /// Only an intentional "block" action writes here — a normal reject does not.
+  Future<List<RelayBlockedPeer>> getRelayPairBlocklistEntries() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_keyRelayPairBlocklist) ?? const <String>[];
+      final byId = <String, RelayBlockedPeer>{};
+      var changed = false;
+
+      for (final entry in raw) {
+        // Current format: one JSON object per list item.
+        if (entry.startsWith('{')) {
+          try {
+            final parsed = RelayBlockedPeer.tryParse(jsonDecode(entry));
+            if (parsed != null) {
+              byId[parsed.deviceId] = parsed;
+              continue;
+            }
+          } catch (_) {}
+          changed = true;
+          continue;
+        }
+
+        // Migrate legacy permanent id or cooldown `id:expiry` → permanent entry.
+        final expiryMatch = _legacyBlocklistExpiryPattern.firstMatch(entry);
+        if (expiryMatch != null) {
+          final id = expiryMatch.group(1)!;
+          byId.putIfAbsent(
+            id,
+            () => RelayBlockedPeer(
+              deviceId: id,
+              deviceName: '',
+              blockedAt: DateTime.now(),
+            ),
+          );
+          changed = true;
+          continue;
+        }
+        if (_legacyBlocklistIdPattern.hasMatch(entry)) {
+          byId.putIfAbsent(
+            entry,
+            () => RelayBlockedPeer(
+              deviceId: entry,
+              deviceName: '',
+              blockedAt: DateTime.now(),
+            ),
+          );
+          changed = true;
+          continue;
+        }
+        changed = true;
+      }
+
+      final list = byId.values.toList()
+        ..sort((a, b) => b.blockedAt.compareTo(a.blockedAt));
+      if (changed) {
+        await _persistBlocklist(prefs, list);
+      }
+      return list;
+    } catch (e) {
+      return const <RelayBlockedPeer>[];
+    }
+  }
+
+  /// Device ids currently on the relay pairing blocklist.
+  Future<Set<String>> getRelayPairBlocklist() async {
+    return {
+      for (final peer in await getRelayPairBlocklistEntries()) peer.deviceId,
+    };
+  }
+
+  Future<bool> isRelayPairingBlocked(String deviceId) async {
+    if (deviceId.isEmpty) {
+      return false;
+    }
+    return (await getRelayPairBlocklist()).contains(deviceId);
+  }
+
+  Future<bool> blockRelayPairing(
+    String deviceId, {
+    String deviceName = '',
+  }) async {
+    if (deviceId.isEmpty) {
+      return false;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final entries = await getRelayPairBlocklistEntries();
+      final existing = [
+        for (final peer in entries)
+          if (peer.deviceId != deviceId) peer,
+      ];
+      existing.insert(
+        0,
+        RelayBlockedPeer(
+          deviceId: deviceId,
+          deviceName: deviceName,
+          blockedAt: DateTime.now(),
+        ),
+      );
+      final trimmed = existing.length > _maxRelayPairBlocklist
+          ? existing.sublist(0, _maxRelayPairBlocklist)
+          : existing;
+      await _persistBlocklist(prefs, trimmed);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> unblockRelayPairing(String deviceId) async {
+    if (deviceId.isEmpty) {
+      return false;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final entries = await getRelayPairBlocklistEntries();
+      final next = [
+        for (final peer in entries)
+          if (peer.deviceId != deviceId) peer,
+      ];
+      if (next.length == entries.length) {
+        return true;
+      }
+      await _persistBlocklist(prefs, next);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> clearRelayPairBlocklist() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyRelayPairBlocklist);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _persistBlocklist(
+    SharedPreferences prefs,
+    List<RelayBlockedPeer> entries,
+  ) {
+    return prefs.setStringList(
+      _keyRelayPairBlocklist,
+      [for (final peer in entries) jsonEncode(peer.toJson())],
+    );
   }
 }

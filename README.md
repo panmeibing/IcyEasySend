@@ -7,7 +7,7 @@
 ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
-An efficient, cross-platform LAN file transfer application
+An efficient, cross-platform file transfer application — LAN by default, optional self-hosted relay for cross-network use
 
 [English](README.md) | [简体中文](README_CN.md)
 
@@ -19,18 +19,19 @@ An efficient, cross-platform LAN file transfer application
 
 ## 📖 Introduction
 
-Icy Easy Send is a local area network file transfer tool developed based on Flutter, supporting fast and secure file
-transfers and clipboard content synchronization between multiple devices within the same local area network. No internet
-connection or account registration is required, and it can be used immediately after opening.
+Icy Easy Send is a Flutter app for fast file transfer and clipboard sync between your devices. On the same LAN it works
+with no internet and no accounts. Across different networks, you can optionally connect to a **self-hosted relay**
+(`relayd`) for end-to-end encrypted transfer and clipboard sync after pairing.
 
 ### Why Choose Icy Easy Send?
 
-- � **High-Speed Transfer**: Direct LAN connection, transfer speed limited only by network bandwidth
-- 🔒 **Secure & Reliable**: Data doesn't go through third-party servers, completely transferred over local network
-- � **Cross-Platform**: One codebase supporting Android, iOS, Windows, macOS, and Linux
-- 🎯 **Easy to Use**: No complex configuration, just enter IP address to start transferring
+- 🚀 **High-Speed Transfer**: Direct LAN connection when available; speed limited only by network bandwidth
+- 🔒 **Secure & Reliable**: LAN traffic stays on your network; relay traffic is end-to-end encrypted (server sees ciphertext only)
+- 🌐 **Cross-Network (optional)**: Pair once via your own relay, then send files and sync clipboard across LANs
+- 📱 **Cross-Platform**: One codebase supporting Android, iOS, Windows, macOS, and Linux
+- 🎯 **Easy to Use**: Scan for peers or enter an IP; pair by device code when using relay
 - 📦 **Batch Transfer**: Send multiple files at once with automatic queue management
-- 📋 **Clipboard Sync**: Synchronize text, files, and images across devices
+- 📋 **Clipboard Sync**: Synchronize text, files, and images across devices (LAN or relay)
 
 ---
 
@@ -44,17 +45,23 @@ connection or account registration is required, and it can be used immediately a
     - Automatic handling of filename conflicts
     - Support for large file transfers (up to 20GB)
     - Configurable concurrent transfer count (1-10 files simultaneously)
+    - Optional self-hosted relay with E2E encryption, resume, and LAN-preferred routing
+
+- **Device Pairing**
+    - Trust devices via short SAS confirmation (same LAN or via relay)
+    - Relay pairing by device code; optional blocklist for unwanted requests
 
 - **Clipboard Synchronization**
     - Cross-device text content synchronization
     - File URI synchronization support
     - Image format support (PNG, JPEG, BMP)
     - Configurable clipboard size limit (1-10MB)
+    - Works over LAN HTTP or over the relay (small payloads on signaling; larger via encrypted stream)
 
 - **User Experience**
     - Drag and drop file support (desktop platforms)
     - Share files from other apps to this application
-    - IP address history
+    - IP address history and peer scan (LAN + relay-online peers)
     - Real-time IP address validation
     - Network status monitoring and auto-reconnection
 
@@ -153,10 +160,10 @@ flutter build linux --release
     - View your device's IP address and port number at the top of the home page
 
 2. **Send Files**
-    - Enter the receiver's IP address in the "Target IP" input field
+    - Enter the receiver's IP address, or tap scan and pick a discovered / relay-online peer
     - Click the "Select Files" button to choose files (or drag and drop files directly)
     - Click the "Send" button
-    - Transfer begins after receiver confirms
+    - Transfer begins after receiver confirms (LAN preferred when both paths are available)
 
 3. **Receive Files**
     - Keep the application running
@@ -165,11 +172,17 @@ flutter build linux --release
     - Files are automatically saved to the downloads folder
 
 4. **Sync Clipboard**
-    - Enter the target device's IP address
-    - Click the "Sync Remote Clipboard" button on the home page
+    - Select a peer (IP or scanned/relay peer chip on the home page)
+    - Click the "Sync Remote Clipboard" button
     - After the other party confirms, their clipboard content syncs to your device
 
-5. **View History**
+5. **Cross-network via relay (optional)**
+    - Deploy `relayd` on your own server (see [`relay/README.md`](relay/README.md))
+    - In Settings, fill in the relay URL and access token (card above Paired devices)
+    - On both devices, use "Pair via relay" with the peer's device code and confirm the matching 6-digit SAS out of band
+    - Once paired and online on the relay, send files or sync clipboard without being on the same LAN
+
+6. **View History**
     - Switch to the "History" tab
     - View all transfer records
     - Filter, open files, or delete records
@@ -179,10 +192,13 @@ flutter build linux --release
 Configure in the "Settings" page:
 
 - **Device Name**: Customize device name for easy identification by other devices
+- **Relay Server**: URL + token; allow/deny inbound relay pairing; manage pairing blocklist from Paired devices
 - **Concurrent Transfers**: Set the number of simultaneous file transfers (1-10)
 - **History Count**: Set the number of history records to retain (10-1000)
 - **Clipboard Size**: Set maximum clipboard content size (1-10MB)
 - **IP Validation**: Enable/disable IP address format validation
+
+Design notes for the relay path: [`docs/relay-design.md`](docs/relay-design.md).
 
 ---
 
@@ -210,14 +226,18 @@ lib/
 │   ├── http_server_manager.dart      # HTTP server management
 │   ├── file_transfer_service.dart    # File transfer service
 │   ├── clipboard_service.dart        # Clipboard service
+│   ├── identity_service.dart         # Device identity (Ed25519)
+│   ├── pairing_service.dart          # Device pairing
 │   ├── permission_service.dart       # Permission management
 │   ├── preferences_service.dart      # Local storage
 │   ├── transfer_history_service.dart # History management
+│   ├── relay/                        # Relay client (WSS, crypto, pairing, clipboard)
 │   └── transfer/                     # Transfer submodule
 │       ├── file_sender.dart          # File sender
 │       ├── file_receiver.dart        # File receiver
 │       ├── batch_transfer_manager.dart # Batch transfer manager
 │       └── health_checker.dart       # Health checker
+├── transport/                         # Channel abstraction (LAN / relay / selection)
 └── utils/                             # Utility functions
     ├── constants.dart                # Constants
     ├── network_util.dart             # Network utilities
@@ -225,32 +245,40 @@ lib/
     └── log_util.dart                 # Logging utilities
 ```
 
+Self-hosted relay server lives in `relay/` — see [`relay/README.md`](relay/README.md). Protocol design: [`docs/relay-design.md`](docs/relay-design.md).
+
 ### Core Technology Stack
 
 - **UI Framework**: Flutter 3.41.2+
 - **HTTP Server**: shelf + shelf_router
-- **Network Communication**: http + connectivity_plus
+- **Network Communication**: http + connectivity_plus; relay signaling via WebSocket (`dart:io`)
 - **File Operations**: file_picker + path_provider
 - **Permission Management**: permission_handler
 - **Local Storage**: shared_preferences
 - **Clipboard**: super_clipboard
+- **Cryptography**: cryptography (relay E2E)
 - **Device Information**: device_info_plus
+- **Relay Server**: Go (`relayd`)
 
 ### Network Architecture
 
 ```
+LAN (default):
 ┌─────────────┐                    ┌─────────────┐
 │   Device A  │                    │   Device B  │
-│             │                    │             │
 │ HTTP Client │ ──────────────────> │ HTTP Server │
-│             │   File Transfer    │             │
-│             │      Request       │ (Port 9527) │
 │ HTTP Server │ <────────────────── │ HTTP Client │
-│ (Port 9527) │   File Transfer    │             │
-└─────────────┘      Request       └─────────────┘
+└─────────────┘     (Port 9527)     └─────────────┘
+
+Cross-network (optional, self-hosted):
+┌─────────────┐     WSS + HTTPS      ┌──────────┐     WSS + HTTPS      ┌─────────────┐
+│   Device A  │ <──────────────────> │  relayd  │ <──────────────────> │   Device B  │
+└─────────────┘  signaling / streams └──────────┘  signaling / streams └─────────────┘
 ```
 
 ### File Transfer Flow
+
+LAN path overview (relay path is signaling handshake + encrypted chunked streams; see the design doc):
 
 ```
 Sender                                Receiver

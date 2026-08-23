@@ -1,0 +1,32 @@
+[Unit]
+Description=Icy Easy Send relayd
+Documentation=https://github.com/icy-easy-send/icy-easy-send/blob/main/relay/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=relayd
+Group=relayd
+EnvironmentFile=/etc/relayd/relayd.env
+ExecStart=/usr/local/bin/relayd
+Restart=on-failure
+RestartSec=2s
+# Streams may run for hours; do not kill the process on a short TimeoutStop.
+TimeoutStopSec=30s
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

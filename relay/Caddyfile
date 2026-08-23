@@ -1,0 +1,17 @@
+# Replace with your own domain. Caddy obtains and renews the certificate
+# automatically on first request.
+relay.example.com {
+	# Do not reverse-proxy /metrics — scrape relayd on loopback instead.
+	reverse_proxy relayd:8443 {
+		# Disable response buffering so back-pressure and progress reach the
+		# client immediately. Required for long-lived file streams.
+		flush_interval -1
+		# WebSocket upgrades and long-lived streams must not be cut off by the
+		# proxy. Caddy streams bodies by default; these only relax its
+		# read/write deadlines so hour-long transfers survive.
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+}

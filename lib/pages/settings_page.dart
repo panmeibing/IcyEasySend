@@ -23,6 +23,8 @@ import 'settings/models/settings_state.dart';
 import 'settings/widgets/about_card.dart';
 import 'settings/widgets/device_info_card.dart';
 import 'settings/widgets/general_settings_card.dart';
+import 'settings/widgets/paired_devices_card.dart';
+import 'settings/widgets/relay_server_card.dart';
 import 'settings/widgets/server_info_card.dart';
 import 'settings/widgets/transfer_settings_card.dart';
 
@@ -848,6 +850,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           .getCurrentLanguageCode(),
                       onLanguageTap: () => _showLanguageDialog(l10n),
                     ),
+                    const SizedBox(height: 16),
+                    // Relay first: users configure the server, then pair over it.
+                    const RelayServerCard(),
+                    const SizedBox(height: 16),
+                    const PairedDevicesCard(),
                     const SizedBox(height: 16),
                     ServerInfoCard(
                       isServerRunning: widget.serverManager.isRunning(),

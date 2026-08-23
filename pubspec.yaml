@@ -95,6 +95,7 @@ dependencies:
   dio: ^5.9.2
   flutter_foreground_task: ^10.0.0
   qr_flutter: ^4.1.0
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:

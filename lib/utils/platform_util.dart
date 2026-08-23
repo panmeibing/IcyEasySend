@@ -126,6 +126,18 @@ class PlatformUtil {
     return path.join(directory.path, finalFileName);
   }
 
+  /// Get a path inside the application support directory
+  ///
+  /// Used for private state that should not show up in the user's Documents
+  /// folder, such as the Ed25519 identity key and the trusted peer list.
+  static Future<String> getAppSupportFilePath(String fileName) async {
+    final directory = await path_provider.getApplicationSupportDirectory();
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+    return path.join(directory.path, fileName);
+  }
+
   /// Get historical transfer items directory
   static Future<String> getHistoryFilePath() async {
     final directory = await path_provider.getApplicationDocumentsDirectory();

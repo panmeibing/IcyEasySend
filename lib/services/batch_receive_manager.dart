@@ -343,6 +343,12 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   bool _disposed = false;
   bool _isAccepted = false;
   bool _allCompleted = false;
+  /// Guards against scheduling [Navigator.pop] more than once.
+  ///
+  /// Progress updates and the periodic UI timer can both notice completion in
+  /// the same second. The first pop closes this dialog; a second pop during the
+  /// exit animation would remove the route underneath and leave a black screen.
+  bool _closeScheduled = false;
   Timer? _countdownTimer;
   Timer? _updateTimer;
 
@@ -421,15 +427,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
           // Check if all files are completed
           _allCompleted = _displayedFiles.every((file) => file.isCompleted);
         });
-
-        // Auto-close dialog when all files are completed
         if (_allCompleted) {
           timer.cancel();
-          Future.delayed(AppConstants.autoCloseDelay, () {
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          });
+          _scheduleAutoClose();
         }
       }
       // Keep timer running if not accepted yet
@@ -443,17 +443,27 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         // Check if all files are completed
         _allCompleted = _displayedFiles.every((file) => file.isCompleted);
       });
-
-      // Auto-close dialog when all files are completed
       if (_allCompleted) {
         _updateTimer?.cancel();
-        Future.delayed(AppConstants.autoCloseDelay, () {
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
-        });
+        _scheduleAutoClose();
       }
     }
+  }
+
+  void _scheduleAutoClose() {
+    if (_closeScheduled) {
+      return;
+    }
+    _closeScheduled = true;
+    Future.delayed(AppConstants.autoCloseDelay, () {
+      if (!mounted) {
+        return;
+      }
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+    });
   }
 
   void _handleAccept() {

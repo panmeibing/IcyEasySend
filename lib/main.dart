@@ -9,6 +9,7 @@ import 'services/android_foreground_service.dart';
 import 'services/cache_cleanup_service.dart';
 import 'services/clipboard_overlay_service.dart';
 import 'services/http_server_manager.dart';
+import 'services/identity_service.dart';
 import 'services/language_service.dart';
 import 'services/permission_service.dart';
 import 'services/sharing_intent_service.dart';
@@ -31,6 +32,15 @@ void main() async {
     LogTags.ui,
     '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
   );
+
+  // Load (or generate) the Ed25519 identity before the server starts, so the
+  // very first `/health` response and multicast announcement already carry the
+  // public key. A failure here is not fatal: legacy transfers do not need it.
+  try {
+    await IdentityService.instance.ensureInitialized();
+  } catch (e) {
+    LogUtil.wTag(LogTags.system, '初始化设备身份失败: $e');
+  }
 
   Set<String> pendingSharePaths = {};
   if (Platform.isAndroid || Platform.isIOS) {

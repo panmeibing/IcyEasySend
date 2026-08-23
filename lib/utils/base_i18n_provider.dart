@@ -70,6 +70,16 @@ abstract class BaseI18nProvider {
     return messageFunc?.call(param) ?? '';
   }
 
+  /// Get message with multiple parameters (2 params)
+  String getMessageWith2Params<T1, T2>(
+    Map<String, String Function(T1, T2)> messages,
+    T1 param1,
+    T2 param2,
+  ) {
+    final messageFunc = messages[currentLanguage] ?? messages['en'];
+    return messageFunc?.call(param1, param2) ?? '';
+  }
+
   /// Get message with multiple parameters (3 params)
   String getMessageWith3Params<T1, T2, T3>(
     Map<String, String Function(T1, T2, T3)> messages,

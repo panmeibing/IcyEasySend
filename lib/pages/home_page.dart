@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import '../l10n/app_localizations.dart';
-import '../models/discovered_device.dart';
 import '../models/transfer_file_item.dart';
 import '../models/transfer_history.dart';
 import '../services/cache_cleanup_service.dart';
@@ -17,14 +16,17 @@ import '../services/sharing_intent_service.dart';
 import '../services/transfer/transfer_history_manager.dart';
 import '../services/validation_service.dart';
 import '../services/web_share_service.dart';
+import '../transport/transport_channel.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
+import '../utils/relay_message_provider.dart';
 import '../utils/toast_helper.dart';
 import '../utils/transfer_progress_throttle.dart';
 import 'home/controllers/clipboard_controller.dart';
 import 'home/controllers/file_transfer_controller.dart';
+import 'home/widgets/channel_badge.dart';
 import 'home/widgets/device_scan_dialog.dart';
 import 'home/widgets/file_selection_section.dart';
 import 'home/widgets/ip_input_section.dart';
@@ -58,6 +60,9 @@ class HomePageState extends State<HomePage> {
   bool isServerRunning = false;
   String? serverAddress;
   bool isSending = false;
+
+  /// Peer chosen from the scan dialog. Cleared when the user edits the IP.
+  PeerRef? _selectedPeer;
 
   // Progress tracking
   double _transferProgress = 0.0;
@@ -210,6 +215,20 @@ class HomePageState extends State<HomePage> {
 
   /// Validate the IP address in real-time
   Future<void> _validateIPAddress() async {
+    // Typing a different address means the scan selection no longer applies.
+    final selected = _selectedPeer;
+    if (selected != null && selected.hasLan) {
+      final typed = _ipController.text.trim();
+      if (typed.isNotEmpty && typed != selected.lan!.ip) {
+        _selectedPeer = null;
+      }
+    } else if (selected != null && !selected.hasLan) {
+      // Relay-only selection: any typed IP means the user is switching to LAN.
+      if (_ipController.text.trim().isNotEmpty) {
+        _selectedPeer = null;
+      }
+    }
+
     final ip = _ipController.text.trim();
 
     if (ip.isEmpty) {
@@ -473,6 +492,10 @@ class HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
+                      if (_selectedRelayPeerLabel() != null) ...[
+                        const SizedBox(height: 12),
+                        _buildSelectedRelayPeerChip(),
+                      ],
                       const SizedBox(height: 16),
 
                       // Network diagnostics button
@@ -654,6 +677,19 @@ class HomePageState extends State<HomePage> {
 
   /// Check if the send button should be enabled
   bool _canSend() {
+    if (!isServerRunning || isSending || selectedItems.isEmpty) {
+      return false;
+    }
+
+    // A relay-only peer from the scan dialog needs no LAN address.
+    final peer = _selectedPeer;
+    if (peer != null &&
+        !peer.hasLan &&
+        peer.relayOnline &&
+        peer.deviceId != null) {
+      return true;
+    }
+
     final portText = _portController.text.trim();
     final port = int.tryParse(portText);
     final isPortValid = port != null && port >= 1 && port <= 65535;
@@ -662,11 +698,7 @@ class HomePageState extends State<HomePage> {
     final isIPValid =
         targetIP.isNotEmpty && (_ipErrorMessage == null || _ipIsWarning);
 
-    return isServerRunning &&
-        !isSending &&
-        selectedItems.isNotEmpty &&
-        isIPValid &&
-        isPortValid;
+    return isIPValid && isPortValid;
   }
 
   /// QR share only needs a running server and selected files.
@@ -883,15 +915,17 @@ class HomePageState extends State<HomePage> {
 
   /// Send multiple selected files to the target device
   Future<void> _sendFiles() async {
-    if (selectedItems.isEmpty || targetIP.isEmpty) {
+    if (selectedItems.isEmpty || !_canSend()) {
+      return;
+    }
+
+    final peer = _peerForSend();
+    if (peer == null) {
       return;
     }
 
     final portText = _portController.text.trim();
-    final port = int.tryParse(portText);
-    if (port == null || port < 1 || port > 65535) {
-      return;
-    }
+    final port = int.tryParse(portText) ?? AppConstants.defaultPort;
 
     _disableFocusNodes();
 
@@ -899,8 +933,9 @@ class HomePageState extends State<HomePage> {
       await _fileTransferController.sendFiles(
         context: context,
         files: selectedItems,
-        targetIP: targetIP,
-        targetPort: port,
+        targetIP: peer.lan?.ip ?? targetIP,
+        targetPort: peer.lan?.port ?? port,
+        peer: peer,
         secretKey: _secretKeyController.text.trim(),
         onProgress: (progress, bytesTransferred, totalBytes) {
           _overallProgressThrottle.maybeEmit(
@@ -1045,6 +1080,34 @@ class HomePageState extends State<HomePage> {
     _secretKeyFocusNode.canRequestFocus = true;
   }
 
+  /// Builds the peer to send to from the scan selection and/or the IP fields.
+  PeerRef? _peerForSend() {
+    final selected = _selectedPeer;
+    if (selected != null) {
+      if (!selected.hasLan) {
+        return selected;
+      }
+      // Keep identity / relay flags from the scan, but honour any IP the user
+      // typed afterwards.
+      final portText = _portController.text.trim();
+      final port = int.tryParse(portText) ?? selected.lan!.port;
+      if (targetIP.isNotEmpty) {
+        return selected.copyWith(lan: LanEndpoint(ip: targetIP, port: port));
+      }
+      return selected;
+    }
+
+    if (targetIP.isEmpty) {
+      return null;
+    }
+    final portText = _portController.text.trim();
+    final port = int.tryParse(portText);
+    if (port == null || port < 1 || port > 65535) {
+      return null;
+    }
+    return PeerRef.lanAddress('$targetIP:$port');
+  }
+
   /// Scan local network for devices running Icy Easy Send
   Future<void> _scanDevices() async {
     if (!mounted || !isServerRunning) return;
@@ -1057,7 +1120,7 @@ class HomePageState extends State<HomePage> {
 
     if (!mounted) return;
 
-    final device = await showDialog<DiscoveredDevice>(
+    final peer = await showDialog<PeerRef>(
       context: context,
       barrierDismissible: false,
       builder: (context) => DeviceScanDialog(
@@ -1067,12 +1130,70 @@ class HomePageState extends State<HomePage> {
 
     _enableFocusNodes();
 
-    if (device == null || !mounted) return;
+    if (peer == null || !mounted) return;
 
-    _ipController.text = device.ip;
-    _portController.text = '${device.port}';
-    await _validateIPAddress();
-    _validatePort();
+    setState(() => _selectedPeer = peer);
+
+    if (peer.hasLan) {
+      _ipController.text = peer.lan!.ip;
+      _portController.text = '${peer.lan!.port}';
+      await _validateIPAddress();
+      _validatePort();
+    } else {
+      // Relay-only: keep the IP field empty — the selection lives in
+      // [_selectedPeer], not in an address that would fail IP validation.
+      _ipController.clear();
+      setState(() {
+        targetIP = '';
+        _ipErrorMessage = null;
+        _ipIsWarning = false;
+      });
+    }
+  }
+
+  String? _selectedRelayPeerLabel() {
+    final peer = _selectedPeer;
+    if (peer == null || peer.hasLan || !peer.relayOnline) {
+      return null;
+    }
+    if (peer.deviceName != null && peer.deviceName!.isNotEmpty) {
+      return peer.deviceName;
+    }
+    final id = peer.deviceId;
+    if (id == null || id.isEmpty) {
+      return null;
+    }
+    return id.length <= 8 ? id : '${id.substring(0, 8)}…';
+  }
+
+  Widget _buildSelectedRelayPeerChip() {
+    final label = _selectedRelayPeerLabel()!;
+    final messages = RelayMessages.instance;
+    return Material(
+      color: Colors.blue.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            ChannelBadge.forPeer(_selectedPeer!, iconSize: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                messages.selectedRelayPeer(label),
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() => _selectedPeer = null);
+              },
+              child: Text(messages.clearSelectedPeer),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Run network diagnostics
@@ -1189,6 +1310,14 @@ class HomePageState extends State<HomePage> {
 
   /// Check if the clipboard request button should be enabled
   bool _canRequestClipboard() {
+    final peer = _selectedPeer;
+    if (peer != null &&
+        !peer.hasLan &&
+        peer.relayOnline &&
+        peer.deviceId != null) {
+      return isServerRunning && !isSending;
+    }
+
     final portText = _portController.text.trim();
     final port = int.tryParse(portText);
     final isPortValid = port != null && port >= 1 && port <= 65535;
@@ -1202,26 +1331,24 @@ class HomePageState extends State<HomePage> {
 
   /// Request clipboard content from target device
   Future<void> _requestClipboard() async {
-    if (targetIP.isEmpty) {
-      return;
-    }
-
-    final portText = _portController.text.trim();
-    final port = int.tryParse(portText);
-    if (port == null || port < 1 || port > 65535) {
+    final peer = _peerForSend();
+    if (peer == null) {
       return;
     }
 
     _disableFocusNodes();
 
     try {
-      await _clipboardController.syncClipboard(
+      final portText = _portController.text.trim();
+      final port = int.tryParse(portText);
+
+      await _clipboardController.syncClipboardFromPeer(
         context: context,
-        targetIP: targetIP,
+        peer: peer,
         targetPort: port,
         secretKey: _secretKeyController.text.trim(),
         onSuccess: () async {
-          if (mounted) {
+          if (mounted && peer.hasLan) {
             await _loadIPHistory();
           }
         },

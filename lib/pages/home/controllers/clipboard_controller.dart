@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/clipboard_service.dart';
 import '../../../services/preferences_service.dart';
+import '../../../services/relay/relay_service.dart';
 import '../../../services/transfer/health_checker.dart';
+import '../../../transport/transport_channel.dart';
 import '../../../utils/dialog_helper.dart';
 import '../../../utils/log_util.dart';
 import '../../../utils/network_util.dart';
@@ -24,16 +26,127 @@ class ClipboardController {
        _preferencesService = preferencesService ?? PreferencesService(),
        _healthChecker = healthChecker ?? HealthChecker();
 
-  /// Request and sync clipboard content from target device
-  ///
-  /// This method handles the complete clipboard sync workflow:
-  /// 1. Shows loading dialog
-  /// 2. Performs health check on target device
-  /// 3. Gets device name
-  /// 4. Requests clipboard from target device
-  /// 5. Writes to local clipboard
-  /// 6. Shows result to user
-  /// 7. Saves IP to history on success
+  /// Sync clipboard from [peer], using LAN HTTP or the relay as available.
+  Future<void> syncClipboardFromPeer({
+    required BuildContext context,
+    required PeerRef peer,
+    int? targetPort,
+    String? secretKey,
+    required VoidCallback onSuccess,
+    required VoidCallback onError,
+  }) async {
+    if (peer.hasLan) {
+      await syncClipboard(
+        context: context,
+        targetIP: peer.lan!.ip,
+        targetPort: targetPort ?? peer.lan!.port,
+        secretKey: secretKey,
+        onSuccess: onSuccess,
+        onError: onError,
+      );
+      return;
+    }
+
+    final deviceId = peer.deviceId;
+    if (deviceId == null || deviceId.isEmpty || !peer.relayOnline) {
+      if (context.mounted) {
+        final l10n = AppLocalizations.of(context);
+        await DialogHelper.showErrorDialog(
+          context,
+          message: l10n.targetDeviceUnavailable,
+          title: l10n.connectionFailed,
+          confirmText: l10n.confirm,
+        );
+      }
+      onError();
+      return;
+    }
+
+    await _syncViaRelay(
+      context: context,
+      peerDeviceId: deviceId,
+      onSuccess: onSuccess,
+      onError: onError,
+    );
+  }
+
+  Future<void> _syncViaRelay({
+    required BuildContext context,
+    required String peerDeviceId,
+    required VoidCallback onSuccess,
+    required VoidCallback onError,
+  }) async {
+    try {
+      final l10n = AppLocalizations.of(context);
+      if (context.mounted) {
+        DialogHelper.showLoadingDialog(
+          context,
+          message: l10n.requestingClipboard,
+        );
+      }
+
+      final result = await RelayService.instance.clipboard.requestFromPeer(
+        peerDeviceId,
+      );
+
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (!result.isSuccess) {
+        if (context.mounted) {
+          await DialogHelper.showErrorDialog(
+            context,
+            message: result.errorMessage ?? l10n.clipboardSyncFailed,
+            title: l10n.syncFailed,
+            confirmText: l10n.confirm,
+          );
+        }
+        onError();
+        return;
+      }
+
+      final written = await _clipboardService.setClipboardContent(result.data!);
+      if (!written) {
+        if (context.mounted) {
+          await DialogHelper.showErrorDialog(
+            context,
+            message: l10n.clipboardSyncFailed,
+            title: l10n.syncFailed,
+            confirmText: l10n.confirm,
+          );
+        }
+        onError();
+        return;
+      }
+
+      if (context.mounted) {
+        final data = result.data!;
+        var successMessage = l10n.clipboardSyncSuccess;
+        if (data.type.name == 'text') {
+          successMessage = l10n.textClipboardSyncSuccess;
+        } else if (data.type.name == 'file') {
+          successMessage = l10n.fileClipboardSyncSuccess;
+        }
+        ToastHelper.showSuccess(context, successMessage);
+        onSuccess();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        final l10n = AppLocalizations.of(context);
+        await DialogHelper.showErrorDialog(
+          context,
+          message: l10n.clipboardRequestError(e.toString()),
+          title: l10n.error,
+          confirmText: l10n.confirm,
+        );
+      }
+      onError();
+    }
+  }
+
+  /// Request and sync clipboard content from a LAN target.
   Future<void> syncClipboard({
     required BuildContext context,
     required String targetIP,

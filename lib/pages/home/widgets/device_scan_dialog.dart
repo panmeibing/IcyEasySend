@@ -1,16 +1,28 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../models/discovered_device.dart';
 import '../../../services/device_discovery_service.dart';
+import '../../../services/paired_device_store.dart';
+import '../../../services/relay/relay_service.dart';
+import '../../../transport/peer_directory.dart';
+import '../../../transport/transport_channel.dart';
+import 'channel_badge.dart';
 
-/// Dialog for scanning and selecting a device on the local network.
+/// Dialog for picking a peer: LAN discoveries merged with relay-online paired
+/// devices, one row per [PeerRef.deviceId].
 class DeviceScanDialog extends StatefulWidget {
   final Set<String> localIps;
+
+  /// When false, only LAN-reachable peers are listed (LAN pairing needs an IP).
+  final bool includeRelayPeers;
 
   const DeviceScanDialog({
     super.key,
     required this.localIps,
+    this.includeRelayPeers = true,
   });
 
   @override
@@ -20,7 +32,7 @@ class DeviceScanDialog extends StatefulWidget {
 class _DeviceScanDialogState extends State<DeviceScanDialog> {
   final DeviceDiscoveryService _discoveryService = DeviceDiscoveryService();
 
-  final List<DiscoveredDevice> _devices = [];
+  List<PeerRef> _peers = [];
   bool _isScanning = true;
   int _scannedCount = 0;
   int _totalCount = 0;
@@ -40,7 +52,7 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
   Future<void> _startScan() async {
     setState(() {
       _isScanning = true;
-      _devices.clear();
+      _peers = [];
       _scannedCount = 0;
       _totalCount = 0;
     });
@@ -53,36 +65,70 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
           setState(() {
             _scannedCount = scanned;
             _totalCount = total;
-            _devices
-              ..clear()
-              ..addAll(found);
           });
+          unawaited(_rebuildPeers(found, persistLanHints: false));
         },
       );
 
       if (!mounted) return;
-      setState(() {
-        _devices
-          ..clear()
-          ..addAll(devices);
-        _isScanning = false;
-      });
+      await _rebuildPeers(devices, persistLanHints: true);
+      if (!mounted) return;
+      setState(() => _isScanning = false);
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _isScanning = false;
-      });
+      setState(() => _isScanning = false);
     }
   }
 
-  void _selectDevice(DiscoveredDevice device) {
-    Navigator.of(context).pop(device);
+  Future<void> _rebuildPeers(
+    List<DiscoveredDevice> discovered, {
+    required bool persistLanHints,
+  }) async {
+    final paired = await PairedDeviceStore.instance.loadAll();
+    final online = widget.includeRelayPeers
+        ? RelayService.instance.client.onlinePeers
+        : const <String>{};
+
+    if (persistLanHints) {
+      for (final device in discovered) {
+        final id = device.deviceId;
+        if (id == null || id.isEmpty) {
+          continue;
+        }
+        await PairedDeviceStore.instance.touch(
+          id,
+          deviceName: device.deviceName,
+          lastSeenLan: device.displayAddress,
+        );
+      }
+    }
+
+    final peers = PeerDirectory.merge(
+      discovered: discovered,
+      paired: paired,
+      onlinePeers: online,
+    );
+
+    final visible = widget.includeRelayPeers
+        ? peers
+        : peers.where((p) => p.hasLan).toList();
+
+    if (!mounted) return;
+    setState(() => _peers = visible);
+  }
+
+  void _selectPeer(PeerRef peer) {
+    Navigator.of(context).pop(peer);
   }
 
   void _cancel() {
     _discoveryService.cancel();
     Navigator.of(context).pop();
   }
+
+  String _shortId(String deviceId) => deviceId.length <= 8
+      ? deviceId
+      : '${deviceId.substring(0, 4)}-${deviceId.substring(4, 8)}';
 
   @override
   Widget build(BuildContext context) {
@@ -110,16 +156,16 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
                     ? l10n.scanProgress(
                         _scannedCount,
                         _totalCount,
-                        _devices.length,
+                        _peers.length,
                       )
                     : l10n.scanningDevices,
                 textAlign: TextAlign.center,
               ),
-              if (_devices.isNotEmpty) ...[
+              if (_peers.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _buildDeviceList(),
+                _buildPeerList(),
               ],
-            ] else if (_devices.isEmpty) ...[
+            ] else if (_peers.isEmpty) ...[
               Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
               const SizedBox(height: 12),
               Text(
@@ -135,11 +181,11 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
               ),
             ] else ...[
               Text(
-                l10n.scanDevicesFound(_devices.length),
+                l10n.scanDevicesFound(_peers.length),
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 8),
-              _buildDeviceList(),
+              _buildPeerList(),
             ],
           ],
         ),
@@ -158,29 +204,40 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
     );
   }
 
-  Widget _buildDeviceList() {
+  Widget _buildPeerList() {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 320),
       child: ListView.separated(
         shrinkWrap: true,
-        itemCount: _devices.length,
+        itemCount: _peers.length,
         separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
-          final device = _devices[index];
+          final peer = _peers[index];
+          final base = peer.hasLan
+              ? peer.lan!.address
+              : (peer.deviceId == null ? '' : _shortId(peer.deviceId!));
+          final subtitle = peer.relayOnline && !peer.hasLan
+              ? (base.isEmpty ? 'relay' : '$base · relay')
+              : peer.relayOnline
+              ? '$base · LAN + relay'
+              : base;
+
           return ListTile(
             contentPadding: EdgeInsets.zero,
             leading: CircleAvatar(
               backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              child: const Icon(Icons.computer, color: Colors.blue),
+              child: ChannelBadge.forPeer(peer),
             ),
             title: Text(
-              device.deviceName,
+              peer.deviceName?.isNotEmpty == true
+                  ? peer.deviceName!
+                  : peer.describe(),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(device.displayAddress),
+            subtitle: Text(subtitle),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _selectDevice(device),
+            onTap: () => _selectPeer(peer),
           );
         },
       ),

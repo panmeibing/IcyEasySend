@@ -322,6 +322,93 @@ class FileReceiver {
     }
   }
 
+  /// Moves an already-written file into the save directory under [fileName].
+  ///
+  /// The resumable relay path writes its bytes to a partial file first, so the
+  /// last step is a move rather than a stream. Everything the direct path
+  /// decides about the destination — path sanitizing, name conflicts, the size
+  /// check — is decided here too, so a resumed file lands exactly where the
+  /// same file would have landed had it arrived in one go.
+  Future<OperationResult<TransferData>> adoptReceivedFile({
+    required File source,
+    required String fileName,
+    required int fileSize,
+  }) async {
+    try {
+      final downloadsDir = await PlatformUtil.getReceiveSaveDirectory();
+      if (downloadsDir == null) {
+        return OperationResult.failure(
+          ErrorMessages.downloadsDirectoryUnavailable,
+        );
+      }
+
+      final safeRelativePath = TransferPathUtil.sanitizeRelativePath(fileName);
+      if (safeRelativePath == null) {
+        LogUtil.wTag(logTag, 'Invalid transfer path rejected: $fileName');
+        return OperationResult.failure(ErrorMessages.invalidFileName);
+      }
+
+      final finalRelativePath = await _resolveFileNameConflict(
+        downloadsDir,
+        safeRelativePath,
+      );
+      final filePath = path.join(downloadsDir.path, finalRelativePath);
+      final parentDir = path.dirname(filePath);
+      if (parentDir.isNotEmpty) {
+        await Directory(parentDir).create(recursive: true);
+      }
+
+      final file = await _move(source, filePath);
+
+      final verifyResult = await _validationService.validateSavedFile(
+        file,
+        fileSize,
+      );
+      if (!verifyResult.isSuccess) {
+        try {
+          await file.delete();
+        } catch (deleteError) {
+          LogUtil.eTag(logTag, 'Error deleting invalid file: $deleteError');
+        }
+        return OperationResult.failure(verifyResult.errorMessage!);
+      }
+
+      return OperationResult.success(
+        data: TransferData(savedPath: filePath, bytesTransferred: fileSize),
+      );
+    } on FileSystemException catch (e) {
+      LogUtil.eTag(logTag, 'Error adopting received file $fileName: $e');
+      return OperationResult.failure('文件保存失败\n错误: ${e.message}');
+    } catch (e, stackTrace) {
+      LogUtil.eTag(
+        logTag,
+        'Unexpected error adopting received file $fileName: $e',
+        e,
+        stackTrace,
+      );
+      return OperationResult.failure('文件保存失败\n错误: $e');
+    }
+  }
+
+  /// Renames [source] to [destination], copying when that is not possible.
+  ///
+  /// A rename cannot cross a filesystem boundary, and on Android the save
+  /// directory regularly sits on a different mount than app storage. The copy
+  /// is the slow path and only runs when the fast one is unavailable.
+  Future<File> _move(File source, String destination) async {
+    try {
+      return await source.rename(destination);
+    } on FileSystemException {
+      final copied = await source.copy(destination);
+      try {
+        await source.delete();
+      } catch (e) {
+        LogUtil.wTag(logTag, 'Error deleting source after copy: $e');
+      }
+      return copied;
+    }
+  }
+
   /// Check if there is enough storage space
   Future<bool> _checkStorageSpace(int requiredBytes) async {
     // The method for checking remaining space has a bug, so we don't need to check it for the time being

@@ -42,6 +42,7 @@ class DeviceDiscoveryService {
 
     final found = <DiscoveredDevice>[];
     final foundIps = <String>{};
+    final foundIds = <String>{};
     StreamSubscription<DiscoveredDevice>? multicastSubscription;
 
     void reportProgress({required int scanned, required int total}) {
@@ -49,6 +50,30 @@ class DeviceDiscoveryService {
     }
 
     void addDevice(DiscoveredDevice device) {
+      if (device.hasIdentity) {
+        final id = device.deviceId!;
+        final existingIndex = found.indexWhere((d) => d.deviceId == id);
+        if (existingIndex >= 0) {
+          // Same device, possibly a fresher name or address.
+          foundIps.remove(found[existingIndex].ip);
+          found[existingIndex] = device;
+          foundIps.add(device.ip);
+          return;
+        }
+        if (!foundIds.add(id)) {
+          return;
+        }
+        // Drop a prior anonymous entry that occupied this IP.
+        found.removeWhere((d) => !d.hasIdentity && d.ip == device.ip);
+        foundIps.add(device.ip);
+        found.add(device);
+        LogUtil.iTag(
+          logTag,
+          '发现设备: ${device.deviceName} (${device.displayAddress}, id=${id.substring(0, 8)})',
+        );
+        return;
+      }
+
       if (foundIps.add(device.ip)) {
         found.add(device);
         LogUtil.iTag(
@@ -358,11 +383,15 @@ class DeviceDiscoveryService {
 
     final deviceName = data['deviceName'] as String? ?? ip;
     final resolvedPort = (data['port'] as num?)?.toInt() ?? port;
+    final deviceId = data['deviceId'] as String?;
+    final publicKey = data['publicKey'] as String?;
     LogUtil.dTag(logTag, 'HTTP 探测成功 $ip:$resolvedPort ($deviceName)');
     return DiscoveredDevice(
       ip: ip,
       port: resolvedPort,
       deviceName: deviceName,
+      deviceId: deviceId != null && deviceId.isNotEmpty ? deviceId : null,
+      publicKey: publicKey != null && publicKey.isNotEmpty ? publicKey : null,
     );
   }
 }
