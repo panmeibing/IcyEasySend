@@ -46,7 +46,12 @@ class HTTPServerManager {
   BuildContext? _context;
   VoidCallback? _historyRefreshCallback;
   final List<VoidCallback> _networkChangeCallbacks = [];
+  final List<VoidCallback> _serverStatusCallbacks = [];
   bool _isInBackground = false;
+
+  /// Bumped on each successful bind / stop so deferred multicast/relay/FGS
+  /// work from an older start cannot race past [stopServer].
+  int _lifecycleGeneration = 0;
 
   final String logTag = LogTags.server;
 
@@ -145,9 +150,26 @@ class HTTPServerManager {
     _networkChangeCallbacks.remove(callback);
   }
 
+  /// Called when the LAN listener starts or stops (not IP-only changes).
+  void addServerStatusCallback(VoidCallback callback) {
+    if (!_serverStatusCallbacks.contains(callback)) {
+      _serverStatusCallbacks.add(callback);
+    }
+  }
+
+  void removeServerStatusCallback(VoidCallback callback) {
+    _serverStatusCallbacks.remove(callback);
+  }
+
   /// Notify all registered callbacks about network change
   void _notifyNetworkChange() {
     for (final callback in _networkChangeCallbacks) {
+      callback();
+    }
+  }
+
+  void _notifyServerStatus() {
+    for (final callback in _serverStatusCallbacks) {
       callback();
     }
   }
@@ -325,20 +347,16 @@ class HTTPServerManager {
         LogUtil.iTag(logTag, '完整地址: $_serverAddress');
         LogUtil.iTag(logTag, separator * 3);
 
-        // 测试健康检查端点
-        _testHealthEndpoint(localIP, tryPort);
+        // Health probe is best-effort and must not block readiness.
+        unawaited(_testHealthEndpoint(localIP, tryPort));
 
-        await _startMulticastDiscovery(tryPort);
+        // HTTP bind is enough for inbound transfers and web-share. Discovery,
+        // relay, and the Android FGS are useful but not required for the home
+        // shell to show "server up" — kick them off without awaiting.
+        final generation = ++_lifecycleGeneration;
+        unawaited(_startPostBindServices(tryPort, generation));
 
-        // Independent of the LAN server, but started with it so there is one
-        // moment at which the app becomes reachable by any route.
-        await RelayService.instance.start();
-
-        // Keep process alive on Android so inbound transfers work when backgrounded.
-        if (Platform.isAndroid) {
-          await AndroidForegroundService.start();
-        }
-
+        _notifyServerStatus();
         return ServerStartResult(success: true, serverAddress: _serverAddress);
       } on SocketException catch (e) {
         // Port is in use or other socket error, try next port
@@ -374,8 +392,26 @@ class HTTPServerManager {
     );
   }
 
+  /// Multicast discovery, optional relay, and Android foreground service.
+  /// Skipped if [stopServer] (or a newer bind) has advanced the generation.
+  Future<void> _startPostBindServices(int port, int generation) async {
+    if (generation != _lifecycleGeneration || _server == null) return;
+
+    await _startMulticastDiscovery(port);
+    if (generation != _lifecycleGeneration || _server == null) return;
+
+    // Independent of the LAN server, but started alongside it so there is one
+    // window in which the app becomes reachable by any route.
+    await RelayService.instance.start();
+    if (generation != _lifecycleGeneration || _server == null) return;
+
+    if (Platform.isAndroid) {
+      await AndroidForegroundService.start();
+    }
+  }
+
   /// Test health endpoint after server starts
-  void _testHealthEndpoint(String ip, int port) async {
+  Future<void> _testHealthEndpoint(String ip, int port) async {
     try {
       LogUtil.dTag(logTag, '测试健康检查端点...');
       final testUrl = NetworkUtil.buildHttpUrl(ip, '/health', targetPort: port);
@@ -410,6 +446,7 @@ class HTTPServerManager {
 
   /// Stop the HTTP server
   Future<void> stopServer() async {
+    _lifecycleGeneration++;
     await _stopMulticastDiscovery();
     await RelayService.instance.stop();
     _pairingHandler.dispose();
@@ -433,6 +470,7 @@ class HTTPServerManager {
         _serverAddress = null;
         _currentPort = null;
       }
+      _notifyServerStatus();
     } else {
       LogUtil.dTag(logTag, '服务器未运行，无需停止');
     }

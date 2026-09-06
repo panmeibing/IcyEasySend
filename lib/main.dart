@@ -1,7 +1,9 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:icy_easy_send/utils/constants.dart';
-import 'dart:io';
 
 import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
@@ -13,14 +15,11 @@ import 'services/http_server_manager.dart';
 import 'services/identity_service.dart';
 import 'services/language_service.dart';
 import 'services/pairing_prompter.dart';
-import 'services/permission_service.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/log_util.dart';
-import 'utils/toast_helper.dart';
 
 void main() async {
-  // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
   // Android: port for foreground-task <-> UI communication
@@ -31,43 +30,12 @@ void main() async {
   // starts, so the first request cannot arrive to a prompter that refuses.
   PairingPrompter.instance = const DialogPairingPrompter();
 
-  // Initialize logger explicitly to ensure log file is created
-  await LogUtil.init();
+  // Console logging already works; attach the file sink in the background so
+  // cold start is not waiting on path_provider + creating a log file.
+  unawaited(LogUtil.init());
 
-  // Log app startup
-  LogUtil.iTag(
-    LogTags.ui,
-    '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
-  );
-
-  // Load (or generate) the Ed25519 identity before the server starts, so the
-  // very first `/health` response and multicast announcement already carry the
-  // public key. A failure here is not fatal: legacy transfers do not need it.
-  try {
-    await IdentityService.instance.ensureInitialized();
-  } catch (e) {
-    LogUtil.wTag(LogTags.system, '初始化设备身份失败: $e');
-  }
-
-  Set<String> pendingSharePaths = {};
-  if (Platform.isAndroid || Platform.isIOS) {
-    pendingSharePaths = await SharingIntentService.captureInitialSharingEarly();
-  }
-
-  // Clean up cache on Android startup to prevent storage issues.
-  // Shared files copied into cache must be preserved when opened via share intent.
-  if (Platform.isAndroid) {
-    LogUtil.iTag(LogTags.system, '应用启动时清理缓存');
-    final cacheCleanupService = CacheCleanupService();
-    try {
-      await cacheCleanupService.cleanupFilePickerCache(
-        excludePaths: pendingSharePaths,
-      );
-    } catch (e) {
-      LogUtil.wTag(LogTags.system, '启动时清理缓存失败: $e');
-    }
-  }
-
+  // First frame as soon as possible. Identity, cache cleanup, permissions and
+  // the LAN server continue inside [MyApp] after the UI is up.
   runApp(const MyApp());
 }
 
@@ -80,23 +48,21 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final HTTPServerManager _serverManager;
-  late final PermissionService _permissionService;
   late final SharingIntentService _sharingIntentService;
   final LanguageService _languageService = LanguageService();
-  bool _isInitialized = false;
+
+  late final ThemeData _theme = _buildModernTheme();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Initialize services
     _serverManager = HTTPServerManager();
-    _permissionService = PermissionService();
     _sharingIntentService = SharingIntentService();
     _sharingIntentService.initialize();
 
-    _initializeApp();
+    unawaited(_bootstrap());
   }
 
   @override
@@ -123,10 +89,93 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
 
     if (state == AppLifecycleState.resumed) {
-      _ensureServerRunningOnResume();
-      _onAppResumed();
+      unawaited(_ensureServerRunningOnResume());
+      unawaited(_onAppResumed());
     } else if (treatAsBackground) {
-      _onAppGoingBackground();
+      unawaited(_onAppGoingBackground());
+    }
+  }
+
+  /// Paint the shell on the first frame; warm prefs/services in the background.
+  Future<void> _bootstrap() async {
+    LogUtil.iTag(
+      LogTags.ui,
+      '应用启动: ${AppConstants.projectName} ${AppConstants.version}',
+    );
+
+    // Start share capture immediately (shared Future). Do not await before the
+    // first paint — Home awaits the same Future when it needs the payload.
+    final shareFuture = SharingIntentService.captureInitialSharingEarly();
+
+    // Language may briefly follow the system locale, then snap if the user
+    // saved a non-system preference (ListenableBuilder rebuilds).
+    unawaited(_languageService.initialize());
+    unawaited(_warmIdentity());
+    unawaited(_deferredCacheCleanup(shareFuture));
+
+    // Let the first home frame land before permissions / bind compete for the
+    // UI isolate (and before any system permission sheet appears).
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    unawaited(_startServices());
+  }
+
+  Future<void> _warmIdentity() async {
+    try {
+      await IdentityService.instance.ensureInitialized();
+    } catch (e) {
+      LogUtil.wTag(LogTags.system, '初始化设备身份失败: $e');
+    }
+  }
+
+  /// Wipe leftover file_picker / share cache after the first frame so a large
+  /// cache directory cannot stretch time-to-interactive.
+  Future<void> _deferredCacheCleanup(Future<Set<String>> shareFuture) async {
+    if (!Platform.isAndroid) return;
+
+    await WidgetsBinding.instance.endOfFrame;
+    final pendingSharePaths = await shareFuture;
+
+    LogUtil.iTag(LogTags.system, '应用启动时清理缓存（已延后）');
+    try {
+      await CacheCleanupService().cleanupFilePickerCache(
+        excludePaths: pendingSharePaths,
+      );
+    } catch (e) {
+      LogUtil.wTag(LogTags.system, '启动时清理缓存失败: $e');
+    }
+  }
+
+  Future<void> _startServices() async {
+    // Prefer identity ready before /health and multicast announce the key.
+    // Notification permission is requested later by the Android FGS path —
+    // asking here would pop a system sheet on top of the first home paint.
+    try {
+      await IdentityService.instance.ensureInitialized();
+    } catch (_) {}
+
+    final result = await _serverManager.startServer();
+    if (!result.success && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(context);
+        await DialogHelper.showErrorDialog(
+          context,
+          message: result.errorMessage ?? l10n.serverUnknownError,
+          title: l10n.error,
+          confirmText: l10n.confirm,
+        );
+      });
+    }
+
+    if (Platform.isAndroid) {
+      // Clipboard overlay is optional UX; keep it off the first-paint path.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      ClipboardOverlayService.instance.ensureInitialized();
+      await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
+      await ClipboardOverlayService.instance.startClipboardChangeListening();
+      await ClipboardOverlayService.instance.refreshCache();
     }
   }
 
@@ -146,112 +195,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _ensureServerRunningOnResume() async {
-    if (!_isInitialized) return;
     if (_serverManager.isRunning()) return;
 
     LogUtil.wTag(LogTags.server, '应用回到前台但服务器未运行，尝试重启');
     final result = await _serverManager.startServer();
     if (!result.success) {
       LogUtil.eTag(LogTags.server, '恢复服务器失败: ${result.errorMessage}');
-    }
-  }
-
-  /// Initialize the app: request permissions and start HTTP server
-  ///
-  Future<void> _initializeApp() async {
-    // Step 1: Initialize language service
-    await _languageService.initialize();
-
-    // Step 2: Request necessary permissions
-    await _requestPermissions();
-
-    // Step 3: Initialize the HTTP server
-    await _initializeServer();
-  }
-
-  /// Request necessary permissions on app startup
-  Future<void> _requestPermissions() async {
-    // Check if permissions are already granted
-    final hasPermissions = await _permissionService.hasAllPermissions();
-
-    if (!hasPermissions) {
-      // Request permissions
-      final result = await _permissionService.requestAllPermissions();
-
-      if (!result.granted && mounted) {
-        // Show warning if permissions are not granted
-        // User can still use the app, but will be prompted again when needed
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            final l10n = AppLocalizations.of(context);
-            ToastHelper.showWarning(
-              context,
-              result.errorMessage ?? l10n.permissionWarning,
-              duration: const Duration(seconds: 5),
-            );
-
-            // If permanently denied, show a dialog with option to open settings
-            if (result.permanentlyDenied) {
-              Future.delayed(const Duration(milliseconds: 500), () async {
-                if (mounted) {
-                  final l10n = AppLocalizations.of(context);
-                  final confirmed = await DialogHelper.showConfirmDialog(
-                    context,
-                    title: l10n.permissionPermanentlyDenied,
-                    message: l10n.permissionWarning,
-                    confirmText: l10n.openSettings,
-                    cancelText: l10n.cancel,
-                    icon: Icons.settings,
-                    iconColor: Colors.orange,
-                  );
-
-                  if (confirmed) {
-                    _permissionService.openAppSettings();
-                  }
-                }
-              });
-            }
-          }
-        });
-      }
-    }
-
-    // Android 13+: notification permission for foreground service
-    if (Platform.isAndroid) {
-      final notificationGranted =
-          await _permissionService.requestNotificationPermission();
-      if (!notificationGranted) {
-        LogUtil.wTag(LogTags.permission, '通知权限未授予，后台保活通知可能无法显示');
-      }
-    }
-  }
-
-  /// Initialize the HTTP server on app startup
-  Future<void> _initializeServer() async {
-    final result = await _serverManager.startServer();
-    setState(() {
-      _isInitialized = true;
-      if (!result.success) {
-        // Show error dialog if server fails to start
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (mounted) {
-            final l10n = AppLocalizations.of(context);
-            await DialogHelper.showErrorDialog(
-              context,
-              message: result.errorMessage ?? l10n.serverUnknownError,
-              title: l10n.error,
-              confirmText: l10n.confirm,
-            );
-          }
-        });
-      }
-    });
-
-    if (Platform.isAndroid) {
-      ClipboardOverlayService.instance.ensureInitialized();
-      await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
-      await ClipboardOverlayService.instance.startClipboardChangeListening();
-      await ClipboardOverlayService.instance.refreshCache();
     }
   }
 
@@ -262,7 +211,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       builder: (context, child) {
         return MaterialApp(
           title: AppConstants.projectName,
-          theme: _buildModernTheme(),
+          theme: _theme,
           locale: _languageService.locale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -272,12 +221,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           localeResolutionCallback: (locale, supportedLocales) {
-            // If user has set a language preference, use it
             if (_languageService.locale != null) {
               return _languageService.locale;
             }
 
-            // Otherwise, try to match system locale
             if (locale != null) {
               for (var supportedLocale in supportedLocales) {
                 if (supportedLocale.languageCode == locale.languageCode) {
@@ -286,18 +233,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
               }
             }
 
-            // Default to English if system language is not supported
             return const Locale('en', 'US');
           },
-          home: _isInitialized
-              ? MainContainer(
-                  serverManager: _serverManager,
-                  sharingIntentService: _sharingIntentService,
-                  languageService: _languageService,
-                )
-              : const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                ),
+          home: MainContainer(
+            serverManager: _serverManager,
+            sharingIntentService: _sharingIntentService,
+            languageService: _languageService,
+          ),
         );
       },
     );
@@ -341,17 +283,66 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         margin: EdgeInsets.zero,
       ),
 
-      // Input decoration theme - clean and modern
+      // Elevated button theme - flat with subtle shadow
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          backgroundColor: primaryColor,
+          foregroundColor: Colors.white,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+
+      // Text button theme
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          foregroundColor: primaryColor,
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+
+      // Outlined button theme
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          side: BorderSide(color: Colors.grey.shade300, width: 1),
+          foregroundColor: const Color(0xFF212121),
+          textStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+
+      // Input decoration theme - clean and minimal
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -365,51 +356,34 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: Color(0xFFE53935), width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
       ),
 
-      // Elevated button theme - flat and modern
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
+      // Dialog theme
+      dialogTheme: DialogThemeData(
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
       ),
 
-      // Outlined button theme
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          side: BorderSide(color: Colors.grey.shade400),
-        ),
-      ),
-
-      // Bottom navigation bar theme - clean and flat
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      // Bottom navigation bar theme
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         elevation: 0,
         backgroundColor: Colors.white,
         selectedItemColor: primaryColor,
-        unselectedItemColor: Color(0xFF757575),
-        selectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: TextStyle(
+        unselectedItemColor: Colors.grey.shade600,
+        type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        type: BottomNavigationBarType.fixed,
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
       ),
+
+      // Scaffold background
+      scaffoldBackgroundColor: surfaceColor,
 
       // Divider theme
       dividerTheme: DividerThemeData(
@@ -417,28 +391,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         thickness: 1,
         space: 1,
       ),
-
-      // Snackbar theme
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        elevation: 0,
-      ),
-
-      // Dialog theme
-      dialogTheme: DialogThemeData(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-
-      // Progress indicator theme
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: primaryColor,
-        linearTrackColor: Color(0xFFE0E0E0),
-      ),
-
-      // Scaffold background
-      scaffoldBackgroundColor: surfaceColor,
     );
   }
 }

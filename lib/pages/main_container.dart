@@ -27,6 +27,9 @@ class MainContainer extends StatefulWidget {
 
 class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
+  /// Only build History/Settings after the user opens them once so cold start
+  /// does not pay for three full tab trees behind an [IndexedStack].
+  final Set<int> _visitedTabs = {0};
   final GlobalKey<HistoryPageState> _historyPageKey =
       GlobalKey<HistoryPageState>();
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
@@ -52,6 +55,29 @@ class _MainContainerState extends State<MainContainer> {
     _historyPageKey.currentState?.refreshHistory();
   }
 
+  Widget _tabAt(int index) {
+    if (!_visitedTabs.contains(index)) {
+      return const SizedBox.shrink();
+    }
+    switch (index) {
+      case 0:
+        return HomePage(
+          key: _homePageKey,
+          serverManager: widget.serverManager,
+          sharingIntentService: widget.sharingIntentService,
+        );
+      case 1:
+        return HistoryPage(key: _historyPageKey);
+      case 2:
+        return SettingsPage(
+          serverManager: widget.serverManager,
+          languageService: widget.languageService,
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -59,18 +85,7 @@ class _MainContainerState extends State<MainContainer> {
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: [
-          HomePage(
-            key: _homePageKey,
-            serverManager: widget.serverManager,
-            sharingIntentService: widget.sharingIntentService,
-          ),
-          HistoryPage(key: _historyPageKey),
-          SettingsPage(
-            serverManager: widget.serverManager,
-            languageService: widget.languageService,
-          ),
-        ],
+        children: [_tabAt(0), _tabAt(1), _tabAt(2)],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -82,11 +97,15 @@ class _MainContainerState extends State<MainContainer> {
           currentIndex: _currentIndex,
           onTap: (index) {
             setState(() {
+              _visitedTabs.add(index);
               _currentIndex = index;
             });
             // Refresh history page when switching to it
             if (index == 1) {
-              _refreshHistory();
+              // Defer until after the first build of HistoryPage.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _refreshHistory();
+              });
             }
             // Reload IP validation setting when switching to home page
             if (index == 0) {

@@ -125,6 +125,7 @@ class HomePageState extends State<HomePage> {
         widget.serverManager.setContext(context);
         // Register network change callback
         widget.serverManager.addNetworkChangeCallback(_onNetworkChanged);
+        widget.serverManager.addServerStatusCallback(_onServerStatusChanged);
       }
     });
 
@@ -135,12 +136,8 @@ class HomePageState extends State<HomePage> {
     _portController.addListener(_validatePort);
     _secretKeyController.addListener(_saveTargetSecretKey);
 
-    // Load preferences
-    _loadLastUsedIP();
-    _loadLastUsedPort();
-    _loadLastUsedTargetSecretKey();
-    _loadIPHistory();
-    _loadIPValidationEnabled();
+    // One prefs batch instead of five sequential SharedPreferences trips + setStates
+    unawaited(_loadHomeConnectionPrefs());
 
     // Listen for shared files while the app is already running
     _sharingIntentSubscription = widget.sharingIntentService.sharedFilesStream
@@ -160,6 +157,28 @@ class HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _loadHomeConnectionPrefs() async {
+    final prefs = await _connectionPrefs.loadHomeConnectionPrefs();
+    if (!mounted) return;
+
+    if (prefs.lastUsedIP != null && prefs.lastUsedIP!.isNotEmpty) {
+      _ipController.text = prefs.lastUsedIP!;
+    }
+    _portController.text = prefs.lastUsedPort.toString();
+    if (prefs.targetSecretKey != null && prefs.targetSecretKey!.isNotEmpty) {
+      _secretKeyController.text = prefs.targetSecretKey!;
+    }
+
+    setState(() {
+      _ipHistory = prefs.ipHistory;
+      _enableIPValidation = prefs.enableIPValidation;
+    });
+
+    // Validate after controllers are filled (listeners already attached).
+    _validateIPAddress();
+    _validatePort();
+  }
+
   /// Handle share payload that opened the app before UI was ready
   Future<void> _processInitialSharedFiles() async {
     await _shareIntentHandler.processInitialSharedFiles(
@@ -171,6 +190,7 @@ class HomePageState extends State<HomePage> {
   @override
   void dispose() {
     widget.serverManager.removeNetworkChangeCallback(_onNetworkChanged);
+    widget.serverManager.removeServerStatusCallback(_onServerStatusChanged);
     _sharingIntentSubscription?.cancel();
     _ipController.dispose();
     _portController.dispose();
@@ -190,6 +210,12 @@ class HomePageState extends State<HomePage> {
         context,
         AppLocalizations.of(context).networkChanged,
       );
+    }
+  }
+
+  void _onServerStatusChanged() {
+    if (mounted) {
+      _updateServerStatus();
     }
   }
 
@@ -251,32 +277,6 @@ class HomePageState extends State<HomePage> {
         }
       }
     });
-  }
-
-  /// Load the last used IP address from preferences
-  Future<void> _loadLastUsedIP() async {
-    final lastIP = await _connectionPrefs.loadLastUsedIP();
-    if (lastIP != null && lastIP.isNotEmpty && mounted) {
-      _ipController.text = lastIP;
-      _validateIPAddress();
-    }
-  }
-
-  /// Load the last used port from preferences
-  Future<void> _loadLastUsedPort() async {
-    final lastPort = await _connectionPrefs.loadLastUsedPort();
-    if (mounted) {
-      _portController.text = lastPort.toString();
-      _validatePort();
-    }
-  }
-
-  /// Load the last used target device secret key from preferences
-  Future<void> _loadLastUsedTargetSecretKey() async {
-    final lastSecretKey = await _connectionPrefs.loadLastUsedTargetSecretKey();
-    if (lastSecretKey != null && lastSecretKey.isNotEmpty && mounted) {
-      _secretKeyController.text = lastSecretKey;
-    }
   }
 
   /// Save the current target device secret key to preferences

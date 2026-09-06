@@ -106,15 +106,26 @@ class LanguageService extends ChangeNotifier {
 
   Locale? get locale => _locale;
 
-  /// Initialize language service and load saved language preference
+  /// Initialize language service and load saved language preference.
+  ///
+  /// Safe to call after the first frame: notifies listeners so [MaterialApp]
+  /// can rebuild if the user chose a non-system locale.
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final languageCode = prefs.getString(_languageKey);
 
+    final Locale? next;
     if (languageCode != null && languageCode.isNotEmpty) {
-      _locale = _parseLocale(languageCode);
+      next = _parseLocale(languageCode);
+    } else {
+      // null → follow system via localeResolutionCallback
+      next = null;
     }
-    // If null, will use system language
+
+    if (_locale != next) {
+      _locale = next;
+      notifyListeners();
+    }
   }
 
   /// Set app language

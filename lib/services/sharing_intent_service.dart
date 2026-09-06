@@ -12,7 +12,7 @@ class SharingIntentService {
   static final String logTag = LogTags.system;
 
   static List<SharedFile>? _earlyCapturedSharing;
-  static bool _earlyCaptureDone = false;
+  static Future<Set<String>>? _earlyCaptureFuture;
 
   StreamSubscription? _intentStreamSubscription;
   final List<File> _sharedFiles = [];
@@ -30,15 +30,17 @@ class SharingIntentService {
 
   /// Capture the cold-start share payload before startup cache cleanup runs.
   ///
+  /// Safe to call multiple times — concurrent callers share one Future so the
+  /// plugin is only queried once (it may clear the payload after the first read).
+  ///
   /// On Android, [flutter_sharing_intent] copies shared media into the app
   /// cache directory. If cache cleanup deletes those files first, the share
   /// payload becomes unusable.
-  static Future<Set<String>> captureInitialSharingEarly() async {
-    if (_earlyCaptureDone) {
-      return _extractPaths(_earlyCapturedSharing);
-    }
-    _earlyCaptureDone = true;
+  static Future<Set<String>> captureInitialSharingEarly() {
+    return _earlyCaptureFuture ??= _captureInitialSharingEarly();
+  }
 
+  static Future<Set<String>> _captureInitialSharingEarly() async {
     if (!Platform.isAndroid && !Platform.isIOS) {
       return {};
     }
@@ -104,21 +106,15 @@ class SharingIntentService {
     }
     _initialSharingLoaded = true;
 
+    // Prefer the shared early-capture Future so we never race a second
+    // getInitialSharing() against cache cleanup / HomePage startup.
+    await captureInitialSharingEarly();
     if (_earlyCapturedSharing != null) {
       LogUtil.iTag(
         logTag,
         '使用启动前捕获的分享: ${_earlyCapturedSharing!.length} 个条目',
       );
       _handleSharedMedia(_earlyCapturedSharing!, notifyListeners: false);
-      return;
-    }
-
-    try {
-      final value = await FlutterSharingIntent.instance.getInitialSharing();
-      LogUtil.iTag(logTag, '读取初始分享: ${value.length} 个条目');
-      _handleSharedMedia(value, notifyListeners: false);
-    } catch (e, stackTrace) {
-      LogUtil.wTag(logTag, '读取初始分享失败: $e', e, stackTrace);
     }
   }
 
