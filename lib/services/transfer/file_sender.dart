@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 
 import '../../models/transfer_data.dart';
-import '../../utils/constants.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
@@ -148,6 +147,10 @@ class FileSender {
       return OperationResult.failure(
         ErrorMessages.unexpectedError(e.toString()),
       );
+    } finally {
+      // One client per upload, so it has to be closed per upload or every
+      // file sent leaks its connection pool.
+      dio.close();
     }
   }
 

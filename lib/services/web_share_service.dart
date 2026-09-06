@@ -26,7 +26,7 @@ class WebShareService {
       return null;
     }
     if (session.isExpired) {
-      LogUtil.iTag(logTag, '网页分享会话已过期，自动清理: ${session.token}');
+      LogUtil.iTag(logTag, '网页分享会话已过期，自动清理: ${_redact(session.token)}');
       _session = null;
       return null;
     }
@@ -93,7 +93,8 @@ class WebShareService {
     _session = session;
     LogUtil.iTag(
       logTag,
-      '创建网页分享会话: token=$token, files=${files.length}, expires=$expiresAt',
+      '创建网页分享会话: token=${_redact(token)}, files=${files.length}, '
+      'expires=$expiresAt',
     );
     return session;
   }
@@ -120,14 +121,14 @@ class WebShareService {
       return false;
     }
     _session = null;
-    LogUtil.iTag(logTag, '已停止网页分享会话: ${session.token}');
+    LogUtil.iTag(logTag, '已停止网页分享会话: ${_redact(session.token)}');
     return true;
   }
 
   /// Clear all sessions (e.g. when HTTP server stops).
   void clearAll() {
     if (_session != null) {
-      LogUtil.iTag(logTag, '清理网页分享会话: ${_session!.token}');
+      LogUtil.iTag(logTag, '清理网页分享会话: ${_redact(_session!.token)}');
     }
     _session = null;
   }
@@ -148,6 +149,12 @@ class WebShareService {
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
+
+  /// A share token is a bearer credential: whoever has it can download the
+  /// shared files for as long as the session lives. Logs keep only enough of
+  /// it to match entries to each other.
+  static String _redact(String token) =>
+      token.length <= 8 ? '***' : '${token.substring(0, 8)}...';
 
   String _generateFileId(int index) {
     final suffix = List<int>.generate(4, (_) => _random.nextInt(256))

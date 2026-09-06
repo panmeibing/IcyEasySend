@@ -7,7 +7,7 @@ import '../../../models/relay_config.dart';
 import '../../../services/preferences_service.dart';
 import '../../../services/relay/relay_client.dart';
 import '../../../services/relay/relay_service.dart';
-import '../../../utils/relay_message_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/toast_helper.dart';
 
 /// Relay server settings.
@@ -23,7 +23,6 @@ class RelayServerCard extends StatefulWidget {
 }
 
 class _RelayServerCardState extends State<RelayServerCard> {
-  final RelayMessages _messages = RelayMessages.instance;
   final RelayService _relay = RelayService.instance;
   final PreferencesService _preferencesService = PreferencesService();
 
@@ -84,7 +83,7 @@ class _RelayServerCardState extends State<RelayServerCard> {
       setState(() => _urlError = null);
       return config.serverUrl.isEmpty ? !config.enabled : true;
     }
-    setState(() => _urlError = _messages.invalidUrl);
+    setState(() => _urlError = AppLocalizations.of(context).invalidUrl);
     return false;
   }
 
@@ -97,9 +96,9 @@ class _RelayServerCardState extends State<RelayServerCard> {
     final saved = await _relay.updateConfig(config);
     if (!mounted) return;
     if (saved) {
-      ToastHelper.showSuccess(context, _messages.saved);
+      ToastHelper.showSuccess(context, AppLocalizations.of(context).saved);
     } else {
-      ToastHelper.showError(context, _messages.saveFailed);
+      ToastHelper.showError(context, AppLocalizations.of(context).saveFailed);
     }
   }
 
@@ -115,7 +114,7 @@ class _RelayServerCardState extends State<RelayServerCard> {
 
     setState(() => _testing = false);
     if (result.isSuccess) {
-      ToastHelper.showSuccess(context, _messages.testSucceeded);
+      ToastHelper.showSuccess(context, AppLocalizations.of(context).testSucceeded);
     } else {
       ToastHelper.showError(context, result.errorMessage ?? '');
     }
@@ -123,6 +122,7 @@ class _RelayServerCardState extends State<RelayServerCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final insecure = _urlController.text.trim().startsWith('http://');
 
     return Card(
@@ -139,39 +139,39 @@ class _RelayServerCardState extends State<RelayServerCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _messages.title,
+                    l10n.title,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                _buildStatusChip(),
+                _buildStatusChip(l10n),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              _messages.description,
+              l10n.description,
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
             const SizedBox(height: 12),
             _buildNotice(
               icon: Icons.lock_outline,
               color: Colors.green,
-              text: _messages.encryptionNotice,
+              text: l10n.encryptionNotice,
             ),
             if (Platform.isIOS) ...[
               const SizedBox(height: 8),
               _buildNotice(
                 icon: Icons.info_outline,
                 color: Colors.blueGrey,
-                text: _messages.iosForegroundNotice,
+                text: l10n.iosForegroundNotice,
               ),
             ],
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(_messages.enableLabel),
+              title: Text(l10n.enableLabel),
               value: _enabled,
               onChanged: (value) async {
                 setState(() => _enabled = value);
@@ -184,12 +184,14 @@ class _RelayServerCardState extends State<RelayServerCard> {
                   return;
                 }
                 final saved = await _relay.updateConfig(config);
-                if (!mounted) return;
+                // The build context rather than the State: it is the one the
+                // toast below is shown in.
+                if (!context.mounted) return;
                 if (saved) {
-                  ToastHelper.showSuccess(context, _messages.saved);
+                  ToastHelper.showSuccess(context, l10n.saved);
                 } else {
                   setState(() => _enabled = !value);
-                  ToastHelper.showError(context, _messages.saveFailed);
+                  ToastHelper.showError(context, l10n.saveFailed);
                 }
               },
             ),
@@ -198,9 +200,9 @@ class _RelayServerCardState extends State<RelayServerCard> {
             // server settings being edited.
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: Text(_messages.acceptPairingLabel),
+              title: Text(l10n.acceptPairingLabel),
               subtitle: Text(
-                _messages.acceptPairingHint,
+                l10n.acceptPairingHint,
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
               value: _acceptPairing,
@@ -214,10 +216,10 @@ class _RelayServerCardState extends State<RelayServerCard> {
               keyboardType: TextInputType.url,
               autocorrect: false,
               decoration: InputDecoration(
-                labelText: _messages.serverUrlLabel,
+                labelText: l10n.serverUrlLabel,
                 hintText: 'https://relay.example.com',
                 errorText: _urlError,
-                helperText: insecure ? _messages.insecureUrlWarning : null,
+                helperText: insecure ? l10n.insecureUrlWarning : null,
                 helperMaxLines: 2,
                 border: const OutlineInputBorder(),
                 isDense: true,
@@ -233,7 +235,7 @@ class _RelayServerCardState extends State<RelayServerCard> {
               autocorrect: false,
               enableSuggestions: false,
               decoration: InputDecoration(
-                labelText: _messages.tokenLabel,
+                labelText: l10n.tokenLabel,
                 border: const OutlineInputBorder(),
                 isDense: true,
                 suffixIcon: IconButton(
@@ -258,12 +260,12 @@ class _RelayServerCardState extends State<RelayServerCard> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.wifi_tethering, size: 18),
-                  label: Text(_messages.testConnection),
+                  label: Text(l10n.testConnection),
                 ),
                 const SizedBox(width: 12),
                 FilledButton(
                   onPressed: _testing ? null : _save,
-                  child: Text(_messages.save),
+                  child: Text(l10n.save),
                 ),
               ],
             ),
@@ -300,16 +302,16 @@ class _RelayServerCardState extends State<RelayServerCard> {
     );
   }
 
-  Widget _buildStatusChip() {
+  Widget _buildStatusChip(AppLocalizations l10n) {
     final (label, color) = switch (_state) {
-      RelayConnectionState.connected => (_messages.statusConnected, Colors.green),
-      RelayConnectionState.connecting => (_messages.statusConnecting, Colors.blue),
+      RelayConnectionState.connected => (l10n.statusConnected, Colors.green),
+      RelayConnectionState.connecting => (l10n.statusConnecting, Colors.blue),
       RelayConnectionState.reconnecting => (
-        _messages.statusReconnecting,
+        l10n.statusReconnecting,
         Colors.orange,
       ),
-      RelayConnectionState.rejected => (_messages.statusRejected, Colors.red),
-      RelayConnectionState.disabled => (_messages.statusDisabled, Colors.grey),
+      RelayConnectionState.rejected => (l10n.statusRejected, Colors.red),
+      RelayConnectionState.disabled => (l10n.statusDisabled, Colors.grey),
     };
 
     return Container(

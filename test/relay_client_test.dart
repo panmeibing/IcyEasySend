@@ -17,7 +17,12 @@ class _MockRelayServer {
   final HttpServer _server;
   final List<WebSocket> _sockets = [];
 
-  static Future<_MockRelayServer> start({String token = 'test-token'}) async {
+  /// When [answerHandshake] is false the socket is accepted and then ignored,
+  /// which is what a relay that is up but wedged looks like from here.
+  static Future<_MockRelayServer> start({
+    String token = 'test-token',
+    bool answerHandshake = true,
+  }) async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final mock = _MockRelayServer(server);
 
@@ -38,6 +43,9 @@ class _MockRelayServer {
 
       final socket = await WebSocketTransformer.upgrade(request);
       mock._sockets.add(socket);
+      if (!answerHandshake) {
+        return;
+      }
       unawaited(mock._handshake(socket));
     });
 
@@ -239,5 +247,82 @@ void main() {
     await reconnecting.timeout(const Duration(seconds: 3));
 
     expect(client.isOnline(peerId), isTrue);
+  });
+
+  /// Every way an attempt can end has to release the shared handshake, because
+  /// callers that arrive while one is running are handed its future rather
+  /// than starting their own. One path that forgets is enough to make the
+  /// relay unusable until the app restarts.
+  group('a failed attempt never wedges the next one', () {
+    IdentityService localIdentity() => IdentityService.forTesting(
+      filePath: '${workspace.path}${Platform.pathSeparator}device.key',
+    );
+
+    test('after the handshake times out', () async {
+      final silent = await _MockRelayServer.start(answerHandshake: false);
+      addTearDown(silent.dispose);
+
+      final client = RelayClient(
+        identity: localIdentity(),
+        handshakeTimeout: const Duration(milliseconds: 200),
+      );
+      addTearDown(client.dispose);
+
+      await client.applyConfig(silent.config());
+      expect(await client.connect(), isFalse);
+
+      // The real assertion is that this returns at all.
+      expect(
+        await client.connect().timeout(const Duration(seconds: 3)),
+        isFalse,
+      );
+    });
+
+    test('after being disconnected mid-handshake', () async {
+      final silent = await _MockRelayServer.start(answerHandshake: false);
+      addTearDown(silent.dispose);
+
+      final client = RelayClient(
+        identity: localIdentity(),
+        // Long enough that only the disconnect below can end the attempt.
+        handshakeTimeout: const Duration(seconds: 30),
+      );
+      addTearDown(client.dispose);
+
+      await client.applyConfig(silent.config());
+      final pending = client.connect();
+
+      await client.disconnect();
+
+      expect(await pending.timeout(const Duration(seconds: 3)), isFalse);
+      expect(client.state, RelayConnectionState.disabled);
+    });
+  });
+
+  test('switching relay servers while connected really reconnects', () async {
+    final client = buildClient(
+      IdentityService.forTesting(
+        filePath: '${workspace.path}${Platform.pathSeparator}device.key',
+      ),
+    );
+    addTearDown(client.dispose);
+
+    await client.applyConfig(server.config());
+    expect(await client.connect(), isTrue);
+
+    final other = await _MockRelayServer.start();
+    addTearDown(other.dispose);
+
+    // Subscribed before the switch so the new connection cannot be missed.
+    final reconnected = client.stateChanges
+        .firstWhere((state) => state == RelayConnectionState.connected)
+        .timeout(const Duration(seconds: 5));
+
+    await client.applyConfig(other.config());
+    await reconnected;
+
+    // Left at a stale `connected`, connect() would have returned true without
+    // opening anything and this would have timed out.
+    expect(client.isConnected, isTrue);
   });
 }

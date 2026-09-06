@@ -16,7 +16,6 @@ import '../../../utils/constants.dart';
 import '../../../utils/dialog_helper.dart';
 import '../../../utils/log_util.dart';
 import '../../../utils/network_util.dart';
-import '../../../utils/pairing_message_provider.dart';
 import '../../../transport/transport_channel.dart';
 import '../../home/widgets/channel_badge.dart';
 import '../../home/widgets/device_scan_dialog.dart';
@@ -35,7 +34,6 @@ class PairedDevicesCard extends StatefulWidget {
 }
 
 class _PairedDevicesCardState extends State<PairedDevicesCard> {
-  final PairingMessages _messages = PairingMessages.instance;
   final PairedDeviceStore _store = PairedDeviceStore.instance;
 
   StreamSubscription<List<PairedDevice>>? _subscription;
@@ -118,7 +116,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
     if (!prepared.isSuccess) {
       await DialogHelper.showErrorDialog(
         context,
-        title: _messages.pairingFailed,
+        title: AppLocalizations.of(context).pairingFailed,
         message: prepared.errorMessage!,
         confirmText: AppLocalizations.of(context).confirm,
       );
@@ -134,7 +132,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_messages.pairingSucceeded(handshake.peerDeviceName)),
+        content: Text(AppLocalizations.of(context).pairingSucceeded(handshake.peerDeviceName)),
       ),
     );
   }
@@ -159,7 +157,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
     if (!proposed.isSuccess) {
       await DialogHelper.showErrorDialog(
         context,
-        title: _messages.pairingFailed,
+        title: AppLocalizations.of(context).pairingFailed,
         message: proposed.errorMessage!,
         confirmText: AppLocalizations.of(context).confirm,
       );
@@ -183,15 +181,15 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       await proposal.finish(false);
       if (!mounted) return;
       final message = switch (peerDecision) {
-        PairingPeerDecision.rejected => _messages.peerRejected,
-        PairingPeerDecision.blocked => _messages.peerPairingBlocked,
-        PairingPeerDecision.timeout => _messages.peerTimeout,
+        PairingPeerDecision.rejected => AppLocalizations.of(context).peerRejected,
+        PairingPeerDecision.blocked => AppLocalizations.of(context).peerPairingBlocked,
+        PairingPeerDecision.timeout => AppLocalizations.of(context).peerTimeout,
         _ => null,
       };
       if (message != null) {
         await DialogHelper.showErrorDialog(
           context,
-          title: _messages.pairingFailed,
+          title: AppLocalizations.of(context).pairingFailed,
           message: message,
           confirmText: AppLocalizations.of(context).confirm,
         );
@@ -204,7 +202,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_messages.pairingSucceeded(proposal.peerDeviceName)),
+        content: Text(AppLocalizations.of(context).pairingSucceeded(proposal.peerDeviceName)),
       ),
     );
   }
@@ -226,9 +224,9 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
   Future<void> _unpair(PairedDevice device) async {
     final confirmed = await DialogHelper.showConfirmDialog(
       context,
-      title: _messages.unpair,
-      message: _messages.unpairConfirm(device.deviceName),
-      confirmText: _messages.unpair,
+      title: AppLocalizations.of(context).unpair,
+      message: AppLocalizations.of(context).unpairConfirm(device.deviceName),
+      confirmText: AppLocalizations.of(context).unpair,
       cancelText: AppLocalizations.of(context).cancel,
       icon: Icons.link_off,
       iconColor: Colors.orange,
@@ -245,7 +243,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       builder: (dialogContext) {
         return _RelayPairBlocklistDialog(
           preferences: preferences,
-          messages: _messages,
+          messages: AppLocalizations.of(context),
         );
       },
     );
@@ -276,7 +274,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _messages.pairedDevicesTitle,
+                    AppLocalizations.of(context).pairedDevicesTitle,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -292,7 +290,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
             const SizedBox(height: 16),
             if (_devices.isEmpty)
               Text(
-                _messages.pairedDevicesEmpty,
+                AppLocalizations.of(context).pairedDevicesEmpty,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               )
             else
@@ -317,17 +315,17 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
                 //           child: CircularProgressIndicator(strokeWidth: 2),
                 //         )
                 //       : const Icon(Icons.add_link, size: 18),
-                //   label: Text(_messages.addPairedDevice),
+                //   label: Text(AppLocalizations.of(context).addPairedDevice),
                 // ),
                 OutlinedButton.icon(
                   onPressed: _pairing ? null : _startRelayPairing,
                   icon: const Icon(Icons.cloud_sync_outlined, size: 18),
-                  label: Text(_messages.pairOverRelay),
+                  label: Text(AppLocalizations.of(context).pairOverRelay),
                 ),
                 OutlinedButton.icon(
                   onPressed: _pairing ? null : _showBlocklist,
                   icon: const Icon(Icons.block, size: 18),
-                  label: Text(_messages.pairingBlocklistManage),
+                  label: Text(AppLocalizations.of(context).pairingBlocklistManage),
                 ),
               ],
             ),
@@ -346,7 +344,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _messages.deviceCodeLabel,
+                AppLocalizations.of(context).deviceCodeLabel,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[600],
@@ -399,7 +397,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       ),
       trailing: IconButton(
         icon: const Icon(Icons.link_off, size: 20),
-        tooltip: _messages.unpair,
+        tooltip: AppLocalizations.of(context).unpair,
         onPressed: () => _unpair(device),
       ),
     );
@@ -415,7 +413,6 @@ class _DeviceCodePrompt extends StatefulWidget {
 }
 
 class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
-  final PairingMessages _messages = PairingMessages.instance;
   final TextEditingController _controller = TextEditingController();
 
   String? _error;
@@ -429,7 +426,7 @@ class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
   void _submit() {
     final code = _controller.text.trim().toLowerCase();
     if (!RegExp(r'^[0-9a-f]{32}$').hasMatch(code)) {
-      setState(() => _error = _messages.invalidDeviceCode);
+      setState(() => _error = AppLocalizations.of(context).invalidDeviceCode);
       return;
     }
     Navigator.of(context).pop(code);
@@ -438,7 +435,7 @@ class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_messages.pairOverRelay),
+      title: Text(AppLocalizations.of(context).pairOverRelay),
       content: SizedBox(
         width: MediaQuery.of(context).size.width *
             AppConstants.dialogWidthPercent,
@@ -449,7 +446,7 @@ class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
           minLines: 1,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
           decoration: InputDecoration(
-            labelText: _messages.enterDeviceCode,
+            labelText: AppLocalizations.of(context).enterDeviceCode,
             errorText: _error,
             border: const OutlineInputBorder(),
           ),
@@ -478,7 +475,7 @@ class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
 /// Lists peers blocked from relay pairing and lets the user unblock them.
 class _RelayPairBlocklistDialog extends StatefulWidget {
   final PreferencesService preferences;
-  final PairingMessages messages;
+  final AppLocalizations messages;
 
   const _RelayPairBlocklistDialog({
     required this.preferences,

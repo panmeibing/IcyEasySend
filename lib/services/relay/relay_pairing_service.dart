@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../../pages/pairing/pairing_confirm_dialog.dart';
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
@@ -11,6 +10,7 @@ import '../../utils/operation_result.dart';
 import '../../utils/pairing_message_provider.dart';
 import '../identity_service.dart';
 import '../paired_device_store.dart';
+import '../pairing_prompter.dart';
 import '../pairing_service.dart';
 import '../preferences_service.dart';
 import 'relay_client.dart';
@@ -48,6 +48,7 @@ class RelayPairingService {
   final PairingService _pairingService;
   final PairedDeviceStore _store;
   final PreferencesService _preferences;
+  final PairingPrompter _prompter;
 
   /// Supplied by `RelayService`, exactly as for the receive coordinator.
   final BuildContext? Function()? contextGetter;
@@ -77,11 +78,13 @@ class RelayPairingService {
     PairingService? pairingService,
     PairedDeviceStore? store,
     PreferencesService? preferences,
+    PairingPrompter? prompter,
   }) : _client = client,
        _identity = identity ?? IdentityService.instance,
        _pairingService = pairingService ?? PairingService.instance,
        _store = store ?? PairedDeviceStore.instance,
-       _preferences = preferences ?? PreferencesService();
+       _preferences = preferences ?? PreferencesService(),
+       _prompter = prompter ?? PairingPrompter.instance;
 
   void start() {
     _subscription ??= _client.payloads.listen(_onPayload);
@@ -333,6 +336,13 @@ class RelayPairingService {
       ).toJson(),
     );
 
+    // Announcing involved a round of awaits, and the user may well have left
+    // the screen during them.
+    if (!context.mounted) {
+      await _refuse(peerDeviceId, 'no_ui');
+      return;
+    }
+
     final remoteDismiss = Completer<IncomingPairingChoice?>();
     _openDialogs[peerDeviceId] = remoteDismiss;
     _dialogOpen = true;
@@ -341,7 +351,7 @@ class RelayPairingService {
       // The dialog closes itself when [remoteDismiss] completes (initiator
       // cancel), so a single [showDialog] future covers both paths — no
       // Future.any that would leave a stranded route behind.
-      choice = await PairingConfirmDialog.showIncomingRelay(
+      choice = await _prompter.confirmIncomingRelay(
         context,
         peerDeviceName: request.deviceName.isEmpty
             ? peerDeviceId

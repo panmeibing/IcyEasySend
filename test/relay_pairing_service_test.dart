@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icy_easy_send/models/paired_device.dart';
+import 'package:icy_easy_send/pages/pairing/pairing_confirm_dialog.dart';
 import 'package:icy_easy_send/services/identity_service.dart';
 import 'package:icy_easy_send/services/paired_device_store.dart';
 import 'package:icy_easy_send/services/pairing_service.dart';
@@ -411,6 +412,9 @@ void main() {
           preferences: PreferencesService(),
           contextGetter: () => peerContext,
           isInBackgroundGetter: () => false,
+          // These tests drive the real dialog, so they install it the way
+          // main() does rather than leaning on the auto-refusing default.
+          prompter: const DialogPairingPrompter(),
         )..start();
       });
     }

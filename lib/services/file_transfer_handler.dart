@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show HttpConnectionInfo;
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:icy_easy_send/utils/constants.dart';
@@ -7,10 +9,12 @@ import 'package:shelf/shelf.dart';
 
 import '../models/transfer_history.dart';
 import '../services/preferences_service.dart';
+import '../utils/disk_space_error.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/toast_helper.dart';
 import 'batch_receive_manager.dart';
+import 'disk_full_notifier.dart';
 import 'file_transfer_service.dart';
 import 'transfer/transfer_history_manager.dart';
 
@@ -26,8 +30,12 @@ class FileTransferHandler {
   final VoidCallback? Function()? historyRefreshCallbackGetter;
   final String logTag = LogTags.server;
 
-  // Store pending transfer confirmations with transfer ID as key
-  final Map<String, bool> _pendingConfirmations = {};
+  // Store pending transfer confirmations with transfer ID as key. The value is
+  // the address the confirmation came from, so /transfer can refuse a ticket
+  // presented by anyone else. Null means the address could not be determined.
+  final Map<String, String?> _pendingConfirmations = {};
+
+  static final Random _random = Random.secure();
 
   // Store progress callbacks for active transfers: transferId -> callback
   final Map<String, void Function(double, int, int)> _progressCallbacks = {};
@@ -61,6 +69,22 @@ class FileTransferHandler {
   }
 
   /// Unregister a progress callback
+  /// Address the request actually arrived from, as opposed to the `senderIP`
+  /// parameter, which is whatever the caller chose to put in it.
+  String? _remoteAddress(Request request) {
+    final connectionInfo =
+        request.context['shelf.io.connection_info'] as HttpConnectionInfo?;
+    return connectionInfo?.remoteAddress.address;
+  }
+
+  /// Transfer IDs double as one-time tickets for `/transfer`, so they are
+  /// random rather than built out of the sender IP, file name and clock, all
+  /// of which are known to anyone who can see the traffic.
+  static String _newTransferId() {
+    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   void unregisterProgressCallback(String transferId) {
     _progressCallbacks.remove(transferId);
   }
@@ -187,16 +211,26 @@ class FileTransferHandler {
       for (final fileData in files) {
         final fileMap = fileData as Map<String, dynamic>;
         final fileName = fileMap['fileName'] as String?;
-        final fileSize = fileMap['fileSize'] as int?;
+        // A JSON number is not guaranteed to decode as an int, so go through
+        // num rather than letting a double blow up the whole batch.
+        final fileSize = (fileMap['fileSize'] as num?)?.toInt();
 
         if (fileName == null || fileSize == null) {
           LogUtil.wTag(logTag, '跳过无效的文件条目: $fileMap');
           continue; // Skip invalid file entries
         }
 
-        // Generate transfer ID
-        final transferId =
-            '${senderIP}_${fileName}_${DateTime.now().millisecondsSinceEpoch}';
+        // Rejected here as well as on /transfer so an oversized file never
+        // reaches the confirmation dialog in the first place.
+        if (fileSize < 0 || fileSize > AppConstants.maxFileSize) {
+          LogUtil.wTag(
+            logTag,
+            '跳过大小超出允许范围的文件: $fileName, 大小=$fileSize',
+          );
+          continue;
+        }
+
+        final transferId = _newTransferId();
         transferIds[fileName] = transferId;
 
         // Create file info
@@ -306,8 +340,9 @@ class FileTransferHandler {
       }
 
       // User accepted, store confirmations and register progress callbacks
+      final confirmedFrom = _remoteAddress(request);
       for (final fileInfo in pendingFiles) {
-        _pendingConfirmations[fileInfo.transferId] = true;
+        _pendingConfirmations[fileInfo.transferId] = confirmedFrom;
 
         // Register progress callback to update batch dialog
         registerProgressCallback(fileInfo.transferId, (
@@ -405,6 +440,24 @@ class FileTransferHandler {
         );
       }
 
+      // The sending side checks this too, but it is the side under the
+      // attacker's control, so the receiving side cannot take its word for it.
+      if (fileSize < 0 || fileSize > AppConstants.maxFileSize) {
+        LogUtil.wTag(
+          LogTags.transfer,
+          '文件大小超出允许范围: $fileName, 大小=$fileSize, '
+          '限制=${AppConstants.maxFileSize}',
+        );
+        return Response(
+          413,
+          body: jsonEncode({
+            'success': false,
+            'message': ErrorMessages.fileTooLarge,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
       if (senderIP == null || senderIP.isEmpty) {
         LogUtil.wTag(LogTags.transfer, '缺少发送者IP参数');
         return Response(
@@ -434,6 +487,29 @@ class FileTransferHandler {
           body: jsonEncode({
             'success': false,
             'message': '未找到确认记录，请先调用 /confirm-receive 接口',
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // A ticket is only good from the address that obtained it. Without this
+      // the only thing standing between a third party on the same network and
+      // an unattended write into the download folder is knowing a transferId,
+      // and every parameter that used to make one up was public. Deliberately
+      // not consumed on mismatch: dropping the record here would let that same
+      // third party cancel a legitimate transfer just by aiming at it.
+      final confirmedFrom = _pendingConfirmations[transferId];
+      final requestFrom = _remoteAddress(request);
+      if (confirmedFrom != null && confirmedFrom != requestFrom) {
+        LogUtil.wTag(
+          LogTags.transfer,
+          '传输来源与确认来源不符，已拒绝: 确认自=$confirmedFrom, 实际来自=$requestFrom',
+        );
+        return Response(
+          403,
+          body: jsonEncode({
+            'success': false,
+            'message': '传输来源与确认来源不符',
           }),
           headers: {'Content-Type': 'application/json'},
         );
@@ -520,6 +596,14 @@ class FileTransferHandler {
           transferId,
           receiveResult.errorMessage ?? '未知错误',
         );
+
+        // A full disk fails every remaining file in the batch, so it is worth
+        // interrupting the user rather than leaving the reason buried in the
+        // per-file status line. Not awaited: the dialog lives until dismissed
+        // and the sender is waiting on this response.
+        if (receiveResult.isDiskFull) {
+          unawaited(DiskFullNotifier().notify(contextGetter?.call()));
+        }
 
         return Response(
           500,

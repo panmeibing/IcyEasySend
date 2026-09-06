@@ -5,12 +5,30 @@ import 'package:path/path.dart' as path;
 
 import '../../models/transfer_data.dart';
 import '../../utils/constants.dart';
+import '../../utils/disk_space_error.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
 import '../../utils/platform_util.dart';
 import '../../utils/transfer_path_util.dart';
 import '../validation_service.dart';
+
+/// Raised when a sender keeps writing past the size it declared.
+///
+/// Private because it never leaves this file: the receive path turns it into
+/// a size-mismatch failure like any other.
+class _OversizeTransferException implements Exception {
+  const _OversizeTransferException({
+    required this.declared,
+    required this.received,
+  });
+
+  final int declared;
+  final int received;
+
+  @override
+  String toString() => 'declared $declared bytes, received at least $received';
+}
 
 /// Service for receiving files from sender devices
 class FileReceiver {
@@ -38,19 +56,10 @@ class FileReceiver {
     bool streamDrained = false;
 
     try {
-      // Check storage space
-      final hasEnoughSpace = await _checkStorageSpace(fileSize);
-      if (!hasEnoughSpace) {
-        LogUtil.wTag(logTag, 'Storage space insufficient for file: $fileName');
-        try {
-          await fileStream.drain();
-          streamDrained = true;
-        } catch (e) {
-          LogUtil.eTag(logTag, 'Error draining stream after storage check: $e');
-        }
-
-        return OperationResult.failure(ErrorMessages.storageInsufficient);
-      }
+      // There is deliberately no free-space pre-flight check here: the plugin
+      // that reports remaining space returns numbers that cannot be trusted.
+      // Running out of room is detected from the write error instead — see the
+      // DiskSpaceError handling further down.
 
       // Get receive save directory (custom path or system downloads)
       final downloadsDir = await PlatformUtil.getReceiveSaveDirectory();
@@ -102,6 +111,17 @@ class FileReceiver {
       file = File(filePath);
       sink = file.openWrite();
 
+      // An IOSink buffers, so a failed write surfaces on flush/close rather
+      // than on add(). Watching done lets the loop below stop as soon as the
+      // disk fills, instead of pulling the remaining gigabytes over the
+      // network only to discard them.
+      Object? writeFailure;
+      unawaited(
+        sink.done.catchError((Object error) {
+          writeFailure ??= error;
+        }),
+      );
+
       int bytesReceived = 0;
 
       try {
@@ -132,6 +152,21 @@ class FileReceiver {
               sink.close();
             },
           )) {
+            if (writeFailure != null) {
+              throw writeFailure!;
+            }
+
+            // The declared size is the only budget the sender agreed to, and
+            // the user confirmed the transfer on the strength of it. Anything
+            // past it is refused before it reaches the disk rather than after,
+            // so a sender that simply never stops cannot fill the volume.
+            if (bytesReceived + chunk.length > fileSize) {
+              throw _OversizeTransferException(
+                declared: fileSize,
+                received: bytesReceived + chunk.length,
+              );
+            }
+
             sink.add(chunk);
 
             bytesReceived += chunk.length;
@@ -187,6 +222,35 @@ class FileReceiver {
         }
 
         return OperationResult.failure('文件接收超时');
+      } on _OversizeTransferException catch (e) {
+        LogUtil.wTag(logTag, '发送方超出声明大小，已中止接收 $fileName: $e');
+
+        // Deliberately not drained: refusing to keep reading is the entire
+        // point, and draining would hand the sender the unbounded read back.
+        if (sink != null) {
+          try {
+            await sink.close();
+          } catch (closeError) {
+            LogUtil.wTag(
+              logTag,
+              'Error closing sink after oversize transfer: $closeError',
+            );
+          }
+          sink = null;
+        }
+
+        try {
+          if (file.existsSync()) {
+            await file.delete();
+          }
+        } catch (deleteError) {
+          LogUtil.eTag(
+            logTag,
+            'Error deleting file after oversize transfer: $deleteError',
+          );
+        }
+
+        return OperationResult.failure(ErrorMessages.fileSizeMismatch);
       } catch (e) {
         LogUtil.eTag(logTag, 'Error writing file $fileName: ${e.toString()}');
 
@@ -219,6 +283,14 @@ class FileReceiver {
           }
         } catch (deleteError) {
           LogUtil.eTag(logTag, 'Error deleting file after error: $deleteError');
+        }
+
+        if (DiskSpaceError.isDiskFull(e)) {
+          LogUtil.eTag(logTag, '磁盘空间不足，已中止接收: $fileName');
+          return OperationResult.failure(
+            ErrorMessages.storageInsufficient,
+            metadata: DiskSpaceError.metadata,
+          );
         }
 
         return OperationResult.failure('文件保存失败\n错误: $e');
@@ -312,6 +384,14 @@ class FileReceiver {
       }
 
       // Provide more specific error messages for known exception types
+      if (DiskSpaceError.isDiskFull(e)) {
+        LogUtil.eTag(logTag, '磁盘空间不足，已中止接收: $fileName');
+        return OperationResult.failure(
+          ErrorMessages.storageInsufficient,
+          metadata: DiskSpaceError.metadata,
+        );
+      }
+
       if (e is FileSystemException) {
         return OperationResult.failure('文件系统错误: ${e.message}');
       }
@@ -378,6 +458,12 @@ class FileReceiver {
       );
     } on FileSystemException catch (e) {
       LogUtil.eTag(logTag, 'Error adopting received file $fileName: $e');
+      if (DiskSpaceError.isDiskFull(e)) {
+        return OperationResult.failure(
+          ErrorMessages.storageInsufficient,
+          metadata: DiskSpaceError.metadata,
+        );
+      }
       return OperationResult.failure('文件保存失败\n错误: ${e.message}');
     } catch (e, stackTrace) {
       LogUtil.eTag(
@@ -407,14 +493,6 @@ class FileReceiver {
       }
       return copied;
     }
-  }
-
-  /// Check if there is enough storage space
-  Future<bool> _checkStorageSpace(int requiredBytes) async {
-    // The method for checking remaining space has a bug, so we don't need to check it for the time being
-    // final result = await _validationService.validateStorageSpace(requiredBytes);
-    // return result.isSuccess;
-    return true;
   }
 
   /// Resolve file path conflicts by adding a number suffix to the file name.

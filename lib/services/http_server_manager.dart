@@ -384,16 +384,24 @@ class HTTPServerManager {
       // Wait a bit for server to be fully ready
       await Future.delayed(const Duration(milliseconds: 500));
 
-      final response = await HttpClient()
-          .getUrl(Uri.parse(testUrl))
-          .timeout(const Duration(seconds: 3))
-          .then((request) => request.close())
-          .then((response) => response);
+      final client = HttpClient();
+      try {
+        final request = await client
+            .getUrl(Uri.parse(testUrl))
+            .timeout(const Duration(seconds: 3));
+        final response = await request.close();
 
-      if (response.statusCode == 200) {
-        LogUtil.iTag(logTag, '✅ 健康检查端点测试成功！');
-      } else {
-        LogUtil.wTag(logTag, '健康检查端点返回状态码: ${response.statusCode}');
+        if (response.statusCode == 200) {
+          LogUtil.iTag(logTag, '✅ 健康检查端点测试成功！');
+        } else {
+          LogUtil.wTag(logTag, '健康检查端点返回状态码: ${response.statusCode}');
+        }
+
+        // Drained so the connection can be released rather than sitting on an
+        // unread body until the client is torn down.
+        await response.drain<void>();
+      } finally {
+        client.close(force: true);
       }
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, '健康检查端点测试失败: $e (这可能表示存在网络配置问题)', e, stackTrace);

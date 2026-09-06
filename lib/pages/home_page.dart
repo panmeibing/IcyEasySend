@@ -3,38 +3,36 @@ import 'dart:io';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import '../l10n/app_localizations.dart';
 import '../models/transfer_file_item.dart';
-import '../models/transfer_history.dart';
 import '../services/cache_cleanup_service.dart';
 import '../services/http_server_manager.dart';
-import '../services/preferences_service.dart';
-import '../services/screen_wake_lock_service.dart';
 import '../services/sharing_intent_service.dart';
-import '../services/transfer/transfer_history_manager.dart';
 import '../services/validation_service.dart';
-import '../services/web_share_service.dart';
 import '../transport/transport_channel.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/network_diagnostics.dart';
 import '../utils/network_util.dart';
-import '../utils/relay_message_provider.dart';
 import '../utils/toast_helper.dart';
-import '../utils/transfer_progress_throttle.dart';
 import 'home/controllers/clipboard_controller.dart';
+import 'home/controllers/connection_prefs_controller.dart';
 import 'home/controllers/file_transfer_controller.dart';
-import 'home/widgets/channel_badge.dart';
+import 'home/controllers/send_progress_controller.dart';
+import 'home/controllers/share_intent_handler.dart';
+import 'home/controllers/web_share_controller.dart';
 import 'home/widgets/device_scan_dialog.dart';
+import 'home/widgets/drag_drop_overlay.dart';
 import 'home/widgets/file_selection_section.dart';
 import 'home/widgets/ip_input_section.dart';
+import 'home/widgets/network_diagnostics_dialog.dart';
+import 'home/widgets/peer_actions_section.dart';
 import 'home/widgets/port_input_section.dart';
 import 'home/widgets/secret_key_input_section.dart';
+import 'home/widgets/send_actions_section.dart';
 import 'home/widgets/server_status_card.dart';
 import 'home/widgets/transfer_progress_card.dart';
-import 'home/widgets/web_share_qr_dialog.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
 class HomePage extends StatefulWidget {
@@ -64,33 +62,16 @@ class HomePageState extends State<HomePage> {
   /// Peer chosen from the scan dialog. Cleared when the user edits the IP.
   PeerRef? _selectedPeer;
 
-  // Progress tracking
-  double _transferProgress = 0.0;
-  int _bytesTransferred = 0;
-  int _totalBytes = 0;
-  DateTime? _transferStartTime;
-  double _transferSpeed = 0.0;
-  Duration? _estimatedTimeRemaining;
-  String _transferStatus = '';
-
-  // Multi-file transfer tracking
-  int _totalFilesCount = 0;
-  int _completedFilesCount = 0;
-  final Map<int, double> _fileProgress = {};
-  final Map<int, String> _fileStatus = {};
-  final Set<int> _completedFileIndices = {};
-  final TransferProgressThrottle _overallProgressThrottle =
-      TransferProgressThrottle();
-  final TransferProgressThrottle _fileProgressThrottle =
-      TransferProgressThrottle();
+  final SendProgressController _sendProgress = SendProgressController();
 
   // Services
   late final ValidationService _validationService;
-  late final PreferencesService _preferencesService;
+  late final ConnectionPrefsController _connectionPrefs;
   late final FileTransferController _fileTransferController;
   late final ClipboardController _clipboardController;
   late final CacheCleanupService _cacheCleanupService;
-  late final TransferHistoryManager _historyManager;
+  late final WebShareController _webShareController;
+  late final ShareIntentHandler _shareIntentHandler;
   bool _isCreatingWebShare = false;
 
   // Controllers and validation
@@ -127,11 +108,16 @@ class HomePageState extends State<HomePage> {
 
     // Initialize services
     _validationService = ValidationService();
-    _preferencesService = PreferencesService();
+    _connectionPrefs = ConnectionPrefsController();
     _fileTransferController = FileTransferController();
     _clipboardController = ClipboardController();
     _cacheCleanupService = CacheCleanupService();
-    _historyManager = TransferHistoryManager();
+    _webShareController = WebShareController();
+    _shareIntentHandler = ShareIntentHandler(
+      fileTransferController: _fileTransferController,
+      cacheCleanupService: _cacheCleanupService,
+      sharingIntentService: widget.sharingIntentService,
+    );
 
     // Set context for server manager
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -176,16 +162,10 @@ class HomePageState extends State<HomePage> {
 
   /// Handle share payload that opened the app before UI was ready
   Future<void> _processInitialSharedFiles() async {
-    await widget.sharingIntentService.loadInitialSharingIfNeeded();
-    if (!mounted) return;
-
-    final pending = widget.sharingIntentService.takePendingSharedFiles();
-    if (pending.isEmpty) {
-      return;
-    }
-
-    LogUtil.iTag(logTag, '处理冷启动分享: ${pending.length} 个文件');
-    await _handleSharedFiles(pending);
+    await _shareIntentHandler.processInitialSharedFiles(
+      isMounted: () => mounted,
+      handleSharedFiles: _handleSharedFiles,
+    );
   }
 
   @override
@@ -275,7 +255,7 @@ class HomePageState extends State<HomePage> {
 
   /// Load the last used IP address from preferences
   Future<void> _loadLastUsedIP() async {
-    final lastIP = await _preferencesService.getLastUsedIP();
+    final lastIP = await _connectionPrefs.loadLastUsedIP();
     if (lastIP != null && lastIP.isNotEmpty && mounted) {
       _ipController.text = lastIP;
       _validateIPAddress();
@@ -284,7 +264,7 @@ class HomePageState extends State<HomePage> {
 
   /// Load the last used port from preferences
   Future<void> _loadLastUsedPort() async {
-    final lastPort = await _preferencesService.getLastUsedPort();
+    final lastPort = await _connectionPrefs.loadLastUsedPort();
     if (mounted) {
       _portController.text = lastPort.toString();
       _validatePort();
@@ -293,7 +273,7 @@ class HomePageState extends State<HomePage> {
 
   /// Load the last used target device secret key from preferences
   Future<void> _loadLastUsedTargetSecretKey() async {
-    final lastSecretKey = await _preferencesService.getTargetDeviceSecretKey();
+    final lastSecretKey = await _connectionPrefs.loadLastUsedTargetSecretKey();
     if (lastSecretKey != null && lastSecretKey.isNotEmpty && mounted) {
       _secretKeyController.text = lastSecretKey;
     }
@@ -301,15 +281,12 @@ class HomePageState extends State<HomePage> {
 
   /// Save the current target device secret key to preferences
   Future<void> _saveTargetSecretKey() async {
-    final secretKey = _secretKeyController.text.trim();
-    if (secretKey.isNotEmpty) {
-      await _preferencesService.saveTargetDeviceSecretKey(secretKey);
-    }
+    await _connectionPrefs.saveTargetSecretKey(_secretKeyController.text);
   }
 
   /// Load IP address history from preferences
   Future<void> _loadIPHistory() async {
-    final history = await _preferencesService.getIPHistory();
+    final history = await _connectionPrefs.loadIPHistory();
     if (mounted) {
       setState(() {
         _ipHistory = history;
@@ -319,7 +296,7 @@ class HomePageState extends State<HomePage> {
 
   /// Load IP validation enabled state from preferences
   Future<void> _loadIPValidationEnabled() async {
-    final enabled = await _preferencesService.getIPValidationEnabled();
+    final enabled = await _connectionPrefs.loadIPValidationEnabled();
     if (mounted) {
       setState(() {
         _enableIPValidation = enabled;
@@ -336,16 +313,12 @@ class HomePageState extends State<HomePage> {
 
   /// Save the current port to preferences
   Future<void> _saveCurrentPort() async {
-    final portText = _portController.text.trim();
-    final port = int.tryParse(portText);
-    if (port != null && port >= 1 && port <= 65535) {
-      await _preferencesService.saveLastUsedPort(port);
-    }
+    await _connectionPrefs.savePort(_portController.text);
   }
 
   /// Delete an IP address from history
   Future<void> _deleteIPFromHistory(String ip) async {
-    final success = await _preferencesService.removeIPFromHistory(ip);
+    final success = await _connectionPrefs.deleteIPFromHistory(ip);
     if (success) {
       await _loadIPHistory();
 
@@ -470,67 +443,21 @@ class HomePageState extends State<HomePage> {
                         isEnabled: isServerRunning,
                         onClear: () async {
                           _secretKeyController.clear();
-                          // Clear the cached secret key
-                          await _preferencesService
-                              .clearTargetDeviceSecretKey();
+                          await _connectionPrefs.clearTargetSecretKey();
                         },
                       ),
                       const SizedBox(height: 16),
 
-                      // Scan devices button
-                      OutlinedButton.icon(
-                        onPressed: isServerRunning ? _scanDevices : null,
-                        icon: const Icon(Icons.search),
-                        label: Text(
-                          AppLocalizations.of(context).scanDevices,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          foregroundColor: Colors.blue,
-                          side: BorderSide(
-                            color: isServerRunning ? Colors.blue : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      if (_selectedRelayPeerLabel() != null) ...[
-                        const SizedBox(height: 12),
-                        _buildSelectedRelayPeerChip(),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Network diagnostics button
-                      OutlinedButton.icon(
-                        onPressed: isServerRunning ? _runNetworkDiagnostics : null,
-                        icon: const Icon(Icons.network_check),
-                        label: Text(
-                          AppLocalizations.of(context).networkDiagnostics,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          foregroundColor: Colors.blue,
-                          side: BorderSide(
-                            color: isServerRunning ? Colors.blue : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Clipboard sync button
-                      OutlinedButton.icon(
-                        onPressed: _canRequestClipboard()
-                            ? _requestClipboard
-                            : null,
-                        icon: const Icon(Icons.content_paste),
-                        label: Text(AppLocalizations.of(context).syncClipboard),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          foregroundColor: Colors.blue,
-                          side: BorderSide(
-                            color: _canRequestClipboard()
-                                ? Colors.blue
-                                : Colors.grey,
-                          ),
-                        ),
+                      PeerActionsSection(
+                        isServerRunning: isServerRunning,
+                        canRequestClipboard: _canRequestClipboard(),
+                        selectedPeer: _selectedPeer,
+                        onScan: _scanDevices,
+                        onDiagnostics: _runNetworkDiagnostics,
+                        onClipboard: _requestClipboard,
+                        onClearPeer: () {
+                          setState(() => _selectedPeer = null);
+                        },
                       ),
                       const SizedBox(height: 24),
 
@@ -553,72 +480,30 @@ class HomePageState extends State<HomePage> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Send button
-                      ElevatedButton.icon(
-                        onPressed: _canSend() ? _sendFiles : null,
-                        icon: isSending
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.send),
-                        label: Text(
-                          isSending
-                              ? AppLocalizations.of(context).sending
-                              : selectedItems.length > 1
-                              ? AppLocalizations.of(
-                                  context,
-                                ).filesCount(selectedItems.length)
-                              : AppLocalizations.of(context).sendFile,
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // QR web share (guest browser download, no app install)
-                      OutlinedButton.icon(
-                        onPressed: _canShareViaQr() ? _shareViaQr : null,
-                        icon: _isCreatingWebShare
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.qr_code_2),
-                        label: Text(AppLocalizations.of(context).shareViaQr),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          foregroundColor: Colors.blue,
-                          side: BorderSide(
-                            color: _canShareViaQr()
-                                ? Colors.blue
-                                : Colors.grey,
-                          ),
-                        ),
+                      SendActionsSection(
+                        canSend: _canSend(),
+                        canShareViaQr: _canShareViaQr(),
+                        isSending: isSending,
+                        isCreatingWebShare: _isCreatingWebShare,
+                        selectedItemsCount: selectedItems.length,
+                        onSend: _sendFiles,
+                        onShareViaQr: _shareViaQr,
                       ),
 
                       // Progress indicator
                       if (isSending) ...[
                         const SizedBox(height: 24),
                         TransferProgressCard(
-                          progress: _transferProgress,
-                          bytesTransferred: _bytesTransferred,
-                          totalBytes: _totalBytes,
-                          transferSpeed: _transferSpeed,
-                          estimatedTimeRemaining: _estimatedTimeRemaining,
-                          status: _transferStatus,
-                          completedFilesCount: _completedFilesCount,
-                          totalFilesCount: _totalFilesCount,
+                          progress: _sendProgress.progress,
+                          bytesTransferred: _sendProgress.bytesTransferred,
+                          totalBytes: _sendProgress.totalBytes,
+                          transferSpeed: _sendProgress.speed,
+                          estimatedTimeRemaining:
+                              _sendProgress.estimatedTimeRemaining,
+                          status: _sendProgress.status,
+                          completedFilesCount:
+                              _sendProgress.completedFilesCount,
+                          totalFilesCount: _sendProgress.totalFilesCount,
                         ),
                       ],
                     ],
@@ -628,48 +513,7 @@ class HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Drag overlay
-          if (_isDragging)
-            Positioned.fill(
-              child: Container(
-                color: Colors.blue.withValues(alpha: 0.1),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 32,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.file_download, size: 64, color: Colors.blue),
-                        const SizedBox(height: 16),
-                        Text(
-                          AppLocalizations.of(context).releaseToAdd,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (_isDragging) const DragDropOverlay(),
         ],
       ),
     );
@@ -703,10 +547,12 @@ class HomePageState extends State<HomePage> {
 
   /// QR share only needs a running server and selected files.
   bool _canShareViaQr() {
-    return isServerRunning &&
-        !isSending &&
-        !_isCreatingWebShare &&
-        selectedItems.isNotEmpty;
+    return _webShareController.canShareViaQr(
+      isServerRunning: isServerRunning,
+      isSending: isSending,
+      isCreatingWebShare: _isCreatingWebShare,
+      hasSelectedItems: selectedItems.isNotEmpty,
+    );
   }
 
   /// Create a temporary web-share session and show QR for guest downloads.
@@ -715,81 +561,22 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    final l10n = AppLocalizations.of(context);
-    if (!widget.serverManager.isRunning()) {
-      ToastHelper.showError(context, l10n.webShareServerRequired);
-      return;
-    }
-
-    final serverAddress = widget.serverManager.getServerAddress();
-    if (serverAddress == null || serverAddress.isEmpty) {
-      ToastHelper.showError(context, l10n.webShareServerRequired);
-      return;
-    }
-
-    setState(() => _isCreatingWebShare = true);
-    _disableFocusNodes();
-
-    try {
-      final session = await WebShareService.instance.createSession(
-        items: selectedItems,
-      );
-      final shareUrl = WebShareService.instance.buildShareUrl(
-        serverAddress,
-        session.token,
-      );
-
-      await _saveWebShareHistory(session.files.map((f) {
-        return TransferHistory(
-          fileName: f.displayName,
-          fileSize: f.size,
-          peerIP: AppConstants.webShareHistoryPeerIp,
-          peerDeviceName: l10n.webSharePeerName,
-          timestamp: session.createdAt,
-          isReceived: false,
-          success: true,
-        );
-      }).toList());
-
-      if (!mounted) return;
-
-      ToastHelper.showSuccess(context, l10n.webShareCreated);
-
-      await WebShareQrDialog.show(
-        context,
-        session: session,
-        shareUrl: shareUrl,
-        shareUrlBuilder: () {
-          final address = widget.serverManager.getServerAddress();
-          if (address == null || address.isEmpty) {
-            return shareUrl;
-          }
-          return WebShareService.instance.buildShareUrl(address, session.token);
-        },
-        onStopSharing: () async {
-          WebShareService.instance.stopSession(token: session.token);
-          if (mounted) {
-            ToastHelper.showInfo(context, l10n.webShareStopped);
-          }
-        },
-      );
-    } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '创建网页分享失败: $e', e, stackTrace);
-      if (mounted) {
-        ToastHelper.showError(context, l10n.webShareFailed);
-      }
-    } finally {
-      _enableFocusNodes();
-      if (mounted) {
-        setState(() => _isCreatingWebShare = false);
-      }
-    }
-  }
-
-  Future<void> _saveWebShareHistory(List<TransferHistory> histories) async {
-    if (histories.isEmpty) return;
-    await _historyManager.saveTransferHistoryBatch(histories);
-    widget.serverManager.refreshHistory();
+    await _webShareController.shareViaQr(
+      context: context,
+      selectedItems: selectedItems,
+      serverManager: widget.serverManager,
+      onCreatingStart: () {
+        setState(() => _isCreatingWebShare = true);
+      },
+      onCreatingEnd: () {
+        if (mounted) {
+          setState(() => _isCreatingWebShare = false);
+        }
+      },
+      disableFocusNodes: _disableFocusNodes,
+      enableFocusNodes: _enableFocusNodes,
+      isMounted: () => mounted,
+    );
   }
 
   /// Select multiple files
@@ -801,7 +588,7 @@ class HomePageState extends State<HomePage> {
       setState(() {
         selectedItems = items;
       });
-      await _cleanupShareCacheForItems(previousItems);
+      await _shareIntentHandler.cleanupShareCacheForItems(previousItems);
       _scrollToBottom();
     }
   }
@@ -815,7 +602,7 @@ class HomePageState extends State<HomePage> {
       setState(() {
         selectedItems = items;
       });
-      await _cleanupShareCacheForItems(previousItems);
+      await _shareIntentHandler.cleanupShareCacheForItems(previousItems);
       _scrollToBottom();
 
       if (mounted) {
@@ -844,72 +631,18 @@ class HomePageState extends State<HomePage> {
 
   /// Handle shared files from other apps
   Future<void> _handleSharedFiles(List<File> sharedFiles) async {
-    LogUtil.iTag(logTag, '开始处理分享文件: ${sharedFiles.length} 个');
-
-    Future<void> rejectShare() async {
-      await widget.sharingIntentService.cleanupSharedCacheFiles(sharedFiles);
-      widget.sharingIntentService.clearSharedFiles();
-    }
-
-    if (!isServerRunning) {
-      await rejectShare();
-      if (!mounted) return;
-      ToastHelper.showWarning(
-        context,
-        AppLocalizations.of(context).serverNotRunning,
-      );
-      return;
-    }
-
-    if (isSending) {
-      await rejectShare();
-      if (!mounted) return;
-      ToastHelper.showWarning(
-        context,
-        AppLocalizations.of(context).sendingInProgress,
-      );
-      return;
-    }
-
-    final paths = sharedFiles.map((file) => file.path).toList();
-    final validItems = await _fileTransferController.validateDroppedPaths(
-      context,
-      paths,
-    );
-
-    if (!mounted) {
-      LogUtil.wTag(LogTags.ui, 'The current page is not mounted.');
-      return;
-    }
-
-    if (validItems.isEmpty) {
-      await rejectShare();
-      return;
-    }
-
-    widget.sharingIntentService.clearSharedFiles();
-
-    setState(() {
-      selectedItems.addAll(validItems);
-    });
-
-    ToastHelper.showSuccess(
-      context,
-      AppLocalizations.of(context).filesAdded(validItems.length),
-    );
-
-    _scrollToBottom();
-  }
-
-  Future<void> _cleanupShareCacheForItems(
-    Iterable<TransferFileItem> items,
-  ) async {
-    if (items.isEmpty) {
-      return;
-    }
-
-    await _cacheCleanupService.deleteCacheFilesIfPresent(
-      items.map((item) => item.file.path),
+    await _shareIntentHandler.handleSharedFiles(
+      context: context,
+      sharedFiles: sharedFiles,
+      isServerRunning: isServerRunning,
+      isSending: isSending,
+      isMounted: () => mounted,
+      onItemsAdded: (items) {
+        setState(() {
+          selectedItems.addAll(items);
+        });
+      },
+      onScrollToBottom: _scrollToBottom,
     );
   }
 
@@ -938,119 +671,64 @@ class HomePageState extends State<HomePage> {
         peer: peer,
         secretKey: _secretKeyController.text.trim(),
         onProgress: (progress, bytesTransferred, totalBytes) {
-          _overallProgressThrottle.maybeEmit(
-            key: 'overall',
+          // The transfer outlives this page — callbacks keep arriving after
+          // the user navigates away, and every one of them calls setState.
+          if (!mounted) {
+            return;
+          }
+          _sendProgress.onOverallProgress(
             progress: progress,
             bytesTransferred: bytesTransferred,
             totalBytes: totalBytes,
-            onEmit: (progress, bytesTransferred, totalBytes) {
-              setState(() {
-                _transferProgress = progress;
-                _bytesTransferred = bytesTransferred;
-                _totalBytes = totalBytes;
-
-                // Calculate transfer speed
-                if (_transferStartTime != null) {
-                  final elapsed = DateTime.now().difference(
-                    _transferStartTime!,
-                  );
-                  if (elapsed.inMilliseconds > 0) {
-                    _transferSpeed =
-                        bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-
-                    if (_transferSpeed > 0) {
-                      final remainingBytes = totalBytes - bytesTransferred;
-                      final remainingSeconds = remainingBytes / _transferSpeed;
-                      _estimatedTimeRemaining = Duration(
-                        seconds: remainingSeconds.toInt(),
-                      );
-                    }
-                  }
-                }
-              });
-            },
+            onUiUpdate: () => setState(() {}),
           );
         },
         onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
-          _fileProgressThrottle.maybeEmit(
-            key: fileIndex,
+          if (!mounted) {
+            return;
+          }
+          _sendProgress.onFileProgress(
+            fileIndex: fileIndex,
             progress: progress,
-            bytesTransferred: bytesTransferred,
-            totalBytes: totalBytes,
-            onEmit: (progress, bytesTransferred, totalBytes) {
-              setState(() {
-                _fileProgress[fileIndex] = progress;
-                final fileName = selectedItems[fileIndex].transferName;
-                final l10n = AppLocalizations.of(context);
-
-                if (progress < 1.0) {
-                  _fileStatus[fileIndex] = l10n.transferringProgress(
-                    progress * 100,
-                  );
-                  _transferStatus =
-                      '[${fileIndex + 1}/${selectedItems.length}] $fileName: ${l10n.transferring}...';
-                } else {
-                  if (!_completedFileIndices.contains(fileIndex)) {
-                    _completedFileIndices.add(fileIndex);
-                    _completedFilesCount++;
-                  }
-                  _fileStatus[fileIndex] = l10n.sendSuccess;
-                }
-              });
-            },
+            items: selectedItems,
+            l10n: AppLocalizations.of(context),
+            onUiUpdate: () => setState(() {}),
           );
         },
         onStatusChange: (status) {
-          setState(() {
-            _transferStatus = status;
-          });
+          if (!mounted) {
+            return;
+          }
+          _sendProgress.onStatusChange(status, () => setState(() {}));
         },
         onTransferStart: () {
-          ScreenWakeLockService.acquire();
-          _overallProgressThrottle.reset();
-          _fileProgressThrottle.reset();
-          setState(() {
-            isSending = true;
-            _completedFilesCount = 0;
-            _totalFilesCount = selectedItems.length;
-            _transferProgress = 0.0;
-            _bytesTransferred = 0;
-            _totalBytes = 0;
-            _transferStartTime = DateTime.now();
-            _transferSpeed = 0.0;
-            _estimatedTimeRemaining = null;
-            _transferStatus = AppLocalizations.of(context).preparingSend;
-            _fileProgress.clear();
-            _fileStatus.clear();
-            _completedFileIndices.clear();
-          });
-          _scrollToBottom();
+          final preparing = mounted
+              ? AppLocalizations.of(context).preparingSend
+              : '';
+          _sendProgress.onTransferStart(
+            fileCount: selectedItems.length,
+            preparingLabel: preparing,
+            onUiUpdate: () {
+              if (!mounted) {
+                return;
+              }
+              setState(() => isSending = true);
+            },
+            scrollToBottom: _scrollToBottom,
+          );
         },
         onTransferEnd: () {
-          ScreenWakeLockService.release();
-          if (mounted) {
-            setState(() {
-              isSending = false;
-              _completedFilesCount = 0;
-              _totalFilesCount = 0;
-              _transferProgress = 0.0;
-              _bytesTransferred = 0;
-              _totalBytes = 0;
-              _transferStartTime = null;
-              _transferSpeed = 0.0;
-              _estimatedTimeRemaining = null;
-              _transferStatus = '';
-              _fileProgress.clear();
-              _fileStatus.clear();
-              _completedFileIndices.clear();
-
-              // Clear selected files on successful transfer
-              selectedItems.clear();
-            });
-          }
+          _sendProgress.onTransferEnd(
+            onUiUpdate: () {
+              if (!mounted) {
+                return;
+              }
+              setState(() => isSending = false);
+            },
+            clearSelectedItems: () => selectedItems.clear(),
+          );
         },
         onHistoryUpdated: () {
-          // Trigger history refresh after file transfer completes
           widget.serverManager.refreshHistory();
         },
       );
@@ -1151,51 +829,6 @@ class HomePageState extends State<HomePage> {
     }
   }
 
-  String? _selectedRelayPeerLabel() {
-    final peer = _selectedPeer;
-    if (peer == null || peer.hasLan || !peer.relayOnline) {
-      return null;
-    }
-    if (peer.deviceName != null && peer.deviceName!.isNotEmpty) {
-      return peer.deviceName;
-    }
-    final id = peer.deviceId;
-    if (id == null || id.isEmpty) {
-      return null;
-    }
-    return id.length <= 8 ? id : '${id.substring(0, 8)}…';
-  }
-
-  Widget _buildSelectedRelayPeerChip() {
-    final label = _selectedRelayPeerLabel()!;
-    final messages = RelayMessages.instance;
-    return Material(
-      color: Colors.blue.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            ChannelBadge.forPeer(_selectedPeer!, iconSize: 18),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                messages.selectedRelayPeer(label),
-                style: const TextStyle(fontSize: 14),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() => _selectedPeer = null);
-              },
-              child: Text(messages.clearSelectedPeer),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Run network diagnostics
   Future<void> _runNetworkDiagnostics() async {
     if (!mounted) return;
@@ -1241,59 +874,12 @@ class HomePageState extends State<HomePage> {
       }
 
       if (mounted) {
-        final l10n = AppLocalizations.of(context);
-        String separator = AppConstants.diagInfoSeparator;
-        final reportHeader = StringBuffer();
-        reportHeader.writeln(separator * 3);
-        reportHeader.writeln(l10n.targetDeviceInfo);
-        reportHeader.writeln(separator * 3);
-        if (diagTargetIP != null) {
-          reportHeader.writeln('${l10n.ipAddress}: $diagTargetIP');
-          reportHeader.writeln(
-            '${l10n.port}: ${diagTargetPort ?? AppConstants.defaultPort}',
-          );
-          reportHeader.writeln(
-            '${l10n.fullAddress}: ${NetworkUtil.buildHttpUrl(diagTargetIP, "", targetPort: diagTargetPort ?? AppConstants.defaultPort)}',
-          );
-        } else {
-          reportHeader.writeln(l10n.targetNotSet);
-        }
-        reportHeader.writeln(separator * 3);
-        reportHeader.writeln();
-
-        final fullReport = reportHeader.toString() + report.toString();
-
-        await DialogHelper.showCustomDialog(
+        await NetworkDiagnosticsDialog.show(
           context,
-          title: Row(
-            children: [
-              const Icon(Icons.network_check, color: Colors.blue),
-              const SizedBox(width: 8),
-              Expanded(child: Text(l10n.diagnosticsReport)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: SelectableText(
-              fullReport,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: fullReport));
-                ToastHelper.showSuccess(context, l10n.reportCopied);
-              },
-              child: Text(l10n.copy),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _enableFocusNodes();
-              },
-              child: Text(l10n.close),
-            ),
-          ],
+          report: report,
+          targetIP: diagTargetIP,
+          targetPort: diagTargetPort,
+          onClose: _enableFocusNodes,
         );
       }
     } catch (e) {

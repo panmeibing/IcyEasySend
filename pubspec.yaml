@@ -32,21 +32,16 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  # Required by the code `flutter gen-l10n` generates from lib/l10n/*.arb.
   intl: any
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-  
   # HTTP server and routing
   shelf: ^1.4.2
   shelf_router: ^1.1.4
-  shelf_multipart: ^2.0.0
-  
-  # Multipart parsing
+
+  # MIME type lookup for served files
   mime: ^2.0.0
-  http_parser: ^4.1.1
-  
+
   # HTTP client
   http: ^1.2.2
   
@@ -77,14 +72,8 @@ dependencies:
   # Network connectivity monitoring
   connectivity_plus: ^7.0.0
   
-  # Image processing
-  image: ^4.0.17
-  
   # Clipboard with image support
   super_clipboard: ^0.9.1
-  
-  # Storage space check
-  storage_space: ^1.2.0
   
   # Drag and drop support for desktop
   desktop_drop: ^0.7.0
@@ -107,12 +96,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-  
-  # Testing utilities
-  test: ^1.29.0
-  faker: ^2.2.0
-  mockito: ^5.4.4
-  
+
   # Icon generator
   flutter_launcher_icons: ^0.14.1
 
@@ -121,6 +105,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # Runs `gen-l10n` from lib/l10n/*.arb as part of the build.
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

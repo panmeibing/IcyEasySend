@@ -1,0 +1,12 @@
+# The generated classes land next to the .arb files and are committed, so the
+# app builds without anyone having to remember to run codegen first.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-dir: lib/l10n
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# English is the fallback everywhere, so a key missing from another locale is
+# a translation gap rather than a crash — but it should still be visible.
+untranslated-messages-file: lib/l10n/untranslated.json
+nullable-getter: false

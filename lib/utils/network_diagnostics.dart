@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:icy_easy_send/utils/constants.dart';
 
+import '../l10n/current_localizations.dart';
 import 'http_helper.dart';
 import 'log_util.dart';
-import 'network_diagnostics_provider.dart';
 import 'network_util.dart';
 
 /// Network diagnostics utility to help troubleshoot connection issues
@@ -170,66 +170,66 @@ class DiagnosticsReport {
 
   @override
   String toString() {
-    final provider = NetworkDiagnosticsProvider();
+    final t = appText;
     String separator = AppConstants.diagInfoSeparator;
     final buffer = StringBuffer();
     buffer.writeln(
-      '$separator ${provider.networkDiagnosticsReport} $separator',
+      '$separator ${t.networkDiagnosticsReport} $separator',
     );
     buffer.writeln();
 
-    buffer.writeln('${provider.localNetworkInterfaces}:');
+    buffer.writeln('${t.localNetworkInterfaces}:');
     if (localInterfaces.isEmpty) {
-      buffer.writeln('  ❌ ${provider.noValidNetworkInterface}');
+      buffer.writeln('  ❌ ${t.noValidNetworkInterface}');
     } else {
       for (var interface in localInterfaces) {
         buffer.writeln('  ✅ ${interface.name}: ${interface.address}');
         if (interface.isPrivateNetwork) {
-          buffer.writeln('     (${provider.privateNetworkAddress})');
+          buffer.writeln('     (${t.privateNetworkAddress})');
         }
       }
     }
     buffer.writeln();
 
     if (targetReachable != null) {
-      buffer.writeln('${provider.targetDeviceReachability}:');
+      buffer.writeln('${t.targetDeviceReachability}:');
       buffer.writeln(
         targetReachable!
-            ? '  ✅ ${provider.canConnectToTarget}'
-            : '  ❌ ${provider.cannotConnectToTarget}',
+            ? '  ✅ ${t.canConnectToTarget}'
+            : '  ❌ ${t.cannotConnectToTarget}',
       );
       buffer.writeln();
     }
 
     if (healthCheckResult != null) {
-      buffer.writeln('${provider.healthCheckTest}:');
+      buffer.writeln('${t.healthCheckTest}:');
       if (healthCheckResult!.success) {
-        buffer.writeln('  ✅ ${provider.healthCheckSuccess}');
+        buffer.writeln('  ✅ ${t.healthCheckSuccess}');
         buffer.writeln(
-          '  ${provider.statusCode}: ${healthCheckResult!.statusCode}',
+          '  ${t.statusCode}: ${healthCheckResult!.statusCode}',
         );
         buffer.writeln(
-          '  ${provider.response}: ${healthCheckResult!.responseBody}',
+          '  ${t.response}: ${healthCheckResult!.responseBody}',
         );
       } else {
-        buffer.writeln('  ❌ ${provider.healthCheckFailed}');
+        buffer.writeln('  ❌ ${t.healthCheckFailed}');
         if (healthCheckResult!.statusCode != null) {
           buffer.writeln(
-            '  ${provider.statusCode}: ${healthCheckResult!.statusCode}',
+            '  ${t.statusCode}: ${healthCheckResult!.statusCode}',
           );
         }
         if (healthCheckResult!.error != null) {
-          buffer.writeln('  ${provider.error}: ${healthCheckResult!.error}');
+          buffer.writeln('  ${t.error}: ${healthCheckResult!.error}');
         }
       }
       buffer.writeln();
     }
 
-    buffer.writeln('${provider.internetConnection}:');
+    buffer.writeln('${t.internetConnection}:');
     buffer.writeln(
       hasInternetConnection
-          ? '  ✅ ${provider.hasInternetConnection}'
-          : '  ❌ ${provider.noInternetConnection}',
+          ? '  ✅ ${t.hasInternetConnection}'
+          : '  ❌ ${t.noInternetConnection}',
     );
     buffer.writeln();
 

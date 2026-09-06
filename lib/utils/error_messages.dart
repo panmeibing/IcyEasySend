@@ -1,167 +1,113 @@
-/// ErrorMessages provides user-friendly error messages
-/// for all error scenarios in the application.
+/// Thin facades over [appText].
 ///
-/// All messages follow these principles:
-/// - Clarity: Use simple, clear descriptions
-/// - Actionability: Provide next steps the user can take
-/// - Friendliness: Avoid technical jargon, use user-understandable language
-/// - Consistency: All messages follow the same format and style
-///
-/// This class now uses ErrorMessageProvider for internationalization support.
+/// These used to carry their own 12-locale translation tables in parallel with
+/// `AppLocalizations`. The tables are gone; the class names remain so service
+/// and UI call sites keep compiling while everything resolves through one
+/// source of truth.
 library;
 
-import 'error_message_provider.dart';
+import '../l10n/current_localizations.dart';
 
 class ErrorMessages {
-  static final _provider = ErrorMessageProvider();
+  ErrorMessages._();
 
-  // Network errors (Requirement 10.1)
-  static String get networkConnectionFailed =>
-      _provider.networkConnectionFailed;
+  static String get networkConnectionFailed => appText.networkConnectionFailed;
+  static String get networkTimeout => appText.networkTimeout;
+  static String get networkRequestFailed => appText.networkRequestFailed;
+  static String get targetDeviceUnavailable => appText.targetDeviceUnavailable;
+  static String get transferTimeout => appText.transferTimeout;
+  static String get transferInterrupted => appText.transferInterrupted;
 
-  static String get networkTimeout => _provider.networkTimeout;
-
-  static String get networkRequestFailed => _provider.networkRequestFailed;
-
-  static String get targetDeviceUnavailable =>
-      _provider.targetDeviceUnavailable;
-
-  static String get transferTimeout => _provider.transferTimeout;
-
-  static String get transferInterrupted => _provider.transferInterrupted;
-
-  // File system errors (Requirement 10.2)
-  static String get fileNotFound => _provider.fileNotFound;
-
-  static String get fileNotReadable => _provider.fileNotReadable;
-
-  static String get fileAccessError => _provider.fileAccessError;
-
-  static String get fileSaveFailed => _provider.fileSaveFailed;
-
-  static String get fileSizeMismatch => _provider.fileSizeMismatch;
-
-  static String get invalidFileName => _provider.invalidFileName;
-
+  static String get fileNotFound => appText.fileNotFound;
+  static String get fileNotReadable => appText.fileNotReadable;
+  static String get fileAccessError => appText.fileAccessError;
+  static String get fileSaveFailed => appText.fileSaveFailed;
+  static String get fileSizeMismatch => appText.fileSizeMismatch;
+  static String get invalidFileName => appText.invalidFileName;
   static String get downloadsDirectoryUnavailable =>
-      _provider.downloadsDirectoryUnavailable;
+      appText.downloadsDirectoryUnavailable;
 
-  // Storage errors (Requirement 10.3)
-  static String get storageInsufficient => _provider.storageInsufficient;
+  static String get storageInsufficient => appText.storageInsufficient;
+  static String get storageCheckFailed => appText.storageCheckFailed;
 
-  static String get storageCheckFailed => _provider.storageCheckFailed;
+  static String get permissionDenied => appText.permissionDenied;
+  static String get networkPermissionDenied => appText.networkPermissionDenied;
+  static String get storagePermissionDenied => appText.storagePermissionDenied;
 
-  // Permission errors (Requirement 10.4)
-  static String get permissionDenied => _provider.permissionDenied;
-
-  static String get networkPermissionDenied =>
-      _provider.networkPermissionDenied;
-
-  static String get storagePermissionDenied =>
-      _provider.storagePermissionDenied;
-
-  // Server errors
   static String serverStartFailed(String reason) =>
-      _provider.serverStartFailed(reason);
+      appText.serverStartFailed(reason);
+  static String get serverPortsOccupied => appText.serverPortsOccupied;
+  static String get serverUnknownError => appText.serverUnknownError;
 
-  static String get serverPortsOccupied => _provider.serverPortsOccupied;
-
-  static String get serverUnknownError => _provider.serverUnknownError;
-
-  // Transfer errors
-  static String get transferRejected => _provider.transferRejected;
-
-  static String get fileTooLarge => _provider.fileTooLarge;
-
-  static String get fileOrStorageFull => _provider.fileOrStorageFull;
-
-  static String get receiveTimeout => _provider.receiveTimeout;
-
-  static String get userRejected => _provider.userRejected;
-
+  static String get transferRejected => appText.transferRejected;
+  static String get fileTooLarge => appText.fileTooLarge;
+  static String get fileOrStorageFull => appText.fileOrStorageFull;
+  static String get receiveTimeout => appText.receiveTimeout;
+  static String get userRejected => appText.userRejected;
   static String get backgroundRejectNeedsSecretKey =>
-      _provider.backgroundRejectNeedsSecretKey;
-
+      appText.backgroundRejectNeedsSecretKey;
   static String get clipboardBackgroundCacheMiss =>
-      _provider.clipboardBackgroundCacheMiss;
+      appText.clipboardBackgroundCacheMiss;
 
   static String get foregroundServiceNotificationTitle =>
-      _provider.foregroundServiceNotificationTitle;
-
+      appText.foregroundServiceNotificationTitle;
   static String get foregroundServiceNotificationText =>
-      _provider.foregroundServiceNotificationText;
-
+      appText.foregroundServiceNotificationText;
   static String get foregroundServiceChannelName =>
-      _provider.foregroundServiceChannelName;
-
+      appText.foregroundServiceChannelName;
   static String get foregroundServiceChannelDescription =>
-      _provider.foregroundServiceChannelDescription;
+      appText.foregroundServiceChannelDescription;
 
-  // Validation errors
-  static String get ipAddressEmpty => _provider.ipAddressEmpty;
+  static String get ipAddressEmpty => appText.ipAddressEmpty;
+  static String get ipAddressInvalidFormat => appText.ipAddressInvalidFormat;
+  static String get ipAddressInvalidRange => appText.ipAddressInvalidRange;
+  static String get ipAddressSpecial1 => appText.ipAddressSpecial1;
+  static String get ipAddressSpecial2 => appText.ipAddressSpecial2;
+  static String ipAddressNotInSameSubnet(String localIP, String targetIP) {
+    final localNetwork = localIP.split('.').take(3).join('.');
+    final targetNetwork = targetIP.split('.').take(3).join('.');
+    return appText.ipAddressNotInSameSubnet(
+      localIP,
+      targetIP,
+      localNetwork,
+      targetNetwork,
+    );
+  }
 
-  static String get ipAddressInvalidFormat => _provider.ipAddressInvalidFormat;
-
-  static String get ipAddressInvalidRange => _provider.ipAddressInvalidRange;
-
-  static String get ipAddressSpecial1 => _provider.ipAddressSpecial1;
-
-  static String get ipAddressSpecial2 => _provider.ipAddressSpecial2;
-
-  /// Warning message when target IP is not in the same subnet as local IP
-  static String ipAddressNotInSameSubnet(String localIP, String targetIP) =>
-      _provider.ipAddressNotInSameSubnet(localIP, targetIP);
-
-  // Response parsing errors
-  static String get responseParseError => _provider.responseParseError;
-
-  static String get responseInvalidFormat => _provider.responseInvalidFormat;
-
+  static String get responseParseError => appText.responseParseError;
+  static String get responseInvalidFormat => appText.responseInvalidFormat;
   static String responseStatusCodeError(int statusCode) =>
-      _provider.responseStatusCodeError(statusCode);
+      appText.responseStatusCodeError(statusCode);
 
-  // File selection errors
-  static String get fileSelectionError => _provider.fileSelectionError;
+  static String get fileSelectionError => appText.fileSelectionError;
+  static String get fileSelectionCancelled => appText.fileSelectionCancelled;
 
-  static String get fileSelectionCancelled => _provider.fileSelectionCancelled;
-
-  // Generic errors
   static String genericError(String operation) =>
-      _provider.genericError(operation);
-
+      appText.genericError(operation);
   static String unexpectedError(String details) =>
-      _provider.unexpectedError(details);
-
-  /// Format a network error message with additional context
-  static String networkError(String context) => _provider.networkError(context);
-
-  /// Format a file error message with additional context
-  static String fileError(String context) => _provider.fileError(context);
-
-  /// Format a permission error message with specific permission type
+      appText.unexpectedError(details);
+  static String networkError(String context) => appText.networkError(context);
+  static String fileError(String context) => appText.fileError(context);
   static String permissionError(String permissionType) =>
-      _provider.permissionError(permissionType);
+      appText.permissionError(permissionType);
 
-  /// Get a user-friendly error message from an exception
   static String fromException(Exception e, {String? context}) {
     final message = e.toString();
-
-    // Try to extract meaningful error message
     if (message.contains('SocketException')) {
       return networkConnectionFailed;
-    } else if (message.contains('TimeoutException')) {
+    }
+    if (message.contains('TimeoutException')) {
       return networkTimeout;
-    } else if (message.contains('FileSystemException')) {
+    }
+    if (message.contains('FileSystemException')) {
       return fileAccessError;
-    } else if (message.contains('PermissionDeniedException')) {
+    }
+    if (message.contains('PermissionDeniedException')) {
       return permissionDenied;
     }
-
-    // Return generic error with context if available
     if (context != null) {
       return '$context: $message';
     }
-
     return unexpectedError(message);
   }
 }

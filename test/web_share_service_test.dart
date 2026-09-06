@@ -25,7 +25,7 @@ void main() {
     }
   });
 
-  Future<File> _writeTempFile(String name, String content) async {
+  Future<File> writeTempFile(String name, String content) async {
     final file = File(path.join(tempDir.path, name));
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
@@ -33,8 +33,8 @@ void main() {
   }
 
   test('createSession exposes only selected files with random token', () async {
-    final a = await _writeTempFile('a.txt', 'hello');
-    final b = await _writeTempFile('nested/b.txt', 'world');
+    final a = await writeTempFile('a.txt', 'hello');
+    final b = await writeTempFile('nested/b.txt', 'world');
 
     final session = await service.createSession(
       items: [
@@ -54,7 +54,7 @@ void main() {
   });
 
   test('stopSession invalidates token', () async {
-    final file = await _writeTempFile('c.txt', 'data');
+    final file = await writeTempFile('c.txt', 'data');
     final session = await service.createSession(
       items: [TransferFileItem.fromFile(file)],
       deviceName: 'TestDevice',
@@ -66,7 +66,7 @@ void main() {
   });
 
   test('expired session is treated as missing', () async {
-    final file = await _writeTempFile('d.txt', 'data');
+    final file = await writeTempFile('d.txt', 'data');
     final session = await service.createSession(
       items: [TransferFileItem.fromFile(file)],
       deviceName: 'TestDevice',
@@ -79,8 +79,8 @@ void main() {
   });
 
   test('createSession replaces previous session', () async {
-    final first = await _writeTempFile('first.txt', '1');
-    final second = await _writeTempFile('second.txt', '2');
+    final first = await writeTempFile('first.txt', '1');
+    final second = await writeTempFile('second.txt', '2');
 
     final session1 = await service.createSession(
       items: [TransferFileItem.fromFile(first)],
@@ -102,7 +102,7 @@ void main() {
   });
 
   test('default TTL matches AppConstants', () async {
-    final file = await _writeTempFile('ttl.txt', 'x');
+    final file = await writeTempFile('ttl.txt', 'x');
     final before = DateTime.now();
     final session = await service.createSession(
       items: [TransferFileItem.fromFile(file)],
@@ -116,7 +116,7 @@ void main() {
   });
 
   test('rejects path traversal style file ids via findFile miss', () async {
-    final file = await _writeTempFile('safe.txt', 'ok');
+    final file = await writeTempFile('safe.txt', 'ok');
     final session = await service.createSession(
       items: [TransferFileItem.fromFile(file)],
       deviceName: 'TestDevice',

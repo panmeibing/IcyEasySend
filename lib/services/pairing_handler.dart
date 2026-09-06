@@ -5,11 +5,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shelf/shelf.dart';
 
-import '../pages/pairing/pairing_confirm_dialog.dart';
 import '../utils/constants.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import 'identity_service.dart';
+import 'pairing_prompter.dart';
 import 'pairing_service.dart';
 
 /// A pairing the local user has approved but the initiator has not committed.
@@ -48,6 +48,7 @@ class PairingHandler {
 
   final IdentityService _identityService;
   final PairingService _pairingService;
+  final PairingPrompter _prompter;
 
   final String logTag = LogTags.pairing;
 
@@ -65,8 +66,10 @@ class PairingHandler {
     this.onPaired,
     IdentityService? identityService,
     PairingService? pairingService,
+    PairingPrompter? prompter,
   }) : _identityService = identityService ?? IdentityService.instance,
-       _pairingService = pairingService ?? PairingService.instance;
+       _pairingService = pairingService ?? PairingService.instance,
+       _prompter = prompter ?? PairingPrompter.instance;
 
   Future<Response> handlePairRequest(Request request) async {
     try {
@@ -115,7 +118,7 @@ class PairingHandler {
       _inFlight.add(deviceId);
       bool? accepted;
       try {
-        accepted = await PairingConfirmDialog.showIncoming(
+        accepted = await _prompter.confirmIncoming(
           context,
           peerDeviceName: (deviceName == null || deviceName.isEmpty)
               ? deviceId

@@ -1,0 +1,57 @@
+name: CI
+
+# Scoped away from relay/** so a Go-only change never waits on a Flutter
+# toolchain download; relay-ci.yml covers that side of the repo.
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - "relay/**"
+      - "docs/**"
+      - "installers/**"
+      - "**/*.md"
+  pull_request:
+    paths-ignore:
+      - "relay/**"
+      - "docs/**"
+      - "installers/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deliberately not using the pub/storage mirrors that release.yml sets:
+      # those exist for local builds behind the GFW and are the slower, less
+      # reliable choice from GitHub-hosted runners.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-key: flutter-ci-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # The tree is clean as of this workflow being added, so anything the
+      # analyzer reports is new rather than inherited, and is worth failing on.
+      - name: Analyze
+        run: flutter analyze
+
+      # The live relay tests skip themselves when no relay is reachable, so
+      # this stays a pure unit-test run with no services to stand up.
+      - name: Test
+        run: flutter test

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
-import 'package:storage_space/storage_space.dart';
 
 import '../models/transfer_file_item.dart';
 import '../utils/constants.dart';
@@ -10,8 +9,6 @@ import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import '../utils/operation_result.dart';
-import '../utils/platform_util.dart';
-
 /// ValidationService provides input validation functionality
 class ValidationService {
   final String logTag = LogTags.validation;
@@ -364,100 +361,6 @@ class ValidationService {
     return results;
   }
 
-  /// Verify the storage space for receiving files
-  ///
-  /// Check if the device has sufficient storage space to receive files
-  ///
-  /// Parameters:
-  /// - [requiredBytes]: Required number of bytes
-  ///
-  /// Returns [OperationResult<void>] indicating if there's enough space
-  Future<OperationResult<void>> validateStorageSpace(int requiredBytes) async {
-    LogUtil.dTag(
-      logTag,
-      '验证存储空间: 需要${(requiredBytes / AppConstants.bytesPerMB).toStringAsFixed(2)}MB',
-    );
-
-    try {
-      // 获取接收文件保存目录
-      final directory = await PlatformUtil.getReceiveSaveDirectory();
-      if (directory == null) {
-        LogUtil.wTag(logTag, '无法获取接收保存目录');
-        return OperationResult.failure(
-          ErrorMessages.downloadsDirectoryUnavailable,
-        );
-      }
-
-      // 检查平台支持
-      if (Platform.isAndroid || Platform.isIOS) {
-        // Android 和 iOS 平台使用 storage_space 包
-        return await _validateStorageSpaceMobile(requiredBytes);
-      } else {
-        // 桌面平台（macOS、Windows、Linux）使用降级方案
-        return await _validateStorageSpaceDesktop(requiredBytes, directory);
-      }
-    } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '存储空间检查失败: $e', e, stackTrace);
-      return OperationResult.failure(ErrorMessages.storageCheckFailed);
-    }
-  }
-
-  /// 移动平台（Android、iOS）的存储空间验证
-  Future<OperationResult<void>> _validateStorageSpaceMobile(
-    int requiredBytes,
-  ) async {
-    try {
-      // 设置低空间阈值为需要的空间加上100MB的缓冲区
-      final lowSpaceThreshold = requiredBytes + (100 * AppConstants.bytesPerMB);
-
-      final storageSpace = await getStorageSpace(
-        lowOnSpaceThreshold: lowSpaceThreshold,
-        fractionDigits: 2,
-      );
-
-      LogUtil.dTag(
-        logTag,
-        '存储空间信息: 总空间=${storageSpace.totalSize}, '
-        '可用空间=${storageSpace.freeSize}, '
-        '已用空间=${storageSpace.usedSize}, '
-        '使用率=${storageSpace.usagePercent}%',
-      );
-
-      // 检查可用空间是否足够
-      if (storageSpace.free < requiredBytes) {
-        final requiredMB = (requiredBytes / AppConstants.bytesPerMB)
-            .toStringAsFixed(2);
-        LogUtil.wTag(
-          logTag,
-          '存储空间不足: 需要${requiredMB}MB, 可用${storageSpace.freeSize}',
-        );
-        return OperationResult.failure(ErrorMessages.storageInsufficient);
-      }
-
-      // 检查是否处于低存储空间状态
-      if (storageSpace.lowOnSpace) {
-        LogUtil.wTag(
-          logTag,
-          '存储空间较低: 可用${storageSpace.freeSize}, 建议保留至少100MB额外空间',
-        );
-      }
-
-      LogUtil.dTag(
-        logTag,
-        '存储空间验证通过: 需要${(requiredBytes / AppConstants.bytesPerMB).toStringAsFixed(2)}MB, 可用${storageSpace.freeSize}',
-      );
-      return OperationResult.success();
-    } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '移动平台存储空间检查失败: $e', e, stackTrace);
-      // 移动平台如果检查失败，降级到桌面平台的方案
-      final directory = await PlatformUtil.getReceiveSaveDirectory();
-      if (directory != null) {
-        return await _validateStorageSpaceDesktop(requiredBytes, directory);
-      }
-      return OperationResult.failure(ErrorMessages.storageCheckFailed);
-    }
-  }
-
   /// Verify that a directory exists and is writable (create test file).
   Future<OperationResult<void>> validateDirectoryWritable(
     String directoryPath,
@@ -488,26 +391,20 @@ class ValidationService {
         }
       }
 
-      return await _validateStorageSpaceDesktop(0, directory);
+      return await _probeWritable(directory);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '目录可写性验证失败: $e', e, stackTrace);
       return OperationResult.failure(ErrorMessages.fileAccessError);
     }
   }
 
-  /// 桌面平台（macOS、Windows、Linux）的存储空间验证
+  /// 通过写入并删除一个临时文件来确认目录确实可写。
   ///
-  /// 使用文件系统统计信息来估算可用空间
-  Future<OperationResult<void>> _validateStorageSpaceDesktop(
-    int requiredBytes,
-    Directory directory,
-  ) async {
+  /// 这里只回答“能不能写”，不回答“还剩多少空间”：剩余空间的预检查已经移除，
+  /// 空间不足改为在真正写文件时捕获 ENOSPC（见 [DiskSpaceError]）。
+  Future<OperationResult<void>> _probeWritable(Directory directory) async {
     try {
-      LogUtil.dTag(logTag, '使用桌面平台存储空间检查方案: ${Platform.operatingSystem}');
-
-      // 尝试通过创建临时文件来检查是否有足够空间
-      // 这是一个简化的检查方法，不能精确获取可用空间
-      // 但可以验证是否至少有写入权限
+      LogUtil.dTag(logTag, '检查目录可写性: ${Platform.operatingSystem}');
 
       // 生成唯一的临时文件名，避免并发冲突
       // 使用微秒级时间戳 + 随机数确保唯一性
@@ -526,17 +423,7 @@ class ValidationService {
           await testFile.delete();
         }
 
-        LogUtil.dTag(logTag, '桌面平台存储空间检查: 目录可写，假设有足够空间');
-
-        // 对于桌面平台，如果文件大小超过5GB，给出警告但不阻止
-        if (requiredBytes > (5 * AppConstants.bytesPerGB)) {
-          LogUtil.wTag(
-            logTag,
-            '文件较大: ${(requiredBytes / AppConstants.bytesPerGB).toStringAsFixed(2)}GB, 请确保有足够的磁盘空间',
-          );
-        }
-
-        LogUtil.dTag(logTag, '桌面平台存储空间验证通过（降级方案）');
+        LogUtil.dTag(logTag, '目录可写性验证通过');
         return OperationResult.success();
       } catch (e) {
         LogUtil.eTag(logTag, '无法在目标目录创建或删除测试文件: $e');
@@ -553,8 +440,8 @@ class ValidationService {
         return OperationResult.failure('无法写入下载目录，请检查权限');
       }
     } catch (e, stackTrace) {
-      LogUtil.eTag(logTag, '桌面平台存储空间检查失败: $e', e, stackTrace);
-      return OperationResult.failure(ErrorMessages.storageCheckFailed);
+      LogUtil.eTag(logTag, '目录可写性检查失败: $e', e, stackTrace);
+      return OperationResult.failure(ErrorMessages.fileAccessError);
     }
   }
 

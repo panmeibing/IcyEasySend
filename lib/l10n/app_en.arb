@@ -1,0 +1,1059 @@
+{
+  "@@locale": "en",
+  "appName": "Icy Easy Send",
+  "appVersion": "Version",
+  "navHome": "Home",
+  "navHistory": "History",
+  "navSettings": "Settings",
+  "homeTitle": "Home",
+  "serverStatus": "Server Status",
+  "serverRunning": "Running",
+  "serverStopped": "Stopped",
+  "serverAddress": "Server Address",
+  "deviceName": "Device Name",
+  "storageSpace": "Storage Space",
+  "availableSpace": "Available",
+  "sendFiles": "Send Files",
+  "receiveFiles": "Receive Files",
+  "selectFiles": "Select Files",
+  "selectFolder": "Select Folder",
+  "dragDropHint": "Drag and drop files here",
+  "noFilesSelected": "No files selected",
+  "filesSelected": "{count, plural, =1{{count} file selected} other{{count} files selected}}",
+  "@filesSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Clear",
+  "startSending": "Send",
+  "sending": "Sending",
+  "sendSuccess": "Sent successfully",
+  "sendFailed": "Send failed",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "historyTitle": "Transfer History",
+  "noHistory": "No history",
+  "clearHistory": "Clear History",
+  "sent": "Sent",
+  "received": "Received",
+  "failed": "Failed",
+  "fileSize": "Size",
+  "time": "Time",
+  "deleteItem": "Delete",
+  "deleteItemConfirm": "Are you sure you want to delete this item?",
+  "openFile": "Open File",
+  "openFolder": "Open Folder",
+  "settingsTitle": "Settings",
+  "general": "General",
+  "language": "Language",
+  "deviceNameSetting": "Device Name",
+  "editDeviceName": "Edit Device Name",
+  "deviceNameHint": "Enter device name",
+  "deviceNameEmpty": "Device name cannot be empty",
+  "port": "Port",
+  "portHint": "Enter port number",
+  "portInvalid": "Invalid port number",
+  "portInUse": "Port is already in use",
+  "savePath": "Save Path",
+  "selectSavePath": "Select Save Path",
+  "savePathDesc": "Received files are saved here. The system downloads folder is used by default.",
+  "savePathDefaultBadge": "Default",
+  "savePathUnavailable": "Unable to resolve save path",
+  "savePathSavedSuccess": "Save path updated successfully",
+  "savePathNotWritable": "Cannot write to this folder. Please choose another location or check permissions.",
+  "resetSavePathToDefault": "Use default folder",
+  "savePathResetSuccess": "Restored to system downloads folder",
+  "autoStart": "Auto Start",
+  "autoStartDesc": "Start server automatically when app launches",
+  "network": "Network",
+  "networkDiagnostics": "Network Diagnostics",
+  "scanDevices": "Scan Devices",
+  "scanDevicesTitle": "Scan LAN Devices",
+  "scanningDevices": "Scanning local network...",
+  "scanProgress": "{found, plural, =1{Scanned {scanned}/{total}, found {found} device} other{Scanned {scanned}/{total}, found {found} devices}}",
+  "@scanProgress": {
+    "placeholders": {
+      "scanned": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "found": {
+        "type": "int"
+      }
+    }
+  },
+  "noDevicesFound": "No devices found",
+  "noDevicesFoundHint": "Make sure the target device has started the server and is on the same network. Check router AP isolation and firewall settings.",
+  "scanDevicesFound": "{count, plural, =1{Found {count} device} other{Found {count} devices}}",
+  "@scanDevicesFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rescan": "Rescan",
+  "runDiagnostics": "Run Diagnostics",
+  "about": "About",
+  "version": "Version",
+  "checkUpdate": "Check for Updates",
+  "feedback": "Feedback",
+  "openSource": "Open Source Licenses",
+  "license": "License",
+  "permissionRequired": "Permission Required",
+  "permissionDenied": "Permission Denied",
+  "permissionPermanentlyDenied": "Permission Permanently Denied",
+  "permissionStorage": "Storage Permission",
+  "permissionStorageDesc": "Storage permission is required to save and read files",
+  "permissionNotification": "Notification Permission",
+  "permissionNotificationDesc": "Notification permission is required to show transfer progress",
+  "openSettings": "Open Settings",
+  "permissionWarning": "Some permissions are not granted, some features may be limited",
+  "error": "Error",
+  "errorUnknown": "Unknown error",
+  "errorNetwork": "Network error",
+  "errorFileNotFound": "File not found",
+  "errorPermission": "Permission error",
+  "errorStorage": "Storage error",
+  "errorServer": "Server error",
+  "errorServerStart": "Failed to start server",
+  "errorServerStop": "Failed to stop server",
+  "errorConnection": "Connection error",
+  "errorTimeout": "Connection timeout",
+  "retry": "Retry",
+  "copied": "Copied",
+  "copyFailed": "Copy failed",
+  "saved": "Saved",
+  "saveFailed": "Save failed",
+  "deleted": "Deleted",
+  "deleteFailed": "Delete failed",
+  "loading": "Loading",
+  "success": "Success",
+  "warning": "Warning",
+  "info": "Info",
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "close": "Close",
+  "selectFilesFailed": "Failed to select files",
+  "selectFolderFailed": "Failed to select folder",
+  "folderFilesAdded": "Added {count} files from folder",
+  "@folderFilesAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "folderContainsNoFiles": "The selected folder contains no files to send",
+  "openFileFailed": "Failed to open file",
+  "openFolderFailed": "Failed to open folder",
+  "fileNotExist": "File does not exist",
+  "folderNotExist": "Folder does not exist",
+  "diagnosticsTitle": "Network Diagnostics",
+  "diagnosticsRunning": "Running diagnostics...",
+  "diagnosticsComplete": "Diagnostics complete",
+  "diagnosticsFailed": "Diagnostics failed",
+  "networkStatus": "Network Status",
+  "wifiConnected": "WiFi Connected",
+  "wifiDisconnected": "WiFi Disconnected",
+  "mobileData": "Mobile Data",
+  "noConnection": "No Connection",
+  "ipAddress": "IP Address",
+  "noIpAddress": "No IP Address",
+  "serverStatusCheck": "Server Status Check",
+  "portCheck": "Port Check",
+  "portAvailable": "Port Available",
+  "portUnavailable": "Port Unavailable",
+  "suggestions": "Suggestions",
+  "syncClipboard": "Sync Remote Clipboard",
+  "filesCount": "{count, plural, =1{Send {count} file} other{Send {count} files}}",
+  "@filesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sendFile": "Send File",
+  "shareViaQr": "Share via QR",
+  "webShareTitle": "Scan to receive files",
+  "webShareHint": "The receiver can scan with the system camera and download in a browser—no app install needed. Stay on the same Wi‑Fi / LAN. Some third-party scanners (e.g. WeChat) may block LAN links; use Copy Link as a fallback.",
+  "webShareCopyLink": "Copy link",
+  "webShareLinkCopied": "Link copied",
+  "webShareStopSharing": "Stop sharing",
+  "webShareStopped": "Web share stopped",
+  "webShareServerRequired": "Start the local server before sharing via QR",
+  "webShareCreated": "Web share created. The receiver can scan to download.",
+  "webShareFailed": "Failed to create web share",
+  "webSharePeerName": "Web Share",
+  "webShareFilesSummary": "{count} file(s) · {size}",
+  "@webShareFilesSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "webShareExpiresIn": "Expires in {time}",
+  "@webShareExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "releaseToAdd": "Release to add files",
+  "serverNotRunning": "Server not running, cannot receive shared files",
+  "cannotReceiveFiles": "Cannot receive files",
+  "sendingInProgress": "File transfer in progress, please try later",
+  "pleaseTryLater": "Please try later",
+  "filesAdded": "{count, plural, =1{Added {count} shared file} other{Added {count} shared files}}",
+  "@filesAdded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "preparingSend": "Preparing to send...",
+  "transferring": "Transferring",
+  "transferProgress": "[{current}/{total}] {fileName}: Transferring...",
+  "@transferProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "networkChanged": "Network changed, server address updated",
+  "serverAddressUpdated": "Server address updated",
+  "portCannotBeEmpty": "Port cannot be empty",
+  "portMustBeNumber": "Port must be a number",
+  "portRange": "Port range: 1-65535",
+  "ipDeleted": "Deleted IP: {ip}",
+  "@ipDeleted": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "runningDiagnostics": "Running network diagnostics...",
+  "targetDeviceInfo": "Target Device Info",
+  "fullAddress": "Full Address",
+  "targetNotSet": "Target device not set",
+  "diagnosticsReport": "Network Diagnostics Report",
+  "reportCopied": "Diagnostics report copied to clipboard",
+  "deviceNameCannotBeEmpty": "Device name cannot be empty",
+  "deviceNameSaved": "Device name saved",
+  "resetDeviceName": "Reset Device Name",
+  "resetDeviceNameConfirm": "Are you sure you want to reset device name to \"{model}\"?",
+  "@resetDeviceNameConfirm": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "reset": "Reset",
+  "confirmChange": "Confirm Change",
+  "concurrentTransfersIncrease": "Change concurrent transfers from {from} to {to}?\n\nNote: Increasing may improve transfer speed but will increase device load",
+  "@concurrentTransfersIncrease": {
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
+  "concurrentTransfersDecrease": "Change concurrent transfers from {from} to {to}?\n\nNote: Decreasing will reduce device load but may lower transfer speed",
+  "@concurrentTransfersDecrease": {
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
+  "concurrentTransfersHint": "Concurrent transfers hint",
+  "concurrentTransfersSaved": "Concurrent transfers saved",
+  "enterValidNumber": "Please enter a valid number",
+  "historyCountRange": "History count range: {min}-{max}",
+  "@historyCountRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "maxHistoryChange": "Change max history items from {from} to {to}?\n\n",
+  "@maxHistoryChange": {
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
+  "currentHistoryCount": "Current history count: {count} items\n\n",
+  "@currentHistoryCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "historyWarning": "⚠️ Warning: Current history count exceeds the new limit.\n\n",
+  "historyDeleteWarning": "Only the latest {max} items will be kept, {toDelete} old items will be deleted.",
+  "@historyDeleteWarning": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      },
+      "toDelete": {
+        "type": "int"
+      }
+    }
+  },
+  "historyHint": "Note: New setting will take effect on next save.",
+  "historyDeleted": "Settings saved, deleted {count} old items",
+  "@historyDeleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "maxHistorySaved": "Max history items saved",
+  "clipboardSizeRange": "Clipboard size range: {min}-{max} MB",
+  "@clipboardSizeRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "maxClipboardSizeChange": "Change max clipboard size from {from} MB to {to} MB?\n\n",
+  "@maxClipboardSizeChange": {
+    "placeholders": {
+      "from": {
+        "type": "int"
+      },
+      "to": {
+        "type": "int"
+      }
+    }
+  },
+  "clipboardSizeDecreaseHint": "⚠️ Note: After decreasing the limit, clipboard content exceeding the new size cannot be synced. Please use file transfer instead.",
+  "clipboardSizeIncreaseHint": "Note: After increasing the limit, larger clipboard content can be synced, but this may affect transfer speed.",
+  "maxClipboardSizeSaved": "Max clipboard size saved",
+  "ipValidationEnabled": "IP validation enabled",
+  "ipValidationDisabled": "IP validation disabled",
+  "deviceSecretKeyCleared": "Device secret key cleared",
+  "deviceSecretKeySaved": "Device secret key saved",
+  "loadingDevInfo": "Loading developer info...",
+  "copyLog": "Copy Log",
+  "logCopied": "Copied last {lines} lines of log to clipboard",
+  "@logCopied": {
+    "placeholders": {
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "logFileEmpty": "Log file is empty",
+  "devInfo": "Developer Info",
+  "labelCopied": "{label} copied: {value}",
+  "@labelCopied": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "transferSettings": "Transfer Settings",
+  "concurrentTransfers": "Concurrent Transfers",
+  "concurrentTransfersDesc": "Number of files to transfer simultaneously (1-{max})",
+  "@concurrentTransfersDesc": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "concurrentTransfersHintText": "Higher concurrency can better utilize bandwidth, but may increase device load",
+  "maxHistory": "Max History Items",
+  "maxHistoryDesc": "Maximum number of transfer records to save ({min}-{max})",
+  "@maxHistoryDesc": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "maxHistoryHintText": "Enter count ({min}-{max})",
+  "@maxHistoryHintText": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "oldRecordsAutoDelete": "Records exceeding the limit will be automatically deleted, keeping only the most recent ones",
+  "maxClipboard": "Max Clipboard Size",
+  "maxClipboardDesc": "Maximum clipboard size allowed for sync ({min}-{max} MB)",
+  "@maxClipboardDesc": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "maxClipboardHintText": "Enter size ({min}-{max} MB)",
+  "@maxClipboardHintText": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "clipboardSyncLimit": "Clipboard content exceeding this size cannot be synced. Use file transfer instead",
+  "ipValidation": "IP Validation",
+  "ipValidationDesc": "Validate if target device IP is in the same subnet",
+  "ipValidationEnabledHint": "When enabled, verifies that the target IP is in the same subnet to prevent connecting to incorrect devices",
+  "ipValidationDisabledHint": "When disabled, IP subnet validation is skipped. Suitable for complex network environments (hotspot, VPN, etc.)",
+  "deviceSecretKey": "Device Secret Key",
+  "deviceSecretKeyDesc": "When set, other devices need to provide the correct key to skip confirmation",
+  "deviceSecretKeyHint": "Enter secret key (leave empty to disable)",
+  "notSet": "Not Set",
+  "author": "Author",
+  "appDescription": "A simple and easy-to-use LAN file transfer tool",
+  "targetDeviceIP": "Target Device IP Address",
+  "ipHint": "e.g.: 192.168.1.100",
+  "clear": "Clear",
+  "history": "History",
+  "targetDevicePort": "Target Device Port",
+  "resetToDefaultPort": "Reset to default port ({port})",
+  "@resetToDefaultPort": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "targetDeviceSecretKey": "Target Device Secret Key (Optional)",
+  "secretKeyHint": "Correct key can skip confirmation",
+  "aboutSecretKey": "About Secret Key",
+  "secretKeyFeatureTitle": "Secret Key Feature",
+  "secretKeyFeatureDesc": "If the target device has set a secret key, entering the correct key allows you to skip the confirmation dialog and directly transfer files or sync clipboard.",
+  "secretKeyUsageSteps": "Usage Steps:",
+  "secretKeyUsageStep1": "1. Target device sets its secret key in Settings",
+  "secretKeyUsageStep2": "2. Enter the target device's secret key in this field",
+  "secretKeyUsageStep3": "3. When sending files or requesting clipboard, if the key is correct, the other party will automatically accept",
+  "secretKeyTip": "Tip: Leave empty to use traditional manual confirmation",
+  "secretKeyDescription": "Secret Key Description",
+  "clearSecretKey": "Clear Secret Key",
+  "gotIt": "Got It",
+  "localIP": "Local IP",
+  "ipCopied": "IP address copied: {ip}",
+  "@ipCopied": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "transferred": "Transferred",
+  "transferSpeed": "Transfer Speed",
+  "remainingTime": "Remaining Time",
+  "transferringProgress": "Transferring {progress}%",
+  "@transferringProgress": {
+    "placeholders": {
+      "progress": {
+        "type": "double",
+        "format": "decimalPatternDigits",
+        "optionalParameters": {
+          "decimalDigits": 1
+        }
+      }
+    }
+  },
+  "storagePermissionMessage": "Storage permission is required to select files. Please enable it manually in Settings.",
+  "checkingTargetDevice": "Checking target device...",
+  "targetDeviceUnavailable": "Target device unavailable",
+  "targetDeviceError": "Target device unavailable\nError: {error}",
+  "@targetDeviceError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionFailed": "Connection Failed",
+  "transferHistory": "Transfer History",
+  "clearHistoryTitle": "Clear History",
+  "clearHistoryMessage": "Are you sure you want to clear all transfer history? This action cannot be undone.",
+  "noFilteredRecords": "No matching records",
+  "filterAll": "All",
+  "filterSent": "Sent",
+  "filterReceived": "Received",
+  "statisticsInfo": "Statistics",
+  "transfersCount": "{count, plural, =1{{count} transfer} other{{count} transfers}}",
+  "@transfersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "totalTransfers": "Total",
+  "successfulTransfers": "Success",
+  "failedTransfers": "Failed",
+  "sentFiles": "Sent",
+  "receivedFiles": "Received",
+  "totalSize": "Total Size",
+  "moreActions": "More Actions",
+  "deleteRecord": "Delete Record",
+  "viewDetails": "View Details",
+  "deleteRecordTitle": "Delete Record",
+  "deleteRecordMessage": "Are you sure you want to delete the transfer record for \"{fileName}\"?\n\nNote: This will only delete the record, not the file itself.",
+  "@deleteRecordMessage": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteRecordNote": "Note: This will only delete the record, not the file itself.",
+  "recordDeleted": "Record deleted",
+  "filePathNotExist": "File path does not exist",
+  "cannotOpenFile": "Cannot open file",
+  "cannotOpenFileWithMessage": "Cannot open file: {message}",
+  "@cannotOpenFileWithMessage": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "iosNoFolderSupport": "iOS does not support opening folders directly",
+  "cannotOpenFolder": "Cannot open folder",
+  "recentFilesOpened": "Recent files opened, please search manually",
+  "receiveRecord": "Receive Record",
+  "sendRecord": "Send Record",
+  "fileName": "File Name",
+  "fromDevice": "From Device",
+  "toDevice": "To Device",
+  "deviceIP": "Device IP",
+  "transferTime": "Transfer Time",
+  "transferStatus": "Transfer Status",
+  "statusSuccess": "Success",
+  "statusFailed": "Failed",
+  "savedLocation": "Saved Location",
+  "copy": "Copy",
+  "pathCopied": "Path copied to clipboard",
+  "from": "From",
+  "sentTo": "Sent to",
+  "clipboardRequest": "Clipboard Request",
+  "clipboardRequestFrom": "Device \"{deviceName}\" is requesting access to your clipboard content",
+  "@clipboardRequestFrom": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "allowClipboardRequest": "Allow this request?",
+  "clipboardRequestMessage": "Clipboard Request",
+  "autoRejectIn": "Auto-reject in {seconds} seconds",
+  "@autoRejectIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "reject": "Reject",
+  "allow": "Allow",
+  "clipboardSharedWithSecretKey": "{deviceName} verified with secret key, clipboard shared automatically",
+  "@clipboardSharedWithSecretKey": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "clipboardRequestRejected": "User rejected clipboard request",
+  "clipboardEmpty": "Clipboard is empty",
+  "clipboardContentTooLarge": "Clipboard content too large ({actualSizeMB} MB), exceeds recipient device limit ({maxSizeMB} MB). Please use file transfer instead.",
+  "@clipboardContentTooLarge": {
+    "placeholders": {
+      "actualSizeMB": {
+        "type": "double",
+        "format": "decimalPatternDigits",
+        "optionalParameters": {
+          "decimalDigits": 2
+        }
+      },
+      "maxSizeMB": {
+        "type": "int"
+      }
+    }
+  },
+  "clipboardContentSuccess": "Successfully retrieved clipboard content",
+  "invalidJsonFormat": "Invalid JSON format",
+  "serverInternalError": "Server internal error",
+  "backgroundRejectNeedsSecretKey": "Device is in the background. Only secret-key auto sync/receive is supported. Open the app or configure a matching device secret key.",
+  "foregroundServiceNotificationTitle": "IcyEasySend",
+  "foregroundServiceNotificationText": "Waiting for file transfers and clipboard sync in the background",
+  "androidBackgroundReceiveHint": "While backgrounded, only peers with a matching secret key can auto-sync clipboard or send files. Keep the persistent notification running.",
+  "clipboardOverlay": "Clipboard floating button",
+  "clipboardOverlayDesc": "Tap the floating button to refresh cached text/images for background sync",
+  "clipboardOverlayHint": "While backgrounded, only the last refreshed content can be synced. Turning this off clears the cache and hides the button.",
+  "clipboardOverlayPermissionNeeded": "Allow \"Display over other apps\" in system settings. The floating button will appear after you return.",
+  "clipboardOverlayEnabledToast": "Clipboard floating button enabled",
+  "clipboardBackgroundCacheMiss": "Cannot read the system clipboard in the background and no cache is available. Open the app or tap the floating button to refresh, then sync again.",
+  "requestingClipboard": "Requesting clipboard...",
+  "clipboardSyncSuccess": "Clipboard synced successfully",
+  "textClipboardSyncSuccess": "Text clipboard synced successfully",
+  "fileClipboardSyncSuccess": "File clipboard synced successfully\nYou can paste in app or file manager",
+  "clipboardSyncFailed": "Clipboard sync failed",
+  "syncFailed": "Sync Failed",
+  "clipboardRequestError": "Error occurred while requesting clipboard: {error}",
+  "@clipboardRequestError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidFilesMessage": "The following files are invalid or inaccessible:\n{fileNames}",
+  "@invalidFilesMessage": {
+    "placeholders": {
+      "fileNames": {
+        "type": "String"
+      }
+    }
+  },
+  "waitingForReceiverConfirmation": "Waiting for receiver confirmation...",
+  "fileSendSuccess": "File sent successfully!",
+  "filesSendSuccess": "{count} files sent successfully!",
+  "@filesSendSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allFilesSendFailed": "All files failed to send",
+  "failedFiles": "Failed files",
+  "transferComplete": "Transfer Complete",
+  "successCount": "Success",
+  "failureCount": "Failed",
+  "transferSummary": "Success: {successCount} files\nFailed: {failureCount} files\n\nFailed files:\n{failedFiles}",
+  "@transferSummary": {
+    "placeholders": {
+      "successCount": {
+        "type": "int"
+      },
+      "failureCount": {
+        "type": "int"
+      },
+      "failedFiles": {
+        "type": "String"
+      }
+    }
+  },
+  "preparingTransferInfo": "Preparing transfer info...",
+  "waitingForReceiverConfirmFiles": "Waiting for receiver to confirm {count} files...",
+  "@waitingForReceiverConfirmFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transferringFile": "Transferring file {current}/{total}: {fileName}",
+  "@transferringFile": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "receiverRejected": "Receiver rejected",
+  "receiverRejectedWithStatus": "Receiver rejected\nStatus code: {statusCode}",
+  "@receiverRejectedWithStatus": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "transferIdNotFound": "Transfer ID not found",
+  "waitingForConfirmation": "Waiting for confirmation...",
+  "preparingToReceive": "Preparing to receive...",
+  "rejected": "Rejected",
+  "receiveComplete": "Receive complete",
+  "receivingProgress": "Receiving... {progress}%",
+  "@receivingProgress": {
+    "placeholders": {
+      "progress": {
+        "type": "double",
+        "format": "decimalPatternDigits",
+        "optionalParameters": {
+          "decimalDigits": 1
+        }
+      }
+    }
+  },
+  "receivingFiles": "Receiving {count} files",
+  "@receivingFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "receiveFilesCount": "Receive {count} files",
+  "@receiveFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sender": "Sender",
+  "totalSizeBatch": "Total Size",
+  "fileList": "File List",
+  "allFilesReceiveComplete": "All files received successfully!",
+  "receivingFiles2": "Receiving files...",
+  "autoRejectCountdown": "Accept these files? (Auto-reject in {seconds} seconds)",
+  "@autoRejectCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "rejectAll": "Reject All",
+  "acceptAll": "Accept All",
+  "networkDiagnosticsReport": "Network Diagnostics Report",
+  "localNetworkInterfaces": "Local Network Interfaces",
+  "noValidNetworkInterface": "No valid network interface found",
+  "privateNetworkAddress": "Private Network Address",
+  "targetDeviceReachability": "Target Device Reachability",
+  "canConnectToTarget": "Can connect to target device",
+  "cannotConnectToTarget": "Cannot connect to target device",
+  "healthCheckTest": "Health Check Test",
+  "healthCheckSuccess": "Health Check Successful",
+  "healthCheckFailed": "Health Check Failed",
+  "statusCode": "Status Code",
+  "response": "Response",
+  "internetConnection": "Internet Connection",
+  "hasInternetConnection": "Internet connection available",
+  "noInternetConnection": "No Internet Connection",
+  "networkConnectionFailed": "Unable to connect to target device, please check network connection and IP address",
+  "networkTimeout": "Connection timeout, target device may be offline or network is unstable",
+  "networkRequestFailed": "Network request failed, please check network connection",
+  "transferTimeout": "Transfer timeout, please check network connection",
+  "transferInterrupted": "Transfer interrupted, please retry",
+  "fileNotFound": "File not found",
+  "fileNotReadable": "Unable to read file, please ensure file exists and has access permission",
+  "fileAccessError": "File access error, please check file permissions",
+  "fileSaveFailed": "File save failed",
+  "fileSizeMismatch": "File save failed: file size mismatch",
+  "invalidFileName": "File name contains invalid characters",
+  "downloadsDirectoryUnavailable": "Unable to access downloads directory",
+  "storageInsufficient": "Insufficient storage space, cannot receive file",
+  "diskFullTitle": "Disk full",
+  "storageCheckFailed": "Unable to check storage space",
+  "networkPermissionDenied": "Network access permission required to transfer files",
+  "storagePermissionDenied": "Storage access permission required to save files",
+  "serverStartFailed": "Unable to start server: {reason}",
+  "@serverStartFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "serverPortsOccupied": "Unable to start server: all ports are occupied",
+  "serverPortsOccupiedRange": "Unable to start server: ports {defaultPort}-{maxPort} are all occupied",
+  "@serverPortsOccupiedRange": {
+    "placeholders": {
+      "defaultPort": {
+        "type": "int"
+      },
+      "maxPort": {
+        "type": "int"
+      }
+    }
+  },
+  "serverUnknownError": "Unable to start server: unknown error",
+  "transferRejected": "Transfer rejected by recipient",
+  "fileTooLarge": "File too large, maximum 2GB supported",
+  "fileOrStorageFull": "File too large or recipient storage space insufficient",
+  "receiveTimeout": "Receive timeout, automatically rejected",
+  "userRejected": "User rejected file transfer",
+  "ipAddressEmpty": "IP address cannot be empty",
+  "ipAddressInvalidFormat": "Invalid IP address format, please use xxx.xxx.xxx.xxx format",
+  "ipAddressInvalidRange": "Invalid IP address format, each number must be between 0-255",
+  "ipAddressSpecial1": "Cannot use 0.0.0.0 as target address",
+  "ipAddressSpecial2": "Cannot use broadcast address 255.255.255.255",
+  "ipAddressNotInSameSubnet": "⚠️ Subnet Mismatch\nLocal IP: {localIP} (Subnet: {localNetwork}.x)\nTarget IP: {targetIP} (Subnet: {targetNetwork}.x)\n\nNote: Both devices must be on the same LAN (same subnet) to transfer files.\nFor Class C IPv4 addresses, the first three numbers should be identical (e.g., 192.168.2), with only the last number differing.\nThe simplest solution is to connect both devices to the same WiFi network or router.\n",
+  "@ipAddressNotInSameSubnet": {
+    "placeholders": {
+      "localIP": {
+        "type": "String"
+      },
+      "targetIP": {
+        "type": "String"
+      },
+      "localNetwork": {
+        "type": "String"
+      },
+      "targetNetwork": {
+        "type": "String"
+      }
+    }
+  },
+  "responseParseError": "Unable to parse server response",
+  "responseInvalidFormat": "Target device response format is incorrect",
+  "responseStatusCodeError": "Server returned error status code: {statusCode}",
+  "@responseStatusCodeError": {
+    "placeholders": {
+      "statusCode": {
+        "type": "int"
+      }
+    }
+  },
+  "fileSelectionError": "Error occurred while selecting file",
+  "fileSelectionCancelled": "File selection cancelled",
+  "genericError": "{operation} failed",
+  "@genericError": {
+    "placeholders": {
+      "operation": {
+        "type": "String"
+      }
+    }
+  },
+  "unexpectedError": "Unexpected error occurred: {details}",
+  "@unexpectedError": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "networkError": "Network error: {context}",
+  "@networkError": {
+    "placeholders": {
+      "context": {
+        "type": "String"
+      }
+    }
+  },
+  "fileError": "File error: {context}",
+  "@fileError": {
+    "placeholders": {
+      "context": {
+        "type": "String"
+      }
+    }
+  },
+  "permissionError": "{permissionType} permission required to continue",
+  "@permissionError": {
+    "placeholders": {
+      "permissionType": {
+        "type": "String"
+      }
+    }
+  },
+  "foregroundServiceChannelName": "Background transfer service",
+  "foregroundServiceChannelDescription": "Keeps the app able to receive LAN files and clipboard requests in the background",
+  "peerUnreachable": "Cannot reach the target device",
+  "peerUnreachableBoth": "Device is unreachable over both LAN and relay",
+  "peerUnsupported": "The other device runs a version without pairing support",
+  "identityMismatch": "Device code does not match its public key, pairing aborted",
+  "cannotPairSelf": "Cannot pair a device with itself",
+  "pairingTitle": "Device Pairing",
+  "compareHint": "Check that both devices show exactly the same number before confirming. A mismatch means the connection may have been tampered with.",
+  "compareHintRelay": "This device is not on your network. Read the six digits to the other person by phone or voice and confirm only if they match exactly. Confirming without checking gives you no protection at all.",
+  "pairOverRelay": "Pair through the relay",
+  "enterDeviceCode": "Enter the other device's 32-character code",
+  "invalidDeviceCode": "A device code is 32 hexadecimal characters",
+  "alreadyPaired": "That device is already trusted",
+  "peerAlreadyPaired": "The other device still trusts this one; unpair on that device first",
+  "relayUnavailable": "Connect to the relay server first",
+  "peerBusy": "The other device is handling another pairing request",
+  "peerPairingBlocked": "The other device has blocked this one; ask them to unblock it first",
+  "peerRelayPairingOff": "The other device is not accepting pairing requests over the relay",
+  "incomingRequest": "\"{deviceName}\" wants to pair with this device",
+  "@incomingRequest": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "outgoingRequest": "Pairing with \"{deviceName}\"",
+  "@outgoingRequest": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "waitingPeer": "Waiting for the other device…",
+  "peerAccepted": "The other device confirmed",
+  "peerRejected": "The other device rejected the pairing",
+  "peerTimeout": "The other device did not confirm in time",
+  "pairingFailed": "Pairing failed",
+  "pairingSucceeded": "Paired with \"{deviceName}\"",
+  "@pairingSucceeded": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "codesMatch": "Numbers match, pair",
+  "codesDiffer": "They differ, cancel",
+  "blockPeer": "Block",
+  "pairingBlocklistTitle": "Pairing blocklist",
+  "pairingBlocklistEmpty": "No blocked devices",
+  "pairingBlocklistManage": "Blocklist",
+  "unblockPeer": "Unblock",
+  "unblockPeerConfirm": "Unblock \"{name}\"? They will be able to request pairing again.",
+  "@unblockPeerConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "pairedDevicesTitle": "Paired Devices",
+  "pairedDevicesEmpty": "No paired devices yet",
+  "addPairedDevice": "Pair a new device",
+  "unpair": "Unpair",
+  "unpairConfirm": "Removing \"{deviceName}\" means comparing the numbers again to restore trust. Continue?",
+  "@unpairConfirm": {
+    "placeholders": {
+      "deviceName": {
+        "type": "String"
+      }
+    }
+  },
+  "deviceCodeLabel": "This device's code",
+  "title": "Relay server",
+  "description": "Forwards files through your own server when devices are not on the same network. A direct connection is always preferred.",
+  "encryptionNotice": "Files are end-to-end encrypted between the two paired devices, and only they can decrypt them. The server sees only when a transfer happened and how many bytes it carried.",
+  "acceptPairingLabel": "Accept pairing requests over the relay",
+  "acceptPairingHint": "Any device holding the server token can send a request to your device code. A device you turn down will not ask again.",
+  "iosForegroundNotice": "On iOS, receiving through the relay only works while the app is open.",
+  "enableLabel": "Enable relay",
+  "serverUrlLabel": "Server address",
+  "tokenLabel": "Access token",
+  "invalidUrl": "The address must start with http:// or https://",
+  "insecureUrlWarning": "Traffic is unencrypted over http://, use it only for local testing",
+  "testConnection": "Test connection",
+  "testSucceeded": "Connected successfully",
+  "save": "Save",
+  "statusDisabled": "Off",
+  "statusConnecting": "Connecting",
+  "statusConnected": "Connected",
+  "statusReconnecting": "Reconnecting",
+  "statusRejected": "Rejected by the server",
+  "clipboardNeedsPairing": "Pair with the device first",
+  "clipboardRelayUnavailable": "Not connected to the relay server",
+  "clipboardPeerOffline": "The peer is not online on the relay",
+  "clipboardFailed": "Clipboard sync over the relay failed",
+  "clipboardPeerNoUi": "The peer cannot confirm the request right now",
+  "clipboardPeerBusy": "The peer is busy, try again later",
+  "clipboardTooLargeForRelay": "Clipboard content exceeds the configured size limit",
+  "clipboardStreamFailed": "Failed to fetch clipboard data over the relay stream",
+  "clipboardPeerTimeout": "The peer did not answer the clipboard request",
+  "clipboardDeclined": "The peer declined the clipboard request",
+  "selectedRelayPeer": "Selected relay peer: {name}",
+  "@selectedRelayPeer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "clearSelectedPeer": "Clear selection",
+  "lanRouteUnavailable": "Device is not reachable over the local network",
+  "relayRouteUnavailable": "Device is not reachable through the relay server",
+  "relayNotConnected": "Not connected to the relay server",
+  "relayPeerOffline": "The other device must have the app open to receive through the relay",
+  "relayPeerNotPaired": "The other device has not added this one to its trusted list",
+  "relayPeerBusy": "The other device is busy with another batch",
+  "relayNeedsPairedDevice": "Relay transfer requires pairing with the device first",
+  "relayNegotiatingSession": "Establishing an encrypted session…",
+  "relayIdentityMismatch": "The peer's signature is invalid; it may not be the paired device",
+  "relayTransferNotice": "Transferring through the relay server; speed is limited by its bandwidth",
+  "retryingAfterInterruption": "Connection interrupted, retrying ({attempt}/{maxAttempts})…",
+  "@retryingAfterInterruption": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "maxAttempts": {
+        "type": "int"
+      }
+    }
+  }
+}

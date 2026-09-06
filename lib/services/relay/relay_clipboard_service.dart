@@ -231,7 +231,7 @@ class RelayClipboardService {
           data: ClipboardDataModel.fromJson(parsed.clipboardData!),
         );
       } catch (e) {
-        LogUtil.wTag(logTag, '中转剪切板内容无法解析: $e');
+        LogUtil.wTag(logTag, '???????????: $e');
         return OperationResult.failure(_messages.clipboardFailed);
       }
     } finally {
@@ -401,7 +401,7 @@ class RelayClipboardService {
             signature: request.signature,
             senderPublicKey: peerKey,
           )) {
-        LogUtil.wTag(logTag, '中转剪切板请求签名无效: $peerDeviceId');
+        LogUtil.wTag(logTag, '???????????: $peerDeviceId');
         await _sendResponse(
           session,
           accepted: false,
@@ -472,7 +472,7 @@ class RelayClipboardService {
 
       LogUtil.iTag(
         logTag,
-        '剪切板走数据面 ($plainSize bytes JSON / ${content.sizeInBytes} bytes blob)',
+        '??????? ($plainSize bytes JSON / ${content.sizeInBytes} bytes blob)',
       );
       worker = await _openWorker();
       await _shareViaStream(
@@ -507,7 +507,7 @@ class RelayClipboardService {
       role: RelayStreamRole.sender,
     );
     if (!stream.isSuccess) {
-      LogUtil.wTag(logTag, '创建剪切板数据流失败: ${stream.errorMessage}');
+      LogUtil.wTag(logTag, '??????????: ${stream.errorMessage}');
       await _sendResponse(
         session,
         accepted: false,
@@ -553,7 +553,7 @@ class RelayClipboardService {
       codec: codec,
     );
     if (!uploaded.isSuccess) {
-      LogUtil.wTag(logTag, '剪切板数据流上传失败: ${uploaded.errorMessage}');
+      LogUtil.wTag(logTag, '??????????: ${uploaded.errorMessage}');
       // Still wait briefly so the initiator is not left hanging forever if it
       // already started the GET; the ack timeout covers the rest.
       try {
@@ -564,12 +564,12 @@ class RelayClipboardService {
 
     final doneInbound = await doneFuture;
     if (!doneInbound.isSuccess) {
-      LogUtil.wTag(logTag, '未收到剪切板完成确认: ${doneInbound.errorMessage}');
+      LogUtil.wTag(logTag, '??????????: ${doneInbound.errorMessage}');
       return;
     }
     final done = ClipboardDone.tryParse(doneInbound.data!);
     if (done == null || !done.ok) {
-      LogUtil.wTag(logTag, '对方未能写入剪切板: ${done?.error}');
+      LogUtil.wTag(logTag, '?????????: ${done?.error}');
     }
   }
 
@@ -636,7 +636,7 @@ class RelayClipboardService {
   }) async {
     final uri = _client.streamUri(streamId);
     if (uri == null) {
-      return OperationResult.failure('中转服务器地址无效');
+      return OperationResult.failure('?????????');
     }
 
     final headers = await _client.streamHeaders(streamId);
@@ -665,18 +665,20 @@ class RelayClipboardService {
         return OperationResult.success();
       }
       return OperationResult.failure(
-        '中转上传失败\n状态码: ${response.statusCode}',
+        '??????\n???: ${response.statusCode}',
       );
     } on DioException catch (e) {
       return OperationResult.failure(
         TransferHttp.describeFailure(
           e,
           transport: TransferTransport.relay,
-          verb: '上传',
+          verb: '??',
         ),
       );
     } catch (e) {
-      return OperationResult.failure('中转上传失败: $e');
+      return OperationResult.failure('??????: $e');
+    } finally {
+      dio.close();
     }
   }
 
@@ -689,7 +691,7 @@ class RelayClipboardService {
   }) async {
     final uri = _client.streamUri(streamId);
     if (uri == null) {
-      return OperationResult.failure('中转服务器地址无效');
+      return OperationResult.failure('?????????');
     }
 
     final dio =
@@ -705,7 +707,7 @@ class RelayClipboardService {
       );
       if (response.statusCode != 200 || response.data == null) {
         return OperationResult.failure(
-          '无法读取中转数据流\n状态码: ${response.statusCode}',
+          '?????????\n???: ${response.statusCode}',
         );
       }
 
@@ -723,13 +725,17 @@ class RelayClipboardService {
         TransferHttp.describeFailure(
           e,
           transport: TransferTransport.relay,
-          verb: '下载',
+          verb: '??',
         ),
       );
     } on RelayCryptoException catch (e) {
-      return OperationResult.failure('剪切板数据在传输中被改动或截断: $e');
+      return OperationResult.failure('???????????????: $e');
     } catch (e) {
-      return OperationResult.failure('中转下载失败: $e');
+      return OperationResult.failure('??????: $e');
+    } finally {
+      // Safe here because the response stream is fully drained into the
+      // builder above before this runs.
+      dio.close();
     }
   }
 

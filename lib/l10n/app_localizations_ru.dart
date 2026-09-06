@@ -1,7 +1,13 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
-/// Russian localization
+// ignore_for_file: type=lint
+
+/// The translations for Russian (`ru`).
 class AppLocalizationsRu extends AppLocalizations {
+  AppLocalizationsRu([String locale = 'ru']) : super(locale);
+
   @override
   String get appName => 'Icy Easy Send';
 
@@ -60,7 +66,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noFilesSelected => 'Файлы не выбраны';
 
   @override
-  String filesSelected(int count) => 'Выбрано файлов: $count';
+  String filesSelected(int count) {
+    return 'Выбрано файлов: $count';
+  }
 
   @override
   String get clearSelection => 'Очистить выбор';
@@ -179,8 +187,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get resetSavePathToDefault => 'Использовать папку по умолчанию';
 
   @override
-  String get savePathResetSuccess =>
-      'Восстановлена системная папка «Загрузки»';
+  String get savePathResetSuccess => 'Восстановлена системная папка «Загрузки»';
 
   @override
   String get autoStart => 'Автозапуск';
@@ -205,8 +212,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get scanningDevices => 'Сканирование локальной сети...';
 
   @override
-  String scanProgress(int scanned, int total, int found) =>
-      'Просканировано $scanned/$total, найдено устройств: $found';
+  String scanProgress(int scanned, int total, int found) {
+    return 'Просканировано $scanned/$total, найдено устройств: $found';
+  }
 
   @override
   String get noDevicesFound => 'Устройства не найдены';
@@ -216,7 +224,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Убедитесь, что на целевом устройстве запущен сервер и оно находится в той же сети. Проверьте AP-изоляцию роутера и настройки брандмауэра.';
 
   @override
-  String scanDevicesFound(int count) => 'Найдено устройств: $count';
+  String scanDevicesFound(int count) {
+    return 'Найдено устройств: $count';
+  }
 
   @override
   String get rescan => 'Сканировать снова';
@@ -357,8 +367,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get selectFolderFailed => 'Не удалось выбрать папку';
 
   @override
-  String folderFilesAdded(int count) =>
-      'Добавлено файлов из папки: $count';
+  String folderFilesAdded(int count) {
+    return 'Добавлено файлов из папки: $count';
+  }
 
   @override
   String get folderContainsNoFiles =>
@@ -428,7 +439,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncClipboard => 'Синхронизировать буфер обмена';
 
   @override
-  String filesCount(int count) => 'Отправить файлов: $count';
+  String filesCount(int count) {
+    return 'Отправить файлов: $count';
+  }
 
   @override
   String get sendFile => 'Отправить файл';
@@ -470,11 +483,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get webSharePeerName => 'Веб-раздача';
 
   @override
-  String webShareFilesSummary(int count, String size) =>
-      '$count файл(ов) · $size';
+  String webShareFilesSummary(int count, String size) {
+    return '$count файл(ов) · $size';
+  }
 
   @override
-  String webShareExpiresIn(String time) => 'Истекает через $time';
+  String webShareExpiresIn(String time) {
+    return 'Истекает через $time';
+  }
 
   @override
   String get releaseToAdd => 'Отпустите мышь, чтобы добавить файлы';
@@ -493,7 +509,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pleaseTryLater => 'Попробуйте позже';
 
   @override
-  String filesAdded(int count) => 'Добавлено общих файлов: $count';
+  String filesAdded(int count) {
+    return 'Добавлено общих файлов: $count';
+  }
 
   @override
   String get preparingSend => 'Подготовка к отправке...';
@@ -502,8 +520,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get transferring => 'Передача';
 
   @override
-  String transferProgress(int current, int total, String fileName) =>
-      '[$current/$total] $fileName: Передача...';
+  String transferProgress(int current, int total, String fileName) {
+    return '[$current/$total] $fileName: Передача...';
+  }
 
   @override
   String get networkChanged => 'Сеть изменилась, адрес сервера обновлен';
@@ -521,7 +540,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get portRange => 'Диапазон портов: 1-65535';
 
   @override
-  String ipDeleted(String ip) => 'IP удален: $ip';
+  String ipDeleted(String ip) {
+    return 'IP удален: $ip';
+  }
 
   @override
   String get runningDiagnostics => 'Выполняется диагностика сети...';
@@ -551,8 +572,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get resetDeviceName => 'Сбросить имя устройства';
 
   @override
-  String resetDeviceNameConfirm(String model) =>
-      'Вы уверены, что хотите сбросить имя устройства на "$model"?';
+  String resetDeviceNameConfirm(String model) {
+    return 'Вы уверены, что хотите сбросить имя устройства на \"$model\"?';
+  }
 
   @override
   String get reset => 'Сбросить';
@@ -561,8 +583,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get confirmChange => 'Подтвердить изменение';
 
   @override
-  String concurrentTransfersChange(int from, int to) =>
-      'Вы уверены, что хотите изменить количество одновременных передач с $from на $to?\n\nПодсказка: ${to > from ? "Увеличение количества одновременных передач может повысить скорость передачи, но также увеличит нагрузку на устройство" : "Уменьшение количества одновременных передач может снизить нагрузку на устройство, но может снизить скорость передачи"}';
+  String concurrentTransfersIncrease(int from, int to) {
+    return 'Вы уверены, что хотите изменить количество одновременных передач с $from на $to?\n\nПодсказка: Увеличение количества одновременных передач может повысить скорость передачи, но также увеличит нагрузку на устройство';
+  }
+
+  @override
+  String concurrentTransfersDecrease(int from, int to) {
+    return 'Вы уверены, что хотите изменить количество одновременных передач с $from на $to?\n\nПодсказка: Уменьшение количества одновременных передач может снизить нагрузку на устройство, но может снизить скорость передачи';
+  }
 
   @override
   String get concurrentTransfersHint => 'Подсказка об одновременных передачах';
@@ -575,44 +603,51 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enterValidNumber => 'Введите допустимое число';
 
   @override
-  String historyCountRange(int min, int max) =>
-      'Диапазон количества записей истории: $min-$max';
+  String historyCountRange(int min, int max) {
+    return 'Диапазон количества записей истории: $min-$max';
+  }
 
   @override
-  String maxHistoryChange(int from, int to) =>
-      'Вы уверены, что хотите изменить максимальное количество записей истории с $from на $to?\n\n';
+  String maxHistoryChange(int from, int to) {
+    return 'Вы уверены, что хотите изменить максимальное количество записей истории с $from на $to?\n\n';
+  }
 
   @override
-  String currentHistoryCount(int count) =>
-      'Текущее количество записей истории: $count\n\n';
+  String currentHistoryCount(int count) {
+    return 'Текущее количество записей истории: $count\n\n';
+  }
 
   @override
   String get historyWarning =>
       '⚠️ Предупреждение: Количество сохраненных записей истории больше установленного.\n\n';
 
   @override
-  String historyDeleteWarning(int current, int max, int toDelete) =>
-      'Будут сохранены только последние $max записей, $toDelete старых записей будут удалены.';
+  String historyDeleteWarning(int current, int max, int toDelete) {
+    return 'Будут сохранены только последние $max записей, $toDelete старых записей будут удалены.';
+  }
 
   @override
   String get historyHint =>
       'Подсказка: Новые настройки вступят в силу при следующем сохранении истории.';
 
   @override
-  String historyDeleted(int count) =>
-      'Настройки сохранены, удалено старых записей: $count';
+  String historyDeleted(int count) {
+    return 'Настройки сохранены, удалено старых записей: $count';
+  }
 
   @override
   String get maxHistorySaved =>
       'Максимальное количество записей истории сохранено';
 
   @override
-  String clipboardSizeRange(int min, int max) =>
-      'Диапазон размера буфера обмена: $min-$max МБ';
+  String clipboardSizeRange(int min, int max) {
+    return 'Диапазон размера буфера обмена: $min-$max МБ';
+  }
 
   @override
-  String maxClipboardSizeChange(int from, int to) =>
-      'Вы уверены, что хотите изменить максимальный размер буфера обмена с $from МБ на $to МБ?\n\n';
+  String maxClipboardSizeChange(int from, int to) {
+    return 'Вы уверены, что хотите изменить максимальный размер буфера обмена с $from МБ на $to МБ?\n\n';
+  }
 
   @override
   String get clipboardSizeDecreaseHint =>
@@ -645,8 +680,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get copyLog => 'Копировать журнал';
 
   @override
-  String logCopied(int lines) =>
-      'Последние $lines строк журнала скопированы в буфер обмена';
+  String logCopied(int lines) {
+    return 'Последние $lines строк журнала скопированы в буфер обмена';
+  }
 
   @override
   String get logFileEmpty => 'Файл журнала пуст';
@@ -655,8 +691,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get devInfo => 'Информация для разработчиков';
 
   @override
-  String labelCopied(String label, String value) =>
-      '$label скопировано: $value';
+  String labelCopied(String label, String value) {
+    return '$label скопировано: $value';
+  }
 
   @override
   String get transferSettings => 'Настройки передачи';
@@ -665,8 +702,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get concurrentTransfers => 'Количество одновременных передач';
 
   @override
-  String concurrentTransfersDesc(int max) =>
-      'Количество одновременно передаваемых файлов (1-$max)';
+  String concurrentTransfersDesc(int max) {
+    return 'Количество одновременно передаваемых файлов (1-$max)';
+  }
 
   @override
   String get concurrentTransfersHintText =>
@@ -676,12 +714,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get maxHistory => 'Максимальное количество записей истории';
 
   @override
-  String maxHistoryDesc(int min, int max) =>
-      'Максимальное количество сохраненных записей передач ($min-$max)';
+  String maxHistoryDesc(int min, int max) {
+    return 'Максимальное количество сохраненных записей передач ($min-$max)';
+  }
 
   @override
-  String maxHistoryHintText(int min, int max) =>
-      'Введите количество ($min-$max)';
+  String maxHistoryHintText(int min, int max) {
+    return 'Введите количество ($min-$max)';
+  }
 
   @override
   String get oldRecordsAutoDelete =>
@@ -691,12 +731,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get maxClipboard => 'Максимальный размер буфера обмена';
 
   @override
-  String maxClipboardDesc(int min, int max) =>
-      'Максимальный размер буфера обмена для синхронизации ($min-$max МБ)';
+  String maxClipboardDesc(int min, int max) {
+    return 'Максимальный размер буфера обмена для синхронизации ($min-$max МБ)';
+  }
 
   @override
-  String maxClipboardHintText(int min, int max) =>
-      'Введите размер ($min-$max МБ)';
+  String maxClipboardHintText(int min, int max) {
+    return 'Введите размер ($min-$max МБ)';
+  }
 
   @override
   String get clipboardSyncLimit =>
@@ -751,8 +793,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get history => 'История';
 
   @override
-  String resetToDefaultPort(int port) =>
-      'Сбросить на порт по умолчанию ($port)';
+  String get targetDevicePort => 'Порт целевого устройства';
+
+  @override
+  String resetToDefaultPort(int port) {
+    return 'Сбросить на порт по умолчанию ($port)';
+  }
 
   @override
   String get targetDeviceSecretKey =>
@@ -800,13 +846,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get gotIt => 'Понятно';
 
   @override
-  String get targetDevicePort => 'Порт целевого устройства';
-
-  @override
   String get localIP => 'Локальный IP';
 
   @override
-  String ipCopied(String ip) => 'IP-адрес скопирован: $ip';
+  String ipCopied(String ip) {
+    return 'IP-адрес скопирован: $ip';
+  }
 
   @override
   String get transferred => 'Передано';
@@ -818,8 +863,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get remainingTime => 'Оставшееся время';
 
   @override
-  String transferringProgress(double progress) =>
-      'Передача ${progress.toStringAsFixed(1)}%';
+  String transferringProgress(double progress) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 1,
+        );
+    final String progressString = progressNumberFormat.format(progress);
+
+    return 'Передача $progressString%';
+  }
 
   @override
   String get storagePermissionMessage =>
@@ -832,8 +885,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get targetDeviceUnavailable => 'Целевое устройство недоступно';
 
   @override
-  String targetDeviceError(String error) =>
-      'Целевое устройство недоступно\nОшибка: $error';
+  String targetDeviceError(String error) {
+    return 'Целевое устройство недоступно\nОшибка: $error';
+  }
 
   @override
   String get connectionFailed => 'Не удалось подключиться';
@@ -864,7 +918,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get statisticsInfo => 'Статистическая информация';
 
   @override
-  String transfersCount(int count) => 'Передач: $count';
+  String transfersCount(int count) {
+    return 'Передач: $count';
+  }
 
   @override
   String get totalTransfers => 'Всего передач';
@@ -897,8 +953,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get deleteRecordTitle => 'Удалить запись';
 
   @override
-  String deleteRecordMessage(String fileName) =>
-      'Вы уверены, что хотите удалить запись передачи "$fileName"?\n\nПримечание: Это удалит только запись, а не сам файл.';
+  String deleteRecordMessage(String fileName) {
+    return 'Вы уверены, что хотите удалить запись передачи \"$fileName\"?\n\nПримечание: Это удалит только запись, а не сам файл.';
+  }
 
   @override
   String get deleteRecordNote =>
@@ -914,8 +971,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get cannotOpenFile => 'Невозможно открыть файл';
 
   @override
-  String cannotOpenFileWithMessage(String message) =>
-      'Невозможно открыть файл: $message';
+  String cannotOpenFileWithMessage(String message) {
+    return 'Невозможно открыть файл: $message';
+  }
 
   @override
   String get iosNoFolderSupport => 'iOS не поддерживает прямое открытие папок';
@@ -971,13 +1029,13 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get sentTo => 'Отправлено на';
 
-  // Clipboard related
   @override
   String get clipboardRequest => 'Запрос буфера обмена';
 
   @override
-  String clipboardRequestFrom(String deviceName) =>
-      'Устройство "$deviceName" запрашивает доступ к содержимому вашего буфера обмена';
+  String clipboardRequestFrom(String deviceName) {
+    return 'Устройство \"$deviceName\" запрашивает доступ к содержимому вашего буфера обмена';
+  }
 
   @override
   String get allowClipboardRequest => 'Разрешить?';
@@ -986,7 +1044,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get clipboardRequestMessage => 'Запрос буфера обмена';
 
   @override
-  String autoRejectIn(int seconds) => 'Автоматический отказ через $seconds сек';
+  String autoRejectIn(int seconds) {
+    return 'Автоматический отказ через $seconds сек';
+  }
 
   @override
   String get reject => 'Отклонить';
@@ -995,8 +1055,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get allow => 'Разрешить';
 
   @override
-  String clipboardSharedWithSecretKey(String deviceName) =>
-      '$deviceName прошло проверку секретным ключом, автоматический обмен буфером обмена';
+  String clipboardSharedWithSecretKey(String deviceName) {
+    return '$deviceName прошло проверку секретным ключом, автоматический обмен буфером обмена';
+  }
 
   @override
   String get clipboardRequestRejected =>
@@ -1006,8 +1067,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get clipboardEmpty => 'Буфер обмена пуст';
 
   @override
-  String clipboardContentTooLarge(double actualSizeMB, int maxSizeMB) =>
-      'Содержимое буфера обмена слишком большое (${actualSizeMB.toStringAsFixed(2)} МБ), превышает лимит целевого устройства ($maxSizeMB МБ). Рекомендуется использовать функцию передачи файлов.';
+  String clipboardContentTooLarge(double actualSizeMB, int maxSizeMB) {
+    final intl.NumberFormat actualSizeMBNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 2,
+        );
+    final String actualSizeMBString = actualSizeMBNumberFormat.format(
+      actualSizeMB,
+    );
+
+    return 'Содержимое буфера обмена слишком большое ($actualSizeMBString МБ), превышает лимит целевого устройства ($maxSizeMB МБ). Рекомендуется использовать функцию передачи файлов.';
+  }
 
   @override
   String get clipboardContentSuccess =>
@@ -1019,37 +1090,44 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get serverInternalError => 'Внутренняя ошибка сервера';
 
-
   @override
-  String get backgroundRejectNeedsSecretKey => 'Устройство в фоне. Поддерживается только автосинхронизация/приём при совпадении секретного ключа.';
+  String get backgroundRejectNeedsSecretKey =>
+      'Устройство в фоне. Поддерживается только автосинхронизация/приём при совпадении секретного ключа.';
 
   @override
   String get foregroundServiceNotificationTitle => 'IcyEasySend';
 
   @override
-  String get foregroundServiceNotificationText => 'Ожидание передачи файлов и синхронизации буфера в фоне';
+  String get foregroundServiceNotificationText =>
+      'Ожидание передачи файлов и синхронизации буфера в фоне';
 
   @override
-  String get androidBackgroundReceiveHint => 'В фоне только устройства с совпадающим секретным ключом могут автоматически синхронизировать или отправлять. Сохраняйте постоянное уведомление.';
+  String get androidBackgroundReceiveHint =>
+      'В фоне только устройства с совпадающим секретным ключом могут автоматически синхронизировать или отправлять. Сохраняйте постоянное уведомление.';
 
   @override
   String get clipboardOverlay => 'Плавающая кнопка буфера обмена';
 
   @override
-  String get clipboardOverlayDesc => 'Нажмите плавающую кнопку, чтобы обновить кэш текста/изображений для фоновой синхронизации';
+  String get clipboardOverlayDesc =>
+      'Нажмите плавающую кнопку, чтобы обновить кэш текста/изображений для фоновой синхронизации';
 
   @override
-  String get clipboardOverlayHint => 'В фоне синхронизируется только последнее обновлённое содержимое. Отключение очищает кэш и скрывает кнопку.';
+  String get clipboardOverlayHint =>
+      'В фоне синхронизируется только последнее обновлённое содержимое. Отключение очищает кэш и скрывает кнопку.';
 
   @override
-  String get clipboardOverlayPermissionNeeded => 'Разрешите «Поверх других приложений» в настройках. Кнопка появится после возврата.';
+  String get clipboardOverlayPermissionNeeded =>
+      'Разрешите «Поверх других приложений» в настройках. Кнопка появится после возврата.';
 
   @override
-  String get clipboardOverlayEnabledToast => 'Плавающая кнопка буфера обмена включена';
+  String get clipboardOverlayEnabledToast =>
+      'Плавающая кнопка буфера обмена включена';
 
   @override
-  String get clipboardBackgroundCacheMiss => 'В фоне системный буфер недоступен и нет кэша. Откройте приложение или нажмите плавающую кнопку для обновления.';
-  // Clipboard sync
+  String get clipboardBackgroundCacheMiss =>
+      'В фоне системный буфер недоступен и нет кэша. Откройте приложение или нажмите плавающую кнопку для обновления.';
+
   @override
   String get requestingClipboard => 'Запрос буфера обмена...';
 
@@ -1071,13 +1149,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get syncFailed => 'Не удалось синхронизировать';
 
   @override
-  String clipboardRequestError(String error) =>
-      'Ошибка при запросе буфера обмена: $error';
+  String clipboardRequestError(String error) {
+    return 'Ошибка при запросе буфера обмена: $error';
+  }
 
-  // File transfer
   @override
-  String invalidFilesMessage(String fileNames) =>
-      'Следующие файлы недействительны или недоступны:\n$fileNames';
+  String invalidFilesMessage(String fileNames) {
+    return 'Следующие файлы недействительны или недоступны:\n$fileNames';
+  }
 
   @override
   String get waitingForReceiverConfirmation =>
@@ -1087,7 +1166,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get fileSendSuccess => 'Файл успешно отправлен!';
 
   @override
-  String filesSendSuccess(int count) => 'Файлов успешно отправлено: $count!';
+  String filesSendSuccess(int count) {
+    return 'Файлов успешно отправлено: $count!';
+  }
 
   @override
   String get allFilesSendFailed => 'Не удалось отправить все файлы';
@@ -1109,32 +1190,34 @@ class AppLocalizationsRu extends AppLocalizations {
     int successCount,
     int failureCount,
     String failedFiles,
-  ) =>
-      'Успешно: $successCount файлов\nОшибок: $failureCount файлов\n\nФайлы с ошибками:\n$failedFiles';
+  ) {
+    return 'Успешно: $successCount файлов\nОшибок: $failureCount файлов\n\nФайлы с ошибками:\n$failedFiles';
+  }
 
-  // Batch transfer status
   @override
   String get preparingTransferInfo => 'Подготовка информации о передаче...';
 
   @override
-  String waitingForReceiverConfirmFiles(int count) =>
-      'Ожидание подтверждения получателем $count файлов...';
+  String waitingForReceiverConfirmFiles(int count) {
+    return 'Ожидание подтверждения получателем $count файлов...';
+  }
 
   @override
-  String transferringFile(int current, int total, String fileName) =>
-      'Передача файла $current/$total: $fileName';
+  String transferringFile(int current, int total, String fileName) {
+    return 'Передача файла $current/$total: $fileName';
+  }
 
   @override
   String get receiverRejected => 'Получатель отклонил получение';
 
   @override
-  String receiverRejectedWithStatus(int statusCode) =>
-      'Получатель отклонил получение\nКод состояния: $statusCode';
+  String receiverRejectedWithStatus(int statusCode) {
+    return 'Получатель отклонил получение\nКод состояния: $statusCode';
+  }
 
   @override
   String get transferIdNotFound => 'ID передачи не найден';
 
-  // Batch receive
   @override
   String get waitingForConfirmation => 'Ожидание подтверждения...';
 
@@ -1148,14 +1231,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get receiveComplete => 'Получение завершено';
 
   @override
-  String receivingProgress(double progress) =>
-      'Получение... ${progress.toStringAsFixed(1)}%';
+  String receivingProgress(double progress) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 1,
+        );
+    final String progressString = progressNumberFormat.format(progress);
+
+    return 'Получение... $progressString%';
+  }
 
   @override
-  String receivingFiles(int count) => 'Получение файлов: $count';
+  String receivingFiles(int count) {
+    return 'Получение файлов: $count';
+  }
 
   @override
-  String receiveFilesCount(int count) => 'Получить файлов: $count';
+  String receiveFilesCount(int count) {
+    return 'Получить файлов: $count';
+  }
 
   @override
   String get sender => 'Отправитель';
@@ -1173,8 +1268,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get receivingFiles2 => 'Получение файлов...';
 
   @override
-  String autoRejectCountdown(int seconds) =>
-      'Получить эти файлы? (Автоматический отказ через $seconds сек)';
+  String autoRejectCountdown(int seconds) {
+    return 'Получить эти файлы? (Автоматический отказ через $seconds сек)';
+  }
 
   @override
   String get rejectAll => 'Отклонить все';
@@ -1182,7 +1278,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get acceptAll => 'Принять все';
 
-  // Network diagnostics
   @override
   String get networkDiagnosticsReport => 'Отчет диагностики сети';
 
@@ -1230,7 +1325,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get noInternetConnection => 'Нет подключения к Интернету';
 
-  // Error messages
   @override
   String get networkConnectionFailed =>
       'Невозможно подключиться к целевому устройству, проверьте сетевое подключение и IP-адрес';
@@ -1280,6 +1374,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Недостаточно места для хранения, невозможно получить файл';
 
   @override
+  String get diskFullTitle => 'Диск заполнен';
+
+  @override
   String get storageCheckFailed => 'Невозможно проверить место для хранения';
 
   @override
@@ -1291,16 +1388,18 @@ class AppLocalizationsRu extends AppLocalizations {
       'Требуется разрешение на доступ к хранилищу для сохранения файлов';
 
   @override
-  String serverStartFailed(String reason) =>
-      'Невозможно запустить сервер: $reason';
+  String serverStartFailed(String reason) {
+    return 'Невозможно запустить сервер: $reason';
+  }
 
   @override
   String get serverPortsOccupied =>
       'Невозможно запустить сервер: все порты заняты';
 
   @override
-  String serverPortsOccupiedRange(int defaultPort, int maxPort) =>
-      'Невозможно запустить сервер: порты $defaultPort-$maxPort все заняты';
+  String serverPortsOccupiedRange(int defaultPort, int maxPort) {
+    return 'Невозможно запустить сервер: порты $defaultPort-$maxPort все заняты';
+  }
 
   @override
   String get serverUnknownError =>
@@ -1349,14 +1448,9 @@ class AppLocalizationsRu extends AppLocalizations {
     String targetIP,
     String localNetwork,
     String targetNetwork,
-  ) =>
-      '⚠️ Несоответствие сегмента сети\n'
-      'Локальный IP: $localIP (сегмент: $localNetwork.x)\n'
-      'Целевой IP: $targetIP (сегмент: $targetNetwork.x)\n'
-      '\n'
-      'Подсказка: Оба устройства должны находиться в одной локальной сети (одном сегменте) для передачи файлов.\n'
-      'Для адресов IPv4 класса C первые три числа двух IP-адресов должны быть одинаковыми, например, оба 192.169.2, отличается только последнее число\n'
-      'Самый простой способ - подключить оба устройства к одному WiFi или маршрутизатору.\n';
+  ) {
+    return '⚠️ Несоответствие сегмента сети\nЛокальный IP: $localIP (сегмент: $localNetwork.x)\nЦелевой IP: $targetIP (сегмент: $targetNetwork.x)\n\nПодсказка: Оба устройства должны находиться в одной локальной сети (одном сегменте) для передачи файлов.\nДля адресов IPv4 класса C первые три числа двух IP-адресов должны быть одинаковыми, например, оба 192.169.2, отличается только последнее число\nСамый простой способ - подключить оба устройства к одному WiFi или маршрутизатору.\n';
+  }
 
   @override
   String get responseParseError => 'Невозможно разобрать ответ сервера';
@@ -1366,8 +1460,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Неверный формат ответа целевого устройства';
 
   @override
-  String responseStatusCodeError(int statusCode) =>
-      'Сервер вернул код ошибки: $statusCode';
+  String responseStatusCodeError(int statusCode) {
+    return 'Сервер вернул код ошибки: $statusCode';
+  }
 
   @override
   String get fileSelectionError => 'Ошибка при выборе файла';
@@ -1376,19 +1471,316 @@ class AppLocalizationsRu extends AppLocalizations {
   String get fileSelectionCancelled => 'Выбор файла отменен';
 
   @override
-  String genericError(String operation) => 'Не удалось выполнить $operation';
+  String genericError(String operation) {
+    return 'Не удалось выполнить $operation';
+  }
 
   @override
-  String unexpectedError(String details) =>
-      'Произошла неожиданная ошибка: $details';
+  String unexpectedError(String details) {
+    return 'Произошла неожиданная ошибка: $details';
+  }
 
   @override
-  String networkError(String context) => 'Ошибка сети: $context';
+  String networkError(String context) {
+    return 'Ошибка сети: $context';
+  }
 
   @override
-  String fileError(String context) => 'Ошибка файла: $context';
+  String fileError(String context) {
+    return 'Ошибка файла: $context';
+  }
 
   @override
-  String permissionError(String permissionType) =>
-      'Требуется разрешение $permissionType для продолжения операции';
+  String permissionError(String permissionType) {
+    return 'Требуется разрешение $permissionType для продолжения операции';
+  }
+
+  @override
+  String get foregroundServiceChannelName => 'Фоновая служба передачи';
+
+  @override
+  String get foregroundServiceChannelDescription =>
+      'Позволяет приложению принимать LAN-файлы и запросы буфера обмена в фоне';
+
+  @override
+  String get peerUnreachable => 'Не удалось подключиться к целевому устройству';
+
+  @override
+  String get peerUnreachableBoth =>
+      'Устройство недоступно (ни локально, ни через ретранслятор)';
+
+  @override
+  String get peerUnsupported =>
+      'Версия другого устройства не поддерживает сопряжение';
+
+  @override
+  String get identityMismatch =>
+      'Код устройства не соответствует его открытому ключу, сопряжение прервано';
+
+  @override
+  String get cannotPairSelf => 'Нельзя выполнить сопряжение с самим собой';
+
+  @override
+  String get pairingTitle => 'Сопряжение устройств';
+
+  @override
+  String get compareHint =>
+      'Убедитесь, что на обоих устройствах отображается одно и то же число. Иначе соединение могло быть подменено.';
+
+  @override
+  String get compareHintRelay =>
+      'Это устройство не в вашей сети. Сверьте 6 цифр с собеседником по телефону и подтверждайте только при полном совпадении. Без сверки защиты нет вообще.';
+
+  @override
+  String get pairOverRelay => 'Сопряжение через ретранслятор';
+
+  @override
+  String get enterDeviceCode => 'Введите 32-значный код другого устройства';
+
+  @override
+  String get invalidDeviceCode =>
+      'Код устройства должен состоять из 32 шестнадцатеричных символов';
+
+  @override
+  String get alreadyPaired => 'Это устройство уже в списке доверенных';
+
+  @override
+  String get peerAlreadyPaired =>
+      'The other device still trusts this one; unpair on that device first';
+
+  @override
+  String get relayUnavailable => 'Сначала подключитесь к серверу ретрансляции';
+
+  @override
+  String get peerBusy => 'Устройство обрабатывает другой запрос сопряжения';
+
+  @override
+  String get peerPairingBlocked =>
+      'The other device has blocked this one; ask them to unblock it first';
+
+  @override
+  String get peerRelayPairingOff =>
+      'Устройство не принимает запросы сопряжения через ретранслятор';
+
+  @override
+  String incomingRequest(String deviceName) {
+    return '«$deviceName» запрашивает сопряжение с этим устройством';
+  }
+
+  @override
+  String outgoingRequest(String deviceName) {
+    return 'Сопряжение с «$deviceName»';
+  }
+
+  @override
+  String get waitingPeer => 'Ожидание подтверждения…';
+
+  @override
+  String get peerAccepted => 'Другое устройство подтвердило';
+
+  @override
+  String get peerRejected => 'Другое устройство отклонило сопряжение';
+
+  @override
+  String get peerTimeout => 'Другое устройство не подтвердило вовремя';
+
+  @override
+  String get pairingFailed => 'Сбой сопряжения';
+
+  @override
+  String pairingSucceeded(String deviceName) {
+    return 'Сопряжение с «$deviceName» завершено';
+  }
+
+  @override
+  String get codesMatch => 'Числа совпадают, выполнить сопряжение';
+
+  @override
+  String get codesDiffer => 'Не совпадают, отменить';
+
+  @override
+  String get blockPeer => 'Block';
+
+  @override
+  String get pairingBlocklistTitle => 'Pairing blocklist';
+
+  @override
+  String get pairingBlocklistEmpty => 'No blocked devices';
+
+  @override
+  String get pairingBlocklistManage => 'Blocklist';
+
+  @override
+  String get unblockPeer => 'Unblock';
+
+  @override
+  String unblockPeerConfirm(String name) {
+    return 'Unblock \"$name\"? They will be able to request pairing again.';
+  }
+
+  @override
+  String get pairedDevicesTitle => 'Сопряжённые устройства';
+
+  @override
+  String get pairedDevicesEmpty => 'Сопряжённых устройств пока нет';
+
+  @override
+  String get addPairedDevice => 'Сопрячь новое устройство';
+
+  @override
+  String get unpair => 'Разорвать сопряжение';
+
+  @override
+  String unpairConfirm(String deviceName) {
+    return 'После удаления «$deviceName» потребуется снова сверить числа. Продолжить?';
+  }
+
+  @override
+  String get deviceCodeLabel => 'Код этого устройства';
+
+  @override
+  String get title => 'Сервер ретрансляции';
+
+  @override
+  String get description =>
+      'Передаёт файлы через ваш собственный сервер, когда устройства не в одной сети. Прямое соединение всегда в приоритете.';
+
+  @override
+  String get encryptionNotice =>
+      'Файлы шифруются сквозным образом между двумя сопряжёнными устройствами, расшифровать их может только получатель. Сервер видит лишь время передачи и объём.';
+
+  @override
+  String get acceptPairingLabel =>
+      'Принимать запросы сопряжения через ретранслятор';
+
+  @override
+  String get acceptPairingHint =>
+      'Любое устройство с токеном сервера может запросить сопряжение с вашим кодом. Отклонённое устройство больше не появится.';
+
+  @override
+  String get iosForegroundNotice =>
+      'На iOS приём через ретрансляцию работает только при открытом приложении.';
+
+  @override
+  String get enableLabel => 'Включить ретрансляцию';
+
+  @override
+  String get serverUrlLabel => 'Адрес сервера';
+
+  @override
+  String get tokenLabel => 'Токен доступа';
+
+  @override
+  String get invalidUrl => 'Адрес должен начинаться с http:// или https://';
+
+  @override
+  String get insecureUrlWarning =>
+      'С http:// трафик не шифруется, только для локальной отладки';
+
+  @override
+  String get testConnection => 'Проверить подключение';
+
+  @override
+  String get testSucceeded => 'Подключение выполнено';
+
+  @override
+  String get save => 'Сохранить';
+
+  @override
+  String get statusDisabled => 'Выключено';
+
+  @override
+  String get statusConnecting => 'Подключение…';
+
+  @override
+  String get statusConnected => 'Подключено';
+
+  @override
+  String get statusReconnecting => 'Переподключение…';
+
+  @override
+  String get statusRejected => 'Отклонено сервером';
+
+  @override
+  String get clipboardNeedsPairing => 'Pair with the device first';
+
+  @override
+  String get clipboardRelayUnavailable => 'Not connected to the relay server';
+
+  @override
+  String get clipboardPeerOffline => 'The peer is not online on the relay';
+
+  @override
+  String get clipboardFailed => 'Clipboard sync over the relay failed';
+
+  @override
+  String get clipboardPeerNoUi =>
+      'The peer cannot confirm the request right now';
+
+  @override
+  String get clipboardPeerBusy => 'The peer is busy, try again later';
+
+  @override
+  String get clipboardTooLargeForRelay =>
+      'Clipboard content exceeds the configured size limit';
+
+  @override
+  String get clipboardStreamFailed =>
+      'Failed to fetch clipboard data over the relay stream';
+
+  @override
+  String get clipboardPeerTimeout =>
+      'The peer did not answer the clipboard request';
+
+  @override
+  String get clipboardDeclined => 'The peer declined the clipboard request';
+
+  @override
+  String selectedRelayPeer(String name) {
+    return 'Selected relay peer: $name';
+  }
+
+  @override
+  String get clearSelectedPeer => 'Clear selection';
+
+  @override
+  String get lanRouteUnavailable => 'Устройство недоступно по локальной сети';
+
+  @override
+  String get relayRouteUnavailable =>
+      'Устройство недоступно через сервер ретрансляции';
+
+  @override
+  String get relayNotConnected => 'Нет подключения к серверу ретрансляции';
+
+  @override
+  String get relayPeerOffline =>
+      'Получатель должен открыть приложение, чтобы принять через ретрансляцию';
+
+  @override
+  String get relayPeerNotPaired =>
+      'Получатель не добавил это устройство в список доверенных';
+
+  @override
+  String get relayPeerBusy => 'Получатель обрабатывает другую партию файлов';
+
+  @override
+  String get relayNeedsPairedDevice =>
+      'Для передачи через ретрансляцию нужно сначала выполнить сопряжение';
+
+  @override
+  String get relayNegotiatingSession => 'Установка зашифрованного сеанса…';
+
+  @override
+  String get relayIdentityMismatch =>
+      'Недействительная подпись: возможно, это не сопряжённое устройство';
+
+  @override
+  String get relayTransferNotice =>
+      'Передача через сервер ретрансляции, скорость ограничена его каналом';
+
+  @override
+  String retryingAfterInterruption(int attempt, int maxAttempts) {
+    return 'Соединение прервано, повтор ($attempt/$maxAttempts)…';
+  }
 }

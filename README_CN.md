@@ -207,40 +207,32 @@ flutter build linux --release
 ```
 lib/
 ├── main.dart                          # 应用入口
+├── l10n/                              # 国际化（ARB 源文件 + 生成代码）
+│   ├── app_en.arb                    # 模板语言（新增文案先改这里）
+│   ├── app_*.arb                     # 其他语言
+│   ├── app_localizations*.dart       # 由 `flutter gen-l10n` 生成（不要手改）
+│   └── current_localizations.dart    # 服务层无 context 查找（`appText`）
 ├── models/                            # 数据模型
-│   ├── device_info.dart              # 设备信息
-│   ├── file_transfer_request.dart    # 文件传输请求
-│   ├── transfer_data.dart            # 传输数据
-│   ├── transfer_history.dart         # 传输历史
-│   └── clipboard_data_model.dart     # 剪切板数据
 ├── pages/                             # UI 页面
-│   ├── home_page.dart                # 主页
-│   ├── history_page.dart             # 历史页面
-│   ├── settings_page.dart            # 设置页面
-│   ├── main_container.dart           # 主容器
-│   ├── controllers/                  # 页面控制器
-│   └── widgets/                      # UI 组件
+│   ├── home_page.dart                # 主页（编排）
+│   ├── history_page.dart
+│   ├── settings_page.dart            # 设置页（编排）
+│   ├── main_container.dart
+│   ├── home/                         # 主页控制器与分区组件
+│   ├── settings/                     # 设置页控制器与卡片
+│   ├── pairing/                      # 配对确认 UI
+│   └── history/                      # 历史页相关组件
 ├── services/                          # 业务逻辑服务
-│   ├── http_server_manager.dart      # HTTP 服务器管理
-│   ├── file_transfer_service.dart    # 文件传输服务
-│   ├── clipboard_service.dart        # 剪切板服务
+│   ├── http_server_manager.dart
+│   ├── file_transfer_service.dart
+│   ├── clipboard_service.dart
 │   ├── identity_service.dart         # 设备身份（Ed25519）
-│   ├── pairing_service.dart          # 设备配对
-│   ├── permission_service.dart       # 权限管理
-│   ├── preferences_service.dart      # 本地存储
-│   ├── transfer_history_service.dart # 历史记录管理
+│   ├── pairing_service.dart
+│   ├── language_service.dart         # 语言偏好
 │   ├── relay/                        # 中转客户端（WSS、加密、配对、剪切板）
-│   └── transfer/                     # 传输子模块
-│       ├── file_sender.dart          # 文件发送
-│       ├── file_receiver.dart        # 文件接收
-│       ├── batch_transfer_manager.dart # 批量传输管理
-│       └── health_checker.dart       # 健康检查
+│   └── transfer/                     # 文件收发、批量、健康检查
 ├── transport/                         # 通道抽象（局域网 / 中转 / 选路）
-└── utils/                             # 工具函数
-    ├── constants.dart                # 常量定义
-    ├── network_util.dart             # 网络工具
-    ├── format_util.dart              # 格式化工具
-    └── log_util.dart                 # 日志工具
+└── utils/                             # 通用工具（日志、网络、对话框等）
 ```
 
 自建中转服务端代码在仓库 `relay/` 目录，说明见 [`relay/README.md`](relay/README.md)；协议设计见 [`docs/relay-design.md`](docs/relay-design.md)。
@@ -248,8 +240,9 @@ lib/
 ### 核心技术栈
 
 - **UI 框架**: Flutter 3.41.2+
+- **国际化**: flutter_localizations + intl（`lib/l10n/*.arb`，`flutter gen-l10n`）
 - **HTTP 服务器**: shelf + shelf_router
-- **网络通信**: http + connectivity_plus；中转信令为 WebSocket（`dart:io`）
+- **网络通信**: http + dio + connectivity_plus；中转信令为 WebSocket（`dart:io`）
 - **文件操作**: file_picker + path_provider
 - **权限管理**: permission_handler
 - **本地存储**: shared_preferences
@@ -311,19 +304,18 @@ lib/
 
 ### 测试
 
-项目包含单元测试和集成测试：
-
 ```bash
-# 运行所有测试
+# 静态分析（CI 也会跑）
+flutter analyze
+
+# 单元 / Widget 测试
 flutter test
 
-# 运行测试并生成覆盖率报告
+# 覆盖率（可选）
 flutter test --coverage
-
-# 查看覆盖率报告
-genhtml coverage/lcov.info -o coverage/html
-open coverage/html/index.html
 ```
+
+CI（`.github/workflows/ci.yml`）会对 Flutter/Dart 变更执行 `flutter analyze` 与 `flutter test`。中转 Go 侧检查见 `relay-ci.yml`。
 
 ### 日志系统
 
@@ -351,120 +343,38 @@ LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
 5. 编写单元测试
 6. 更新文档
 
-### 添加新语言
+### 国际化（i18n）
 
-应用支持国际化（i18n）。要添加新语言，请按照以下步骤操作：
+所有面向用户的文案只维护在一处：`lib/l10n/` 下的 ARB 文件。
+通过 `pubspec.yaml` 的 `generate: true` 与根目录 `l10n.yaml`，构建时会跑
+`flutter gen-l10n`，生成 `app_localizations*.dart`。生成文件会提交进仓库，
+干净检出即可编译——**请改 `.arb`，不要手改生成出来的 Dart**。
 
-#### 1. 创建翻译文件
+| 场景 | 取文案方式 |
+|------|------------|
+| Widget | `AppLocalizations.of(context)` —— 必须用 context，语言切换时 UI 才会重建 |
+| 服务层 / HTTP / 通知（没有 `BuildContext`） | `lib/l10n/current_localizations.dart` 里的 `appText` |
 
-在 `lib/l10n/` 目录下创建新的翻译文件：
+`ErrorMessages` 等薄门面仍可调用，内部已委托给 `appText`，**不再自带多语言对照表**。
 
-```dart
-// lib/l10n/app_localizations_<语言代码>.dart
-// 示例：app_localizations_ja.dart 用于日语
+当前支持：`zh`、`zh_HK`、`en`、`ko`、`ja`、`fr`、`de`、`es`、`pt`、`ru`、`it`、`nl`（设置里还可「跟随系统」）。
 
-import 'app_localizations.dart';
+#### 新增一条文案
 
-class AppLocalizationsJa extends AppLocalizations {
-  @override
-  String get appName => 'アプリ名';
+1. 在 `lib/l10n/app_en.arb` 增加 key（需要占位符时一并写 `@key`）。
+2. 在其余 `lib/l10n/app_*.arb` 中补上同名 key。
+3. 运行 `flutter gen-l10n`（或 `flutter pub get` / 正常构建）。
+4. UI 用 `AppLocalizations.of(context).yourKey`，服务层用 `appText.yourKey`。
 
-  @override
-  String get home => 'ホーム';
+未翻译的 key 会写到 `lib/l10n/untranslated.json`（已 gitignore）。
 
-// ... 实现 AppLocalizations 中的所有抽象方法
-}
-```
+#### 添加新语言
 
-#### 2. 更新 Provider 类
+1. **新建** `lib/l10n/app_<code>.arb`（可复制 `app_en.arb`，改 `"@@locale"` 并翻译）。
+2. 在 `lib/services/language_service.dart` 的 `_supportedLanguages` **注册**该语言。
+3. 运行 `flutter gen-l10n`，在设置页确认新语言出现。
 
-更新以下 provider 类以支持新语言：
-
-**a. 错误消息提供者** (`lib/utils/error_message_provider.dart`)：
-
-```dart
-String get networkConnectionFailed =>
-    getMessage({
-      'zh': '无法连接到目标设备',
-      'en': 'Unable to connect to target device',
-      'ja': 'ターゲットデバイスに接続できません', // 添加新语言
-    });
-```
-
-**b. 传输状态提供者** (`lib/utils/transfer_status_provider.dart`)：
-
-```dart
-String get checkingTargetDevice =>
-    getMessage({
-      'zh': '正在检查目标设备...',
-      'en': 'Checking target device...',
-      'ja': 'ターゲットデバイスを確認中...', // 添加新语言
-    });
-```
-
-**c. 网络诊断提供者** (`lib/utils/network_diagnostics_provider.dart`)：
-
-```dart
-String get networkDiagnosticsReport =>
-    getMessage({
-      'zh': '网络诊断报告',
-      'en': 'Network Diagnostics Report',
-      'ja': 'ネットワーク診断レポート', // 添加新语言
-    });
-```
-
-#### 3. 注册新语言
-
-更新 `lib/l10n/app_localizations.dart` 以注册新的语言环境：
-
-```dart
-@override
-Future<AppLocalizations> load(Locale locale) async {
-  if (locale.languageCode == 'zh') {
-    if (locale.countryCode == 'HK') {
-      return AppLocalizationsZhHk();
-    }
-    return AppLocalizationsZh();
-  }
-  switch (locale.languageCode) {
-    case 'ko':
-      return AppLocalizationsKo();
-  // 添加新语言
-    case 'ja':
-      return AppLocalizationsJa();
-  }
-}
-```
-
-#### 4. 更新语言服务
-
-更新 `lib/services/language_service.dart` 以添加新的语言配置：
-
-```dart
-
-static const Map<String, LanguageConfig> _supportedLanguages = {
-  'system': LanguageConfig(
-    code: 'system',
-    displayName: 'System Default / 跟随系统',
-    locale: Locale('en', 'US'),
-  ),
-  'zh': LanguageConfig(
-    code: 'zh',
-    displayName: '简体中文',
-    locale: Locale('zh', 'CN'),
-  ),
-  'en': LanguageConfig(
-    code: 'en',
-    displayName: 'English',
-    locale: Locale('en', 'US'),
-  ),
-  'ja': LanguageConfig( // 添加新语言 - 只需要在这里添加！
-    code: 'ja',
-    displayName: '日本語',
-    locale: Locale('ja', 'JP'),
-  ),
-};
-```
+不必再手写 `app_localizations_<code>.dart`，也不必维护第二套 message provider。
 
 ## 📦 依赖项
 
@@ -523,7 +433,7 @@ static const Map<String, LanguageConfig> _supportedLanguages = {
 
 ### 文件传输失败
 
-1. 检查接收设备的存储空间是否充足
+1. 检查接收设备的存储空间是否充足（磁盘满时会弹出专门提示）
 2. 确认文件大小未超过 20GB 限制
 3. 检查网络连接是否稳定
 4. 查看历史记录中的错误信息

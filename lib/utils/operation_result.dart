@@ -16,8 +16,15 @@ class OperationResult<T> {
     return OperationResult(success: true, data: data, metadata: metadata);
   }
 
-  factory OperationResult.failure(String errorMessage) {
-    return OperationResult(success: false, errorMessage: errorMessage);
+  factory OperationResult.failure(
+    String errorMessage, {
+    Map<String, dynamic>? metadata,
+  }) {
+    return OperationResult(
+      success: false,
+      errorMessage: errorMessage,
+      metadata: metadata,
+    );
   }
 
   bool get isSuccess => success;

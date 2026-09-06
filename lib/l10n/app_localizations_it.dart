@@ -1,7 +1,13 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
-/// Italian localization
+// ignore_for_file: type=lint
+
+/// The translations for Italian (`it`).
 class AppLocalizationsIt extends AppLocalizations {
+  AppLocalizationsIt([String locale = 'it']) : super(locale);
+
   @override
   String get appName => 'Icy Easy Send';
 
@@ -60,7 +66,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get noFilesSelected => 'Nessun file selezionato';
 
   @override
-  String filesSelected(int count) => '$count file selezionati';
+  String filesSelected(int count) {
+    return '$count file selezionati';
+  }
 
   @override
   String get clearSelection => 'Cancella Selezione';
@@ -171,7 +179,8 @@ class AppLocalizationsIt extends AppLocalizations {
       'Impossibile ottenere il percorso di salvataggio';
 
   @override
-  String get savePathSavedSuccess => 'Percorso di salvataggio impostato con successo';
+  String get savePathSavedSuccess =>
+      'Percorso di salvataggio impostato con successo';
 
   @override
   String get savePathNotWritable =>
@@ -207,8 +216,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get scanningDevices => 'Scansione della rete locale...';
 
   @override
-  String scanProgress(int scanned, int total, int found) =>
-      'Scansionati $scanned/$total, trovati $found dispositiv${found == 1 ? 'o' : 'i'}';
+  String scanProgress(int scanned, int total, int found) {
+    String _temp0 = intl.Intl.pluralLogic(
+      found,
+      locale: localeName,
+      other: 'Scansionati $scanned/$total, trovati $found dispositivi',
+      one: 'Scansionati $scanned/$total, trovati $found dispositivo',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get noDevicesFound => 'Nessun dispositivo trovato';
@@ -218,8 +234,15 @@ class AppLocalizationsIt extends AppLocalizations {
       'Assicurati che il dispositivo di destinazione abbia avviato il server e sia sulla stessa rete. Controlla isolamento AP del router e firewall.';
 
   @override
-  String scanDevicesFound(int count) =>
-      'Trovati $count dispositiv${count == 1 ? 'o' : 'i'}';
+  String scanDevicesFound(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Trovati $count dispositivi',
+      one: 'Trovati $count dispositivo',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get rescan => 'Ripeti scansione';
@@ -360,8 +383,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get selectFolderFailed => 'Selezione cartella fallita';
 
   @override
-  String folderFilesAdded(int count) =>
-      'Aggiunti $count file dalla cartella';
+  String folderFilesAdded(int count) {
+    return 'Aggiunti $count file dalla cartella';
+  }
 
   @override
   String get folderContainsNoFiles =>
@@ -431,7 +455,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get syncClipboard => 'Sincronizza Appunti dell\'Altro Dispositivo';
 
   @override
-  String filesCount(int count) => 'Invia $count file';
+  String filesCount(int count) {
+    return 'Invia $count file';
+  }
 
   @override
   String get sendFile => 'Invia File';
@@ -473,11 +499,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get webSharePeerName => 'Condivisione web';
 
   @override
-  String webShareFilesSummary(int count, String size) =>
-      '$count file · $size';
+  String webShareFilesSummary(int count, String size) {
+    return '$count file · $size';
+  }
 
   @override
-  String webShareExpiresIn(String time) => 'Scade tra $time';
+  String webShareExpiresIn(String time) {
+    return 'Scade tra $time';
+  }
 
   @override
   String get releaseToAdd => 'Rilascia per aggiungere file';
@@ -496,7 +525,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get pleaseTryLater => 'Riprova più tardi';
 
   @override
-  String filesAdded(int count) => '$count file condivisi aggiunti';
+  String filesAdded(int count) {
+    return '$count file condivisi aggiunti';
+  }
 
   @override
   String get preparingSend => 'Preparazione invio...';
@@ -505,8 +536,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get transferring => 'Trasferimento';
 
   @override
-  String transferProgress(int current, int total, String fileName) =>
-      '[$current/$total] $fileName: Trasferimento...';
+  String transferProgress(int current, int total, String fileName) {
+    return '[$current/$total] $fileName: Trasferimento...';
+  }
 
   @override
   String get networkChanged => 'Rete cambiata, indirizzo del server aggiornato';
@@ -524,7 +556,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get portRange => 'Intervallo porta: 1-65535';
 
   @override
-  String ipDeleted(String ip) => 'IP eliminato: $ip';
+  String ipDeleted(String ip) {
+    return 'IP eliminato: $ip';
+  }
 
   @override
   String get runningDiagnostics => 'Esecuzione diagnostica di rete...';
@@ -555,8 +589,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get resetDeviceName => 'Ripristina Nome Dispositivo';
 
   @override
-  String resetDeviceNameConfirm(String model) =>
-      'Sei sicuro di voler ripristinare il nome del dispositivo a "$model"?';
+  String resetDeviceNameConfirm(String model) {
+    return 'Sei sicuro di voler ripristinare il nome del dispositivo a \"$model\"?';
+  }
 
   @override
   String get reset => 'Ripristina';
@@ -565,8 +600,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get confirmChange => 'Conferma Modifica';
 
   @override
-  String concurrentTransfersChange(int from, int to) =>
-      'Sei sicuro di voler modificare il numero di trasferimenti concorrenti da $from a $to?\n\nSuggerimento: ${to > from ? "Aumentare il numero di trasferimenti concorrenti può migliorare la velocità di trasferimento, ma aumenterà anche il carico del dispositivo" : "Diminuire il numero di trasferimenti concorrenti può ridurre il carico del dispositivo, ma potrebbe ridurre la velocità di trasferimento"}';
+  String concurrentTransfersIncrease(int from, int to) {
+    return 'Sei sicuro di voler modificare il numero di trasferimenti concorrenti da $from a $to?\n\nSuggerimento: Aumentare il numero di trasferimenti concorrenti può migliorare la velocità di trasferimento, ma aumenterà anche il carico del dispositivo';
+  }
+
+  @override
+  String concurrentTransfersDecrease(int from, int to) {
+    return 'Sei sicuro di voler modificare il numero di trasferimenti concorrenti da $from a $to?\n\nSuggerimento: Diminuire il numero di trasferimenti concorrenti può ridurre il carico del dispositivo, ma potrebbe ridurre la velocità di trasferimento';
+  }
 
   @override
   String get concurrentTransfersHint =>
@@ -580,44 +621,51 @@ class AppLocalizationsIt extends AppLocalizations {
   String get enterValidNumber => 'Inserisci un numero valido';
 
   @override
-  String historyCountRange(int min, int max) =>
-      'Intervallo conteggio cronologia: $min-$max';
+  String historyCountRange(int min, int max) {
+    return 'Intervallo conteggio cronologia: $min-$max';
+  }
 
   @override
-  String maxHistoryChange(int from, int to) =>
-      'Sei sicuro di voler modificare il numero massimo di record di cronologia da $from a $to?\n\n';
+  String maxHistoryChange(int from, int to) {
+    return 'Sei sicuro di voler modificare il numero massimo di record di cronologia da $from a $to?\n\n';
+  }
 
   @override
-  String currentHistoryCount(int count) =>
-      'Conteggio cronologia attuale: $count record\n\n';
+  String currentHistoryCount(int count) {
+    return 'Conteggio cronologia attuale: $count record\n\n';
+  }
 
   @override
   String get historyWarning =>
       '⚠️ Avviso: Il numero di record di cronologia salvati è maggiore del numero impostato.\n\n';
 
   @override
-  String historyDeleteWarning(int current, int max, int toDelete) =>
-      'Verranno mantenuti solo gli ultimi $max record, i $toDelete record vecchi in eccesso verranno eliminati.';
+  String historyDeleteWarning(int current, int max, int toDelete) {
+    return 'Verranno mantenuti solo gli ultimi $max record, i $toDelete record vecchi in eccesso verranno eliminati.';
+  }
 
   @override
   String get historyHint =>
       'Suggerimento: La nuova impostazione entrerà in vigore al prossimo salvataggio della cronologia.';
 
   @override
-  String historyDeleted(int count) =>
-      'Impostazione salvata, $count record vecchi eliminati';
+  String historyDeleted(int count) {
+    return 'Impostazione salvata, $count record vecchi eliminati';
+  }
 
   @override
   String get maxHistorySaved =>
       'Numero massimo di record di cronologia salvato';
 
   @override
-  String clipboardSizeRange(int min, int max) =>
-      'Intervallo dimensione appunti: $min-$max MB';
+  String clipboardSizeRange(int min, int max) {
+    return 'Intervallo dimensione appunti: $min-$max MB';
+  }
 
   @override
-  String maxClipboardSizeChange(int from, int to) =>
-      'Sei sicuro di voler modificare la dimensione massima degli appunti da $from MB a $to MB?\n\n';
+  String maxClipboardSizeChange(int from, int to) {
+    return 'Sei sicuro di voler modificare la dimensione massima degli appunti da $from MB a $to MB?\n\n';
+  }
 
   @override
   String get clipboardSizeDecreaseHint =>
@@ -649,8 +697,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get copyLog => 'Copia Log';
 
   @override
-  String logCopied(int lines) =>
-      'Ultime $lines righe del log copiate negli appunti';
+  String logCopied(int lines) {
+    return 'Ultime $lines righe del log copiate negli appunti';
+  }
 
   @override
   String get logFileEmpty => 'File di log vuoto';
@@ -659,7 +708,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get devInfo => 'Informazioni di Sviluppo';
 
   @override
-  String labelCopied(String label, String value) => '$label copiato: $value';
+  String labelCopied(String label, String value) {
+    return '$label copiato: $value';
+  }
 
   @override
   String get transferSettings => 'Impostazioni Trasferimento';
@@ -668,8 +719,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get concurrentTransfers => 'Numero Trasferimenti Concorrenti';
 
   @override
-  String concurrentTransfersDesc(int max) =>
-      'Numero di file trasferiti concorrentemente (1-$max)';
+  String concurrentTransfersDesc(int max) {
+    return 'Numero di file trasferiti concorrentemente (1-$max)';
+  }
 
   @override
   String get concurrentTransfersHintText =>
@@ -679,12 +731,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get maxHistory => 'Numero Massimo Record Cronologia';
 
   @override
-  String maxHistoryDesc(int min, int max) =>
-      'Numero massimo di record di trasferimento salvati ($min-$max)';
+  String maxHistoryDesc(int min, int max) {
+    return 'Numero massimo di record di trasferimento salvati ($min-$max)';
+  }
 
   @override
-  String maxHistoryHintText(int min, int max) =>
-      'Inserisci il numero ($min-$max)';
+  String maxHistoryHintText(int min, int max) {
+    return 'Inserisci il numero ($min-$max)';
+  }
 
   @override
   String get oldRecordsAutoDelete =>
@@ -694,12 +748,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get maxClipboard => 'Dimensione Massima Appunti';
 
   @override
-  String maxClipboardDesc(int min, int max) =>
-      'Dimensione massima degli appunti consentita per la sincronizzazione ($min-$max MB)';
+  String maxClipboardDesc(int min, int max) {
+    return 'Dimensione massima degli appunti consentita per la sincronizzazione ($min-$max MB)';
+  }
 
   @override
-  String maxClipboardHintText(int min, int max) =>
-      'Inserisci la dimensione ($min-$max MB)';
+  String maxClipboardHintText(int min, int max) {
+    return 'Inserisci la dimensione ($min-$max MB)';
+  }
 
   @override
   String get clipboardSyncLimit =>
@@ -754,8 +810,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get history => 'Cronologia';
 
   @override
-  String resetToDefaultPort(int port) =>
-      'Ripristina alla porta predefinita ($port)';
+  String get targetDevicePort => 'Porta Dispositivo di Destinazione';
+
+  @override
+  String resetToDefaultPort(int port) {
+    return 'Ripristina alla porta predefinita ($port)';
+  }
 
   @override
   String get targetDeviceSecretKey =>
@@ -803,13 +863,12 @@ class AppLocalizationsIt extends AppLocalizations {
   String get gotIt => 'Capito';
 
   @override
-  String get targetDevicePort => 'Porta Dispositivo di Destinazione';
-
-  @override
   String get localIP => 'IP Locale';
 
   @override
-  String ipCopied(String ip) => 'Indirizzo IP copiato: $ip';
+  String ipCopied(String ip) {
+    return 'Indirizzo IP copiato: $ip';
+  }
 
   @override
   String get transferred => 'Trasferito';
@@ -821,8 +880,16 @@ class AppLocalizationsIt extends AppLocalizations {
   String get remainingTime => 'Tempo Rimanente';
 
   @override
-  String transferringProgress(double progress) =>
-      'Trasferimento ${progress.toStringAsFixed(1)}%';
+  String transferringProgress(double progress) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 1,
+        );
+    final String progressString = progressNumberFormat.format(progress);
+
+    return 'Trasferimento $progressString%';
+  }
 
   @override
   String get storagePermissionMessage =>
@@ -836,8 +903,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Dispositivo di destinazione non disponibile';
 
   @override
-  String targetDeviceError(String error) =>
-      'Dispositivo di destinazione non disponibile\nErrore: $error';
+  String targetDeviceError(String error) {
+    return 'Dispositivo di destinazione non disponibile\nErrore: $error';
+  }
 
   @override
   String get connectionFailed => 'Connessione fallita';
@@ -868,7 +936,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get statisticsInfo => 'Informazioni Statistiche';
 
   @override
-  String transfersCount(int count) => '$count trasferimenti';
+  String transfersCount(int count) {
+    return '$count trasferimenti';
+  }
 
   @override
   String get totalTransfers => 'Totale Trasferimenti';
@@ -901,8 +971,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get deleteRecordTitle => 'Elimina Record';
 
   @override
-  String deleteRecordMessage(String fileName) =>
-      'Sei sicuro di voler eliminare il record di trasferimento di "$fileName"?\n\nNota: Questo eliminerà solo il record, non il file stesso.';
+  String deleteRecordMessage(String fileName) {
+    return 'Sei sicuro di voler eliminare il record di trasferimento di \"$fileName\"?\n\nNota: Questo eliminerà solo il record, non il file stesso.';
+  }
 
   @override
   String get deleteRecordNote =>
@@ -918,8 +989,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get cannotOpenFile => 'Impossibile aprire il file';
 
   @override
-  String cannotOpenFileWithMessage(String message) =>
-      'Impossibile aprire il file: $message';
+  String cannotOpenFileWithMessage(String message) {
+    return 'Impossibile aprire il file: $message';
+  }
 
   @override
   String get iosNoFolderSupport =>
@@ -977,13 +1049,13 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get sentTo => 'Inviato a';
 
-  // Clipboard related
   @override
   String get clipboardRequest => 'Richiesta Appunti';
 
   @override
-  String clipboardRequestFrom(String deviceName) =>
-      'Il dispositivo "$deviceName" richiede di ottenere il contenuto dei tuoi appunti';
+  String clipboardRequestFrom(String deviceName) {
+    return 'Il dispositivo \"$deviceName\" richiede di ottenere il contenuto dei tuoi appunti';
+  }
 
   @override
   String get allowClipboardRequest => 'Consentire?';
@@ -992,7 +1064,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get clipboardRequestMessage => 'Richiesta Appunti';
 
   @override
-  String autoRejectIn(int seconds) => 'Rifiuto automatico tra $seconds secondi';
+  String autoRejectIn(int seconds) {
+    return 'Rifiuto automatico tra $seconds secondi';
+  }
 
   @override
   String get reject => 'Rifiuta';
@@ -1001,8 +1075,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get allow => 'Consenti';
 
   @override
-  String clipboardSharedWithSecretKey(String deviceName) =>
-      '$deviceName ha superato la verifica con chiave segreta, condivisione automatica degli appunti';
+  String clipboardSharedWithSecretKey(String deviceName) {
+    return '$deviceName ha superato la verifica con chiave segreta, condivisione automatica degli appunti';
+  }
 
   @override
   String get clipboardRequestRejected =>
@@ -1012,8 +1087,18 @@ class AppLocalizationsIt extends AppLocalizations {
   String get clipboardEmpty => 'Appunti vuoti';
 
   @override
-  String clipboardContentTooLarge(double actualSizeMB, int maxSizeMB) =>
-      'Il contenuto degli appunti è troppo grande (${actualSizeMB.toStringAsFixed(2)} MB), supera il limite del dispositivo di destinazione ($maxSizeMB MB). Si consiglia di utilizzare la funzione di trasferimento file.';
+  String clipboardContentTooLarge(double actualSizeMB, int maxSizeMB) {
+    final intl.NumberFormat actualSizeMBNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 2,
+        );
+    final String actualSizeMBString = actualSizeMBNumberFormat.format(
+      actualSizeMB,
+    );
+
+    return 'Il contenuto degli appunti è troppo grande ($actualSizeMBString MB), supera il limite del dispositivo di destinazione ($maxSizeMB MB). Si consiglia di utilizzare la funzione di trasferimento file.';
+  }
 
   @override
   String get clipboardContentSuccess =>
@@ -1025,37 +1110,44 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get serverInternalError => 'Errore interno del server';
 
-
   @override
-  String get backgroundRejectNeedsSecretKey => 'Il dispositivo è in background. È supportata solo la sincronizzazione/ricezione automatica con chiave segreta corrispondente.';
+  String get backgroundRejectNeedsSecretKey =>
+      'Il dispositivo è in background. È supportata solo la sincronizzazione/ricezione automatica con chiave segreta corrispondente.';
 
   @override
   String get foregroundServiceNotificationTitle => 'IcyEasySend';
 
   @override
-  String get foregroundServiceNotificationText => 'In attesa di trasferimenti e sync appunti in background';
+  String get foregroundServiceNotificationText =>
+      'In attesa di trasferimenti e sync appunti in background';
 
   @override
-  String get androidBackgroundReceiveHint => 'In background solo i dispositivi con chiave segreta corrispondente possono sincronizzare o inviare automaticamente. Mantieni la notifica persistente.';
+  String get androidBackgroundReceiveHint =>
+      'In background solo i dispositivi con chiave segreta corrispondente possono sincronizzare o inviare automaticamente. Mantieni la notifica persistente.';
 
   @override
   String get clipboardOverlay => 'Pulsante flottante appunti';
 
   @override
-  String get clipboardOverlayDesc => 'Tocca il pulsante flottante per aggiornare la cache testo/immagine per la sync in background';
+  String get clipboardOverlayDesc =>
+      'Tocca il pulsante flottante per aggiornare la cache testo/immagine per la sync in background';
 
   @override
-  String get clipboardOverlayHint => 'In background viene sincronizzato solo l\'ultimo contenuto aggiornato. Disattivare cancella la cache e nasconde il pulsante.';
+  String get clipboardOverlayHint =>
+      'In background viene sincronizzato solo l\'ultimo contenuto aggiornato. Disattivare cancella la cache e nasconde il pulsante.';
 
   @override
-  String get clipboardOverlayPermissionNeeded => 'Consenti "Visualizza sopra altre app" nelle impostazioni. Il pulsante apparirà al ritorno.';
+  String get clipboardOverlayPermissionNeeded =>
+      'Consenti \"Visualizza sopra altre app\" nelle impostazioni. Il pulsante apparirà al ritorno.';
 
   @override
-  String get clipboardOverlayEnabledToast => 'Pulsante flottante appunti attivato';
+  String get clipboardOverlayEnabledToast =>
+      'Pulsante flottante appunti attivato';
 
   @override
-  String get clipboardBackgroundCacheMiss => 'Impossibile leggere gli appunti di sistema in background e nessuna cache disponibile. Apri l\'app o tocca il pulsante flottante per aggiornare.';
-  // Clipboard sync
+  String get clipboardBackgroundCacheMiss =>
+      'Impossibile leggere gli appunti di sistema in background e nessuna cache disponibile. Apri l\'app o tocca il pulsante flottante per aggiornare.';
+
   @override
   String get requestingClipboard => 'Richiesta appunti...';
 
@@ -1077,13 +1169,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get syncFailed => 'Sincronizzazione fallita';
 
   @override
-  String clipboardRequestError(String error) =>
-      'Errore durante la richiesta degli appunti: $error';
+  String clipboardRequestError(String error) {
+    return 'Errore durante la richiesta degli appunti: $error';
+  }
 
-  // File transfer
   @override
-  String invalidFilesMessage(String fileNames) =>
-      'I seguenti file non sono validi o inaccessibili:\n$fileNames';
+  String invalidFilesMessage(String fileNames) {
+    return 'I seguenti file non sono validi o inaccessibili:\n$fileNames';
+  }
 
   @override
   String get waitingForReceiverConfirmation =>
@@ -1093,7 +1186,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get fileSendSuccess => 'File inviato con successo!';
 
   @override
-  String filesSendSuccess(int count) => '$count file inviati con successo!';
+  String filesSendSuccess(int count) {
+    return '$count file inviati con successo!';
+  }
 
   @override
   String get allFilesSendFailed => 'Invio di tutti i file fallito';
@@ -1115,33 +1210,35 @@ class AppLocalizationsIt extends AppLocalizations {
     int successCount,
     int failureCount,
     String failedFiles,
-  ) =>
-      'Successo: $successCount file\nFallito: $failureCount file\n\nFile falliti:\n$failedFiles';
+  ) {
+    return 'Successo: $successCount file\nFallito: $failureCount file\n\nFile falliti:\n$failedFiles';
+  }
 
-  // Batch transfer status
   @override
   String get preparingTransferInfo =>
       'Preparazione informazioni trasferimento...';
 
   @override
-  String waitingForReceiverConfirmFiles(int count) =>
-      'In attesa della conferma del destinatario per $count file...';
+  String waitingForReceiverConfirmFiles(int count) {
+    return 'In attesa della conferma del destinatario per $count file...';
+  }
 
   @override
-  String transferringFile(int current, int total, String fileName) =>
-      'Trasferimento file $current/$total: $fileName';
+  String transferringFile(int current, int total, String fileName) {
+    return 'Trasferimento file $current/$total: $fileName';
+  }
 
   @override
   String get receiverRejected => 'Il destinatario ha rifiutato la ricezione';
 
   @override
-  String receiverRejectedWithStatus(int statusCode) =>
-      'Il destinatario ha rifiutato la ricezione\nCodice di stato: $statusCode';
+  String receiverRejectedWithStatus(int statusCode) {
+    return 'Il destinatario ha rifiutato la ricezione\nCodice di stato: $statusCode';
+  }
 
   @override
   String get transferIdNotFound => 'ID trasferimento non trovato';
 
-  // Batch receive
   @override
   String get waitingForConfirmation => 'In attesa di conferma...';
 
@@ -1155,14 +1252,26 @@ class AppLocalizationsIt extends AppLocalizations {
   String get receiveComplete => 'Ricezione completata';
 
   @override
-  String receivingProgress(double progress) =>
-      'Ricezione... ${progress.toStringAsFixed(1)}%';
+  String receivingProgress(double progress) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPatternDigits(
+          locale: localeName,
+          decimalDigits: 1,
+        );
+    final String progressString = progressNumberFormat.format(progress);
+
+    return 'Ricezione... $progressString%';
+  }
 
   @override
-  String receivingFiles(int count) => 'Ricezione $count file';
+  String receivingFiles(int count) {
+    return 'Ricezione $count file';
+  }
 
   @override
-  String receiveFilesCount(int count) => 'Ricevi $count file';
+  String receiveFilesCount(int count) {
+    return 'Ricevi $count file';
+  }
 
   @override
   String get sender => 'Mittente';
@@ -1180,8 +1289,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get receivingFiles2 => 'Ricezione file...';
 
   @override
-  String autoRejectCountdown(int seconds) =>
-      'Ricevere questi file? (Rifiuto automatico tra $seconds secondi)';
+  String autoRejectCountdown(int seconds) {
+    return 'Ricevere questi file? (Rifiuto automatico tra $seconds secondi)';
+  }
 
   @override
   String get rejectAll => 'Rifiuta Tutti';
@@ -1189,7 +1299,6 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get acceptAll => 'Accetta Tutti';
 
-  // Network diagnostics
   @override
   String get networkDiagnosticsReport => 'Rapporto Diagnostica di Rete';
 
@@ -1239,7 +1348,6 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get noInternetConnection => 'Nessuna connessione internet';
 
-  // Error messages
   @override
   String get networkConnectionFailed =>
       'Impossibile connettersi al dispositivo di destinazione, verificare la connessione di rete e l\'indirizzo IP';
@@ -1290,6 +1398,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Spazio di archiviazione insufficiente, impossibile ricevere il file';
 
   @override
+  String get diskFullTitle => 'Disco pieno';
+
+  @override
   String get storageCheckFailed =>
       'Impossibile verificare lo spazio di archiviazione';
 
@@ -1302,16 +1413,18 @@ class AppLocalizationsIt extends AppLocalizations {
       'Permesso di accesso all\'archiviazione necessario per salvare file';
 
   @override
-  String serverStartFailed(String reason) =>
-      'Impossibile avviare il server: $reason';
+  String serverStartFailed(String reason) {
+    return 'Impossibile avviare il server: $reason';
+  }
 
   @override
   String get serverPortsOccupied =>
       'Impossibile avviare il server: tutte le porte sono occupate';
 
   @override
-  String serverPortsOccupiedRange(int defaultPort, int maxPort) =>
-      'Impossibile avviare il server: le porte $defaultPort-$maxPort sono tutte occupate';
+  String serverPortsOccupiedRange(int defaultPort, int maxPort) {
+    return 'Impossibile avviare il server: le porte $defaultPort-$maxPort sono tutte occupate';
+  }
 
   @override
   String get serverUnknownError =>
@@ -1360,14 +1473,9 @@ class AppLocalizationsIt extends AppLocalizations {
     String targetIP,
     String localNetwork,
     String targetNetwork,
-  ) =>
-      '⚠️ Segmenti di rete non corrispondenti\n'
-      'IP locale: $localIP (segmento: $localNetwork.x)\n'
-      'IP di destinazione: $targetIP (segmento: $targetNetwork.x)\n'
-      '\n'
-      'Suggerimento: Entrambi i dispositivi devono essere sulla stessa rete locale (stesso segmento) per trasferire file.\n'
-      'Per gli indirizzi IPv4 di Classe C, i primi tre numeri dei due indirizzi IP devono essere uguali, ad esempio entrambi 192.169.2, solo l\'ultimo numero è diverso\n'
-      'Il modo più semplice è connettere entrambi i dispositivi allo stesso WiFi o router.\n';
+  ) {
+    return '⚠️ Segmenti di rete non corrispondenti\nIP locale: $localIP (segmento: $localNetwork.x)\nIP di destinazione: $targetIP (segmento: $targetNetwork.x)\n\nSuggerimento: Entrambi i dispositivi devono essere sulla stessa rete locale (stesso segmento) per trasferire file.\nPer gli indirizzi IPv4 di Classe C, i primi tre numeri dei due indirizzi IP devono essere uguali, ad esempio entrambi 192.169.2, solo l\'ultimo numero è diverso\nIl modo più semplice è connettere entrambi i dispositivi allo stesso WiFi o router.\n';
+  }
 
   @override
   String get responseParseError =>
@@ -1378,8 +1486,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Formato risposta del dispositivo di destinazione non corretto';
 
   @override
-  String responseStatusCodeError(int statusCode) =>
-      'Il server ha restituito un codice di errore: $statusCode';
+  String responseStatusCodeError(int statusCode) {
+    return 'Il server ha restituito un codice di errore: $statusCode';
+  }
 
   @override
   String get fileSelectionError => 'Errore durante la selezione del file';
@@ -1388,19 +1497,324 @@ class AppLocalizationsIt extends AppLocalizations {
   String get fileSelectionCancelled => 'Selezione file annullata';
 
   @override
-  String genericError(String operation) => '$operation fallito';
+  String genericError(String operation) {
+    return '$operation fallito';
+  }
 
   @override
-  String unexpectedError(String details) =>
-      'Si è verificato un errore imprevisto: $details';
+  String unexpectedError(String details) {
+    return 'Si è verificato un errore imprevisto: $details';
+  }
 
   @override
-  String networkError(String context) => 'Errore di rete: $context';
+  String networkError(String context) {
+    return 'Errore di rete: $context';
+  }
 
   @override
-  String fileError(String context) => 'Errore file: $context';
+  String fileError(String context) {
+    return 'Errore file: $context';
+  }
 
   @override
-  String permissionError(String permissionType) =>
-      'Permesso $permissionType necessario per continuare l\'operazione';
+  String permissionError(String permissionType) {
+    return 'Permesso $permissionType necessario per continuare l\'operazione';
+  }
+
+  @override
+  String get foregroundServiceChannelName =>
+      'Servizio trasferimento in background';
+
+  @override
+  String get foregroundServiceChannelDescription =>
+      'Mantiene l\'app in grado di ricevere file LAN e richieste appunti in background';
+
+  @override
+  String get peerUnreachable =>
+      'Impossibile raggiungere il dispositivo di destinazione';
+
+  @override
+  String get peerUnreachableBoth =>
+      'Dispositivo non raggiungibile (né LAN né relay)';
+
+  @override
+  String get peerUnsupported =>
+      'La versione dell\'altro dispositivo non supporta l\'accoppiamento';
+
+  @override
+  String get identityMismatch =>
+      'Il codice del dispositivo non corrisponde alla chiave pubblica, accoppiamento annullato';
+
+  @override
+  String get cannotPairSelf =>
+      'Non è possibile accoppiare il dispositivo con se stesso';
+
+  @override
+  String get pairingTitle => 'Accoppiamento dispositivi';
+
+  @override
+  String get compareHint =>
+      'Verifica che entrambi i dispositivi mostrino esattamente lo stesso numero. In caso contrario la connessione potrebbe essere stata manomessa.';
+
+  @override
+  String get compareHintRelay =>
+      'Questo dispositivo non è sulla stessa rete. Confronta le 6 cifre a voce con l\'altra persona e conferma solo se coincidono esattamente. Senza questo confronto non c\'è alcuna protezione.';
+
+  @override
+  String get pairOverRelay => 'Associa tramite relay';
+
+  @override
+  String get enterDeviceCode =>
+      'Inserisci il codice a 32 caratteri dell\'altro dispositivo';
+
+  @override
+  String get invalidDeviceCode =>
+      'Il codice deve avere 32 caratteri esadecimali';
+
+  @override
+  String get alreadyPaired => 'Questo dispositivo è già tra quelli attendibili';
+
+  @override
+  String get peerAlreadyPaired =>
+      'The other device still trusts this one; unpair on that device first';
+
+  @override
+  String get relayUnavailable => 'Collegati prima al server relay';
+
+  @override
+  String get peerBusy =>
+      'L\'altro dispositivo sta gestendo un\'altra richiesta';
+
+  @override
+  String get peerPairingBlocked =>
+      'The other device has blocked this one; ask them to unblock it first';
+
+  @override
+  String get peerRelayPairingOff =>
+      'L\'altro dispositivo non accetta richieste tramite relay';
+
+  @override
+  String incomingRequest(String deviceName) {
+    return '«$deviceName» chiede di accoppiarsi con questo dispositivo';
+  }
+
+  @override
+  String outgoingRequest(String deviceName) {
+    return 'Accoppiamento con «$deviceName»';
+  }
+
+  @override
+  String get waitingPeer => 'In attesa di conferma…';
+
+  @override
+  String get peerAccepted => 'L\'altro dispositivo ha confermato';
+
+  @override
+  String get peerRejected =>
+      'L\'altro dispositivo ha rifiutato l\'accoppiamento';
+
+  @override
+  String get peerTimeout => 'L\'altro dispositivo non ha confermato in tempo';
+
+  @override
+  String get pairingFailed => 'Accoppiamento non riuscito';
+
+  @override
+  String pairingSucceeded(String deviceName) {
+    return 'Accoppiamento con «$deviceName» completato';
+  }
+
+  @override
+  String get codesMatch => 'I numeri coincidono, accoppia';
+
+  @override
+  String get codesDiffer => 'Diversi, annulla';
+
+  @override
+  String get blockPeer => 'Block';
+
+  @override
+  String get pairingBlocklistTitle => 'Pairing blocklist';
+
+  @override
+  String get pairingBlocklistEmpty => 'No blocked devices';
+
+  @override
+  String get pairingBlocklistManage => 'Blocklist';
+
+  @override
+  String get unblockPeer => 'Unblock';
+
+  @override
+  String unblockPeerConfirm(String name) {
+    return 'Unblock \"$name\"? They will be able to request pairing again.';
+  }
+
+  @override
+  String get pairedDevicesTitle => 'Dispositivi accoppiati';
+
+  @override
+  String get pairedDevicesEmpty => 'Nessun dispositivo accoppiato';
+
+  @override
+  String get addPairedDevice => 'Accoppia un dispositivo';
+
+  @override
+  String get unpair => 'Disaccoppia';
+
+  @override
+  String unpairConfirm(String deviceName) {
+    return 'Dopo aver rimosso «$deviceName» sarà necessario confrontare di nuovo i numeri. Continuare?';
+  }
+
+  @override
+  String get deviceCodeLabel => 'Codice di questo dispositivo';
+
+  @override
+  String get title => 'Server relay';
+
+  @override
+  String get description =>
+      'Inoltra i file tramite il tuo server quando i dispositivi non sono sulla stessa rete. La connessione diretta ha sempre la precedenza.';
+
+  @override
+  String get encryptionNotice =>
+      'I file sono cifrati end-to-end tra i due dispositivi associati e solo loro possono decifrarli. Il server vede soltanto l\'orario e il numero di byte.';
+
+  @override
+  String get acceptPairingLabel =>
+      'Accetta richieste di associazione tramite relay';
+
+  @override
+  String get acceptPairingHint =>
+      'Qualsiasi dispositivo con il token del server può richiedere l\'associazione al tuo codice. Un dispositivo rifiutato non si ripresenta.';
+
+  @override
+  String get iosForegroundNotice =>
+      'Su iOS la ricezione tramite relay funziona solo con l\'app aperta.';
+
+  @override
+  String get enableLabel => 'Attiva il relay';
+
+  @override
+  String get serverUrlLabel => 'Indirizzo del server';
+
+  @override
+  String get tokenLabel => 'Token di accesso';
+
+  @override
+  String get invalidUrl => 'L\'indirizzo deve iniziare con http:// o https://';
+
+  @override
+  String get insecureUrlWarning =>
+      'Con http:// il traffico non è cifrato, usalo solo in locale';
+
+  @override
+  String get testConnection => 'Prova connessione';
+
+  @override
+  String get testSucceeded => 'Connessione riuscita';
+
+  @override
+  String get save => 'Salva';
+
+  @override
+  String get statusDisabled => 'Disattivato';
+
+  @override
+  String get statusConnecting => 'Connessione…';
+
+  @override
+  String get statusConnected => 'Connesso';
+
+  @override
+  String get statusReconnecting => 'Riconnessione…';
+
+  @override
+  String get statusRejected => 'Rifiutato dal server';
+
+  @override
+  String get clipboardNeedsPairing => 'Pair with the device first';
+
+  @override
+  String get clipboardRelayUnavailable => 'Not connected to the relay server';
+
+  @override
+  String get clipboardPeerOffline => 'The peer is not online on the relay';
+
+  @override
+  String get clipboardFailed => 'Clipboard sync over the relay failed';
+
+  @override
+  String get clipboardPeerNoUi =>
+      'The peer cannot confirm the request right now';
+
+  @override
+  String get clipboardPeerBusy => 'The peer is busy, try again later';
+
+  @override
+  String get clipboardTooLargeForRelay =>
+      'Clipboard content exceeds the configured size limit';
+
+  @override
+  String get clipboardStreamFailed =>
+      'Failed to fetch clipboard data over the relay stream';
+
+  @override
+  String get clipboardPeerTimeout =>
+      'The peer did not answer the clipboard request';
+
+  @override
+  String get clipboardDeclined => 'The peer declined the clipboard request';
+
+  @override
+  String selectedRelayPeer(String name) {
+    return 'Selected relay peer: $name';
+  }
+
+  @override
+  String get clearSelectedPeer => 'Clear selection';
+
+  @override
+  String get lanRouteUnavailable =>
+      'Dispositivo non raggiungibile tramite la rete locale';
+
+  @override
+  String get relayRouteUnavailable =>
+      'Dispositivo non raggiungibile tramite il server relay';
+
+  @override
+  String get relayNotConnected => 'Non connesso al server relay';
+
+  @override
+  String get relayPeerOffline =>
+      'Il destinatario deve aprire l\'app per ricevere tramite relay';
+
+  @override
+  String get relayPeerNotPaired =>
+      'Il destinatario non ha questo dispositivo tra quelli attendibili';
+
+  @override
+  String get relayPeerBusy =>
+      'Il destinatario sta elaborando un altro gruppo di file';
+
+  @override
+  String get relayNeedsPairedDevice =>
+      'Il trasferimento tramite relay richiede prima l\'associazione';
+
+  @override
+  String get relayNegotiatingSession => 'Creazione di una sessione cifrata…';
+
+  @override
+  String get relayIdentityMismatch =>
+      'Firma non valida: potrebbe non essere il dispositivo associato';
+
+  @override
+  String get relayTransferNotice =>
+      'Trasferimento tramite server relay, la velocità dipende dalla sua banda';
+
+  @override
+  String retryingAfterInterruption(int attempt, int maxAttempts) {
+    return 'Connessione interrotta, nuovo tentativo ($attempt/$maxAttempts)…';
+  }
 }

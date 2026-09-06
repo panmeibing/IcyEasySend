@@ -28,7 +28,7 @@ void main() {
     }
   });
 
-  Future<TransferFileItem> _item(String name, String content) async {
+  Future<TransferFileItem> makeItem(String name, String content) async {
     final file = File(path.join(tempDir.path, name));
     await file.parent.create(recursive: true);
     await file.writeAsString(content);
@@ -36,7 +36,7 @@ void main() {
   }
 
   test('share page and meta return file list for valid token', () async {
-    final item = await _item('hello.txt', 'hello-share');
+    final item = await makeItem('hello.txt', 'hello-share');
     final session = await service.createSession(
       items: [item],
       deviceName: 'UnitTest',
@@ -63,7 +63,7 @@ void main() {
   });
 
   test('file download streams content and rejects bad ids', () async {
-    final item = await _item('photo.bin', 'binary-data-123');
+    final item = await makeItem('photo.bin', 'binary-data-123');
     final session = await service.createSession(
       items: [item],
       deviceName: 'UnitTest',
@@ -94,7 +94,7 @@ void main() {
   });
 
   test('stopped or unknown token returns gone', () async {
-    final item = await _item('x.txt', 'x');
+    final item = await makeItem('x.txt', 'x');
     final session = await service.createSession(
       items: [item],
       deviceName: 'UnitTest',
@@ -139,7 +139,7 @@ void main() {
   });
 
   test('Chinese file name download response headers are valid', () async {
-    final item = await _item('计算机软件著作权登记申请表.pdf', 'pdf-bytes');
+    final item = await makeItem('计算机软件著作权登记申请表.pdf', 'pdf-bytes');
     final session = await service.createSession(
       items: [item],
       deviceName: 'UnitTest',
@@ -165,9 +165,9 @@ void main() {
 
   test('multi-file page lists every selected file', () async {
     final items = [
-      await _item('one.txt', '1'),
-      await _item('two.txt', '2'),
-      await _item('folder/three.txt', '3'),
+      await makeItem('one.txt', '1'),
+      await makeItem('two.txt', '2'),
+      await makeItem('folder/three.txt', '3'),
     ];
     final session = await service.createSession(
       items: items,

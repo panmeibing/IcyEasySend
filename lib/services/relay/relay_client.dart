@@ -120,9 +120,18 @@ class RelayClient {
 
   bool _disposed = false;
 
-  RelayClient({IdentityService? identity, RelaySocketConnector? connector})
-    : _identity = identity ?? IdentityService.instance,
-      _connector = connector ?? _defaultConnector;
+  /// How long the admission handshake may take before the attempt is written
+  /// off. Overridable so tests do not have to wait out the real timeout.
+  final Duration _handshakeTimeout;
+
+  RelayClient({
+    IdentityService? identity,
+    RelaySocketConnector? connector,
+    Duration? handshakeTimeout,
+  }) : _identity = identity ?? IdentityService.instance,
+       _connector = connector ?? _defaultConnector,
+       _handshakeTimeout =
+           handshakeTimeout ?? AppConstants.relayHandshakeTimeout;
 
   static Future<WebSocket> _defaultConnector(
     Uri uri,
@@ -205,7 +214,7 @@ class RelayClient {
     try {
       final socket = await _connector(signalUri, {
         HttpHeaders.authorizationHeader: 'Bearer ${_config.token}',
-      }).timeout(AppConstants.relayHandshakeTimeout);
+      }).timeout(_handshakeTimeout);
 
       _socket = socket;
       _socketSubscription = socket.listen(
@@ -218,11 +227,16 @@ class RelayClient {
       // The server speaks first with its challenge; the rest of the handshake
       // happens in _onFrame, which completes this future.
       return await handshake.future.timeout(
-        AppConstants.relayHandshakeTimeout,
+        _handshakeTimeout,
         onTimeout: () {
           LogUtil.wTag(logTag, '中转握手超时');
           unawaited(_teardown(transient: true));
           _scheduleReconnect();
+          // Nothing else will ever finish this attempt: the teardown above
+          // detaches the socket, so _onSocketClosed returns early and never
+          // fires. Left pending, _handshake would make every later connect()
+          // await a future that can never complete.
+          _completeHandshake(false);
           return false;
         },
       );
@@ -793,17 +807,25 @@ class RelayClient {
       // Already gone; nothing useful to do about it.
     }
 
-    if (!transient) {
-      _onlinePeers.clear();
-      // Intentional shutdown or a new config: drop negotiated keys.
-      sessions.clear();
-    }
     for (final pending in _pendingRequests.values) {
       if (!pending.isCompleted) {
         pending.completeError(StateError('中转连接已断开'));
       }
     }
     _pendingRequests.clear();
+
+    if (!transient) {
+      _onlinePeers.clear();
+      // Intentional shutdown or a new config: drop negotiated keys.
+      sessions.clear();
+      // The connection is gone for good, so an attempt still in flight will
+      // never be finished by anything else. Resetting the state matters just
+      // as much: left at `connected`, the next connect() would return true
+      // without reconnecting, which is what made a relay server change look
+      // like it had worked.
+      _setState(RelayConnectionState.disabled);
+      _completeHandshake(false);
+    }
   }
 
   void _completeHandshake(bool success) {

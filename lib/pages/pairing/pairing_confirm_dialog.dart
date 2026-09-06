@@ -2,20 +2,48 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../services/pairing_prompter.dart';
 import '../../services/pairing_service.dart';
 import '../../utils/constants.dart';
-import '../../utils/pairing_message_provider.dart';
+import '../../l10n/app_localizations.dart';
 
-/// How the receiving user answered an inbound pairing dialog.
-enum IncomingPairingChoice {
-  /// Numbers match — proceed.
-  accepted,
+export '../../services/pairing_prompter.dart' show IncomingPairingChoice;
 
-  /// Numbers differ / cancel — refuse without blocking.
-  rejected,
+/// Answers [PairingPrompter] with the real dialog. Installed at startup by
+/// `main.dart`, which is what keeps the service layer from having to know this
+/// widget exists.
+class DialogPairingPrompter extends PairingPrompter {
+  const DialogPairingPrompter();
 
-  /// Explicitly block this peer from asking again over the relay.
-  blocked,
+  @override
+  Future<bool?> confirmIncoming(
+    BuildContext context, {
+    required String peerDeviceName,
+    required String sas,
+    bool overRelay = false,
+  }) {
+    return PairingConfirmDialog.showIncoming(
+      context,
+      peerDeviceName: peerDeviceName,
+      sas: sas,
+      overRelay: overRelay,
+    );
+  }
+
+  @override
+  Future<IncomingPairingChoice?> confirmIncomingRelay(
+    BuildContext context, {
+    required String peerDeviceName,
+    required String sas,
+    Future<IncomingPairingChoice?>? remoteClose,
+  }) {
+    return PairingConfirmDialog.showIncomingRelay(
+      context,
+      peerDeviceName: peerDeviceName,
+      sas: sas,
+      remoteClose: remoteClose,
+    );
+  }
 }
 
 /// Shows the six-digit pairing code and collects the user's comparison.
@@ -158,7 +186,6 @@ class PairingConfirmDialog extends StatefulWidget {
 }
 
 class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
-  final PairingMessages _messages = PairingMessages.instance;
 
   Timer? _countdownTimer;
   int _remainingSeconds = 0;
@@ -318,7 +345,7 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
         children: [
           const Icon(Icons.verified_user_outlined, color: Colors.blue),
           const SizedBox(width: 12),
-          Expanded(child: Text(_messages.pairingTitle)),
+          Expanded(child: Text(AppLocalizations.of(context).pairingTitle)),
         ],
       ),
       content: SizedBox(
@@ -329,8 +356,8 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
           children: [
             Text(
               _isInitiator
-                  ? _messages.outgoingRequest(widget.peerDeviceName)
-                  : _messages.incomingRequest(widget.peerDeviceName),
+                  ? AppLocalizations.of(context).outgoingRequest(widget.peerDeviceName)
+                  : AppLocalizations.of(context).incomingRequest(widget.peerDeviceName),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
@@ -338,8 +365,8 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
             const SizedBox(height: 20),
             Text(
               widget.overRelay
-                  ? _messages.compareHintRelay
-                  : _messages.compareHint,
+                  ? AppLocalizations.of(context).compareHintRelay
+                  : AppLocalizations.of(context).compareHint,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.hintColor,
               ),
@@ -366,17 +393,17 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
           TextButton(
             onPressed: _busy ? null : _block,
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(_messages.blockPeer),
+            child: Text(AppLocalizations.of(context).blockPeer),
           ),
         // Stays enabled even while waiting on the peer: a user who sees a
         // mismatched code must be able to stop immediately.
         TextButton(
           onPressed: _reject,
-          child: Text(_messages.codesDiffer),
+          child: Text(AppLocalizations.of(context).codesDiffer),
         ),
         ElevatedButton(
           onPressed: (_busy || failed) ? null : _accept,
-          child: Text(_messages.codesMatch),
+          child: Text(AppLocalizations.of(context).codesMatch),
         ),
       ],
     );
@@ -406,32 +433,32 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
       null => (
         null,
         theme.hintColor,
-        _messages.waitingPeer,
+        AppLocalizations.of(context).waitingPeer,
       ),
       PairingPeerDecision.accepted => (
         Icons.check_circle_outline,
         Colors.green,
-        _messages.peerAccepted,
+        AppLocalizations.of(context).peerAccepted,
       ),
       PairingPeerDecision.rejected => (
         Icons.cancel_outlined,
         Colors.red,
-        _messages.peerRejected,
+        AppLocalizations.of(context).peerRejected,
       ),
       PairingPeerDecision.blocked => (
         Icons.block,
         Colors.red,
-        _messages.peerPairingBlocked,
+        AppLocalizations.of(context).peerPairingBlocked,
       ),
       PairingPeerDecision.timeout => (
         Icons.timer_off_outlined,
         Colors.orange,
-        _messages.peerTimeout,
+        AppLocalizations.of(context).peerTimeout,
       ),
       PairingPeerDecision.error => (
         Icons.error_outline,
         Colors.red,
-        _messages.pairingFailed,
+        AppLocalizations.of(context).pairingFailed,
       ),
     };
 

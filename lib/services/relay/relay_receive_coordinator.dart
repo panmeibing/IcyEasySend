@@ -7,9 +7,12 @@ import 'package:flutter/material.dart';
 
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
+import '../../utils/disk_space_error.dart';
+import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/transfer_status_provider.dart';
 import '../batch_receive_manager.dart';
+import '../disk_full_notifier.dart';
 import '../file_transfer_service.dart';
 import '../identity_service.dart';
 import '../paired_device_store.dart';
@@ -616,6 +619,9 @@ class RelayReceiveCoordinator {
       );
       if (!saved.isSuccess) {
         await writer.discard();
+        if (saved.isDiskFull) {
+          unawaited(DiskFullNotifier().notify(contextGetter?.call()));
+        }
         return _ReceiveOutcome.failure(saved.errorMessage ?? '接收失败');
       }
 
@@ -640,6 +646,13 @@ class RelayReceiveCoordinator {
     } on FileSystemException catch (e) {
       LogUtil.wTag(logTag, '中转接收写入失败 ${info.fileName}: ${e.message}');
       await writer.discard();
+      // Not retryable: retrying into a disk that is still full only burns the
+      // sender's attempts, so say why and stop.
+      if (DiskSpaceError.isDiskFull(e)) {
+        LogUtil.eTag(logTag, '磁盘空间不足，已中止中转接收: ${info.fileName}');
+        unawaited(DiskFullNotifier().notify(contextGetter?.call()));
+        return _ReceiveOutcome.failure(ErrorMessages.storageInsufficient);
+      }
       return _ReceiveOutcome.failure('文件保存失败\n错误: ${e.message}');
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '中转下载异常 ${info.fileName}: $e', e, stackTrace);

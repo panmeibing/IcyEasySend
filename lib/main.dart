@@ -5,12 +5,14 @@ import 'dart:io';
 
 import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
+import 'pages/pairing/pairing_confirm_dialog.dart';
 import 'services/android_foreground_service.dart';
 import 'services/cache_cleanup_service.dart';
 import 'services/clipboard_overlay_service.dart';
 import 'services/http_server_manager.dart';
 import 'services/identity_service.dart';
 import 'services/language_service.dart';
+import 'services/pairing_prompter.dart';
 import 'services/permission_service.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
@@ -23,6 +25,11 @@ void main() async {
 
   // Android: port for foreground-task <-> UI communication
   AndroidForegroundService.initCommunicationPort();
+
+  // Hand the service layer a way to ask the user about inbound pairing without
+  // it having to reach into lib/pages itself. Installed before the HTTP server
+  // starts, so the first request cannot arrive to a prompter that refuses.
+  PairingPrompter.instance = const DialogPairingPrompter();
 
   // Initialize logger explicitly to ensure log file is created
   await LogUtil.init();

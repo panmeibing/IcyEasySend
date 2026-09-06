@@ -112,8 +112,12 @@ class LogUtil {
 
     try {
       String loggerFilePath = await PlatformUtil.getLoggerFilePath();
-      // ignore: avoid_print
-      print("Init logger, loggerFilePath: $loggerFilePath");
+      if (kDebugMode) {
+        // Not routed through _logger: it is the thing being set up here, and
+        // in release this would put the log file's own path into the log file.
+        // ignore: avoid_print
+        print('Init logger, loggerFilePath: $loggerFilePath');
+      }
       final logFile = File(loggerFilePath);
       if (!await logFile.exists()) {
         await logFile.create(recursive: true);
@@ -128,8 +132,9 @@ class LogUtil {
       );
       Logger.level = kDebugMode ? Level.debug : Level.info;
     } catch (e) {
-      // ignore: avoid_print
-      print("Failed to initialize file logging: $e");
+      // The console logger built in the constructor is still usable; only the
+      // file output failed to attach.
+      _logger.w('[${LogTags.system}] 初始化文件日志失败: $e');
     }
 
     _isInitialized = true;

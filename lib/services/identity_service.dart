@@ -159,7 +159,9 @@ class IdentityService {
     if (seed == null) {
       seed = await _generateSeed();
       await _writeSeed(file, seed);
-      LogUtil.iTag(logTag, '生成新的设备身份密钥: ${file.path}');
+      // The path is deliberately left out: it points at this device's private
+      // signing key, and the log file is meant to be shareable for support.
+      LogUtil.iTag(logTag, '生成新的设备身份密钥');
     }
 
     final keyPair = await _signatureAlgorithm.newKeyPairFromSeed(seed);
