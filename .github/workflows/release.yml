@@ -308,6 +308,36 @@ jobs:
           path: release/*
           if-no-files-found: error
 
+  ios:
+    name: iOS
+    needs: resolve-version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Normalize shell scripts
+        run: find installers/iOS -name '*.sh' -exec sed -i '' 's/\r$//' {} +
+
+      - name: Build unsigned IPA
+        run: |
+          VERSION="${{ needs.resolve-version.outputs.version }}"
+          flutter pub get
+          flutter build ios --release --no-codesign
+          bash installers/iOS/package_ipa.sh "${VERSION}"
+          mkdir -p release
+          cp "installers/iOS/Output/IcyEasySend-ios-v${VERSION}.ipa" release/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: release/IcyEasySend-ios-v*.ipa
+          if-no-files-found: error
+
   release:
     name: Publish draft release
     needs:
@@ -317,6 +347,7 @@ jobs:
       - windows
       - macos
       - android
+      - ios
     if: needs.resolve-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -344,5 +375,6 @@ jobs:
             - Windows x64: `.exe` 安装包 / `.zip` 便携包
             - macOS: 未签名 `.dmg`
             - Android: `.apk` / `.aab`
+            - iOS: 未签名 `.ipa`（需自行重签名或侧载工具安装）
           files: dist/**
           fail_on_unmatched_files: true

@@ -13,7 +13,7 @@ git push origin v1.3.0
 
 工作流会自动：
 
-1. 构建全平台产物（不含 iOS）
+1. 构建全平台产物（含未签名 iOS `.ipa`）
 2. 创建一个 **Draft（草稿）Release**
 3. 上传所有安装包到该 Release
 
@@ -37,6 +37,7 @@ GitHub → Actions → Release → Run workflow
 | Windows x64 | `IcyEasySend-windows-v1.3.0-setup.exe` / `-portable.zip` |
 | macOS | `IcyEasySend-macOS-v1.3.0.dmg`（未签名） |
 | Android | `IcyEasySend-android-v1.3.0.apk` / `.aab` |
+| iOS | `IcyEasySend-ios-v1.3.0.ipa`（未签名） |
 
 ## 必须配置的 GitHub Secrets
 
@@ -66,6 +67,7 @@ GitHub → Actions → Release → Run workflow
 - Windows 安装包使用 Inno Setup，中文语言包来自 `installers/Windows/ChineseSimplified.isl`
 - Linux / Windows 构建依赖 Rust（`super_native_extensions`，来自 `super_clipboard`）
 - macOS 产物未签名，用户首次打开可能需要右键 → 打开
+- iOS 产物未签名（`--no-codesign`），需用侧载工具或自行重签名后安装；详见 `installers/iOS/readme.md`
 
 ## 发版前检查清单
 
