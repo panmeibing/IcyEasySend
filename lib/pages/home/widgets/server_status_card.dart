@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/toast_helper.dart';
+import '../home_ui.dart';
 
-/// Server status indicator widget
+/// Compact friendly server status strip.
 class ServerStatusCard extends StatelessWidget {
   final bool isServerRunning;
   final String? serverAddress;
@@ -20,7 +21,6 @@ class ServerStatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    // Parse IP and port from serverAddress
     String? ip;
     String? port;
     if (serverAddress != null) {
@@ -31,19 +31,17 @@ class ServerStatusCard extends StatelessWidget {
       }
     }
 
+    final fill =
+        isServerRunning ? HomeUi.runningFill : HomeUi.stoppedFill;
+    final accent =
+        isServerRunning ? HomeUi.runningAccent : HomeUi.stoppedAccent;
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: isServerRunning
-            ? const Color(0xFFE3F2FD)
-            : const Color(0xFFFFEBEE),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isServerRunning
-              ? const Color(0xFF2196F3)
-              : const Color(0xFFE53935),
-          width: 1.5,
-        ),
+        color: fill,
+        borderRadius: BorderRadius.circular(HomeUi.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,98 +49,56 @@ class ServerStatusCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 10,
-                height: 10,
+                width: 9,
+                height: 9,
                 decoration: BoxDecoration(
-                  color: isServerRunning
-                      ? const Color(0xFF2196F3)
-                      : const Color(0xFFE53935),
+                  color: accent,
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                isServerRunning ? l10n.serverRunning : l10n.serverStopped,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: isServerRunning
-                      ? const Color(0xFF1976D2)
-                      : const Color(0xFFC62828),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isServerRunning ? l10n.serverRunning : l10n.serverStopped,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: accent,
+                  ),
                 ),
               ),
             ],
           ),
           if (isServerRunning && ip != null && port != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildFieldLabel(l10n.localIP),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      height: 28,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            ip,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF212121),
-                              letterSpacing: 0.5,
-                              height: 1,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          _buildCopyButton(context, ip),
-                        ],
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: _AddressChip(
+                    label: l10n.localIP,
+                    value: ip,
+                    onCopy: () {
+                      final copyIp = ip;
+                      if (copyIp != null) {
+                        _copyToClipboard(context, copyIp);
+                      }
+                    },
+                  ),
                 ),
-                const SizedBox(width: 32),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildFieldLabel(l10n.port),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      height: 28,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          port,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF212121),
-                            letterSpacing: 0.5,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(width: 10),
+                _AddressChip(
+                  label: l10n.port,
+                  value: port,
                 ),
               ],
             ),
           ],
           if (Platform.isAndroid && isServerRunning) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               l10n.androidBackgroundReceiveHint,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[700],
-                height: 1.35,
+              style: HomeUi.captionStyle.copyWith(
+                color: HomeUi.inkMuted.withValues(alpha: 0.85),
               ),
             ),
           ],
@@ -151,42 +107,80 @@ class ServerStatusCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFieldLabel(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 12,
-        color: Colors.grey[600],
-        fontWeight: FontWeight.w500,
-        height: 1,
-      ),
-    );
-  }
-
-  Widget _buildCopyButton(BuildContext context, String ip) {
-    return IconButton(
-      onPressed: () => _copyToClipboard(context, ip),
-      icon: const Icon(Icons.copy, size: 16, color: Color(0xFF2196F3)),
-      tooltip: AppLocalizations.of(context).copy,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-      visualDensity: VisualDensity.compact,
-      style: IconButton.styleFrom(
-        backgroundColor: const Color(0xFF2196F3).withValues(alpha: 0.1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-      ),
-    );
-  }
-
-  /// Copy text to clipboard
   Future<void> _copyToClipboard(BuildContext context, String text) async {
     await Clipboard.setData(ClipboardData(text: text));
-
     if (context.mounted) {
       ToastHelper.showSuccess(
         context,
         AppLocalizations.of(context).ipCopied(text),
       );
     }
+  }
+}
+
+class _AddressChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback? onCopy;
+
+  const _AddressChip({
+    required this.label,
+    required this.value,
+    this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(HomeUi.radiusSm),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: HomeUi.captionStyle),
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize:
+                onCopy == null ? MainAxisSize.min : MainAxisSize.max,
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: HomeUi.ink,
+                    letterSpacing: 0.2,
+                    height: 1.2,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (onCopy != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  onPressed: onCopy,
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  color: HomeUi.primary,
+                  tooltip: AppLocalizations.of(context).copy,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

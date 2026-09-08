@@ -1,5 +1,4 @@
 import '../../../services/preferences_service.dart';
-import '../../../utils/constants.dart';
 
 /// Snapshot of connection fields needed to paint Home without N round-trips.
 class HomeConnectionPrefs {
@@ -44,18 +43,6 @@ class ConnectionPrefsController {
     );
   }
 
-  Future<String?> loadLastUsedIP() {
-    return _preferencesService.getLastUsedIP();
-  }
-
-  Future<int> loadLastUsedPort() {
-    return _preferencesService.getLastUsedPort();
-  }
-
-  Future<String?> loadLastUsedTargetSecretKey() {
-    return _preferencesService.getTargetDeviceSecretKey();
-  }
-
   Future<void> saveTargetSecretKey(String secretKey) async {
     final trimmed = secretKey.trim();
     if (trimmed.isNotEmpty) {
@@ -85,6 +72,4 @@ class ConnectionPrefsController {
   Future<bool> deleteIPFromHistory(String ip) {
     return _preferencesService.removeIPFromHistory(ip);
   }
-
-  String get defaultPortText => '${AppConstants.defaultPort}';
 }

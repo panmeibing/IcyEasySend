@@ -796,6 +796,19 @@ class AppLocalizationsPt extends AppLocalizations {
   String get author => 'Autor';
 
   @override
+  String get update => 'Atualização';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'Link do GitHub copiado';
+
+  @override
+  String get openGitHubFailed =>
+      'Não foi possível abrir o navegador; link copiado';
+
+  @override
   String get appDescription =>
       'Uma ferramenta simples e fácil de usar para transferência de arquivos em rede local';
 

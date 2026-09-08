@@ -791,6 +791,19 @@ class AppLocalizationsNl extends AppLocalizations {
   String get author => 'Auteur';
 
   @override
+  String get update => 'Update';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'GitHub-link gekopieerd';
+
+  @override
+  String get openGitHubFailed =>
+      'Kon de browser niet openen; link in plaats daarvan gekopieerd';
+
+  @override
   String get appDescription =>
       'Een eenvoudig te gebruiken LAN-bestandsoverdrachtshulpmiddel';
 

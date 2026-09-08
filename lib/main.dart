@@ -245,10 +245,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
   }
 
-  /// Build modern, clean, and flat theme
+  /// Soft icy theme — friendly rounded surfaces aligned with the home shell.
   ThemeData _buildModernTheme() {
-    const primaryColor = Color(0xFF2196F3); // Modern blue
-    const surfaceColor = Color(0xFFFAFAFA); // Light gray background
+    const primaryColor = Color(0xFF4BA3F0);
+    const surfaceColor = Color(0xFFF3F8FC);
+    const radius = 16.0;
 
     return ThemeData(
       useMaterial3: true,
@@ -256,6 +257,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         seedColor: primaryColor,
         brightness: Brightness.light,
         surface: surfaceColor,
+        primary: primaryColor,
       ),
 
       // AppBar theme - flat and minimal
@@ -263,37 +265,39 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.white,
-        foregroundColor: Color(0xFF212121),
+        foregroundColor: Color(0xFF2C3E50),
         titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF212121),
+          color: Color(0xFF2C3E50),
           letterSpacing: 0.15,
         ),
       ),
 
-      // Card theme - minimal elevation and rounded corners
+      // Card theme - soft rounded, light border
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.grey.shade200, width: 1),
+          borderRadius: BorderRadius.circular(radius),
+          side: const BorderSide(color: Color(0xFFE2EBF3), width: 1),
         ),
         color: Colors.white,
         margin: EdgeInsets.zero,
       ),
 
-      // Elevated button theme - flat with subtle shadow
+      // Elevated button theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
           backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           textStyle: const TextStyle(
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
             letterSpacing: 0.1,
           ),
         ),
@@ -303,7 +307,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
           foregroundColor: primaryColor,
           textStyle: const TextStyle(
             fontSize: 14,
@@ -316,10 +322,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // Outlined button theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          side: BorderSide(color: Colors.grey.shade300, width: 1),
-          foregroundColor: const Color(0xFF212121),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          side: const BorderSide(color: Color(0xFFB7D6F5), width: 1),
+          foregroundColor: const Color(0xFF2C3E50),
           textStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -328,40 +336,42 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
       ),
 
-      // Input decoration theme - clean and minimal
+      // Input decoration theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: const Color(0xFFF7FBFE),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 12,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: const BorderSide(color: Color(0xFFE2EBF3), width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: const BorderSide(color: Color(0xFFE2EBF3), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: const BorderSide(color: primaryColor, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFE53935), width: 1),
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: const BorderSide(color: Color(0xFFE57373), width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFE53935), width: 2),
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: const BorderSide(color: Color(0xFFE57373), width: 1.5),
         ),
       ),
 
       // Dialog theme
       dialogTheme: DialogThemeData(
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radius),
+        ),
         backgroundColor: Colors.white,
       ),
 
@@ -370,7 +380,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         elevation: 0,
         backgroundColor: Colors.white,
         selectedItemColor: primaryColor,
-        unselectedItemColor: Colors.grey.shade600,
+        unselectedItemColor: const Color(0xFF6B7C8F),
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: const TextStyle(
           fontSize: 12,
@@ -386,8 +396,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       scaffoldBackgroundColor: surfaceColor,
 
       // Divider theme
-      dividerTheme: DividerThemeData(
-        color: Colors.grey.shade200,
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFE2EBF3),
         thickness: 1,
         space: 1,
       ),

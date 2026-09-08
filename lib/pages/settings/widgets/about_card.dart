@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/toast_helper.dart';
 
 /// About card widget
 class AboutCard extends StatelessWidget {
   final VoidCallback onVersionTap;
 
   const AboutCard({super.key, required this.onVersionTap});
+
+  Future<void> _openGitHub(BuildContext context) async {
+    final uri = Uri.parse(AppConstants.githubUrl);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && context.mounted) {
+        await _copyGitHubLink(context, notifyOpenFailed: true);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        await _copyGitHubLink(context, notifyOpenFailed: true);
+      }
+    }
+  }
+
+  Future<void> _copyGitHubLink(
+    BuildContext context, {
+    bool notifyOpenFailed = false,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    await Clipboard.setData(
+      const ClipboardData(text: AppConstants.githubUrl),
+    );
+    if (!context.mounted) return;
+    ToastHelper.showSuccess(
+      context,
+      notifyOpenFailed ? l10n.openGitHubFailed : l10n.githubLinkCopied,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,11 +163,64 @@ class AboutCard extends StatelessWidget {
                               color: Colors.grey[600],
                             ),
                           ),
+                          Flexible(
+                            child: Text(
+                              AppConstants.author,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.open_in_new,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            AppConstants.author,
+                            "${l10n.update}: ",
                             style: TextStyle(
                               fontSize: 13,
                               color: Colors.grey[600],
+                            ),
+                          ),
+                          Flexible(
+                            child: InkWell(
+                              onTap: () => _openGitHub(context),
+                              borderRadius: BorderRadius.circular(4),
+                              child: Text(
+                                l10n.github,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2196F3),
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: Color(0xFF2196F3),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _copyGitHubLink(context),
+                            icon: const Icon(Icons.copy_rounded, size: 14),
+                            color: const Color(0xFF2196F3),
+                            tooltip: l10n.copy,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ],

@@ -6,6 +6,9 @@ class AppConstants {
   static const String version = "v1.5.0";
   static const String author = "冰冷的希望";
 
+  /// Public project page (releases / source).
+  static const String githubUrl = "https://github.com/panmeibing/IcyEasySend";
+
   /// Wire protocol version advertised over `/health` and UDP multicast.
   ///
   /// Peers that do not advertise it are treated as pre-identity clients and

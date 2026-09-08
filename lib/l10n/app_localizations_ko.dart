@@ -759,6 +759,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get author => '작성자';
 
   @override
+  String get update => '업데이트';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'GitHub 링크가 복사되었습니다';
+
+  @override
+  String get openGitHubFailed => '브라우저를 열 수 없어 링크를 복사했습니다';
+
+  @override
   String get appDescription => '간단하고 사용하기 쉬운 로컬 네트워크 파일 전송 도구';
 
   @override

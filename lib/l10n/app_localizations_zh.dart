@@ -752,6 +752,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get author => '作者';
 
   @override
+  String get update => '更新';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => '已复制 GitHub 链接';
+
+  @override
+  String get openGitHubFailed => '无法打开浏览器，已改为复制链接';
+
+  @override
   String get appDescription => '一个简单易用的局域网文件传输工具';
 
   @override
@@ -2440,6 +2452,18 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
 
   @override
   String get author => '作者';
+
+  @override
+  String get update => '更新';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => '已複製 GitHub 連結';
+
+  @override
+  String get openGitHubFailed => '無法開啟瀏覽器，已改為複製連結';
 
   @override
   String get appDescription => '一個簡單易用的區域網路檔案傳輸工具';

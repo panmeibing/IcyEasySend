@@ -777,6 +777,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get author => 'Автор';
 
   @override
+  String get update => 'Обновление';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'Ссылка GitHub скопирована';
+
+  @override
+  String get openGitHubFailed =>
+      'Не удалось открыть браузер; ссылка скопирована';
+
+  @override
   String get appDescription =>
       'Простой и удобный инструмент для передачи файлов в локальной сети';
 

@@ -22,16 +22,16 @@ import 'home/controllers/file_transfer_controller.dart';
 import 'home/controllers/send_progress_controller.dart';
 import 'home/controllers/share_intent_handler.dart';
 import 'home/controllers/web_share_controller.dart';
+import 'home/home_ui.dart';
 import 'home/widgets/device_scan_dialog.dart';
 import 'home/widgets/drag_drop_overlay.dart';
 import 'home/widgets/file_selection_section.dart';
-import 'home/widgets/ip_input_section.dart';
 import 'home/widgets/network_diagnostics_dialog.dart';
 import 'home/widgets/peer_actions_section.dart';
-import 'home/widgets/port_input_section.dart';
-import 'home/widgets/secret_key_input_section.dart';
+import 'home/widgets/quick_ip_chips.dart';
 import 'home/widgets/send_actions_section.dart';
 import 'home/widgets/server_status_card.dart';
+import 'home/widgets/target_endpoint_expand_section.dart';
 import 'home/widgets/transfer_progress_card.dart';
 
 /// HomePage is the main UI for the icy-easy-send application
@@ -393,122 +393,157 @@ class HomePageState extends State<HomePage> {
             },
             child: Scaffold(
               appBar: AppBar(title: const Text(AppConstants.projectName)),
-              body: SingleChildScrollView(
-                controller: _scrollController,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Server status indicator
-                      ServerStatusCard(
-                        isServerRunning: isServerRunning,
-                        serverAddress: serverAddress,
-                      ),
-                      const SizedBox(height: 24),
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  final viewSize = MediaQuery.sizeOf(context);
+                  final metrics = HomeLayoutMetrics.resolve(
+                    viewSize: viewSize,
+                    bodyHeight: constraints.maxHeight,
+                  );
 
-                      // IP address input
-                      IPInputSection(
-                        controller: _ipController,
-                        focusNode: _ipFocusNode,
-                        errorMessage: _ipErrorMessage,
-                        isEnabled: isServerRunning,
-                        ipHistory: _ipHistory,
-                        serverAddress: serverAddress,
-                        onIPSelected: (ip) {
-                          _ipController.text = ip;
-                          _validateIPAddress();
-                        },
-                        onIPDeleted: _deleteIPFromHistory,
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Port input
-                      PortInputSection(
-                        controller: _portController,
-                        focusNode: _portFocusNode,
-                        errorMessage: _portErrorMessage,
-                        isEnabled: isServerRunning,
-                        onReset: () {
-                          _portController.text = '${AppConstants.defaultPort}';
-                          _validatePort();
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Secret key input
-                      SecretKeyInputSection(
-                        controller: _secretKeyController,
-                        focusNode: _secretKeyFocusNode,
-                        isEnabled: isServerRunning,
-                        onClear: () async {
-                          _secretKeyController.clear();
-                          await _connectionPrefs.clearTargetSecretKey();
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      PeerActionsSection(
-                        isServerRunning: isServerRunning,
-                        canRequestClipboard: _canRequestClipboard(),
-                        selectedPeer: _selectedPeer,
-                        onScan: _scanDevices,
-                        onDiagnostics: _runNetworkDiagnostics,
-                        onClipboard: _requestClipboard,
-                        onClearPeer: () {
-                          setState(() => _selectedPeer = null);
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      // File selection
-                      FileSelectionSection(
-                        selectedItems: selectedItems,
-                        isEnabled: isServerRunning,
-                        isSending: isSending,
-                        onSelectFiles: _selectFiles,
-                        onSelectFolder: _selectFolder,
-                        onRemoveFile: (index) {
-                          final removed = selectedItems[index];
-                          setState(() {
-                            selectedItems.removeAt(index);
-                          });
-                          _cacheCleanupService.deleteCacheFilesIfPresent([
-                            removed.file.path,
-                          ]);
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      SendActionsSection(
-                        canSend: _canSend(),
-                        canShareViaQr: _canShareViaQr(),
-                        isSending: isSending,
-                        isCreatingWebShare: _isCreatingWebShare,
-                        selectedItemsCount: selectedItems.length,
-                        onSend: _sendFiles,
-                        onShareViaQr: _shareViaQr,
-                      ),
-
-                      // Progress indicator
-                      if (isSending) ...[
-                        const SizedBox(height: 24),
-                        TransferProgressCard(
-                          progress: _sendProgress.progress,
-                          bytesTransferred: _sendProgress.bytesTransferred,
-                          totalBytes: _sendProgress.totalBytes,
-                          transferSpeed: _sendProgress.speed,
-                          estimatedTimeRemaining:
-                              _sendProgress.estimatedTimeRemaining,
-                          status: _sendProgress.status,
-                          completedFilesCount:
-                              _sendProgress.completedFilesCount,
-                          totalFilesCount: _sendProgress.totalFilesCount,
+                  return HomeLayoutScope(
+                    metrics: metrics,
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
                         ),
-                      ],
-                    ],
-                  ),
-                ),
+                        child: Padding(
+                          padding: metrics.pagePadding,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ServerStatusCard(
+                                isServerRunning: isServerRunning,
+                                serverAddress: serverAddress,
+                              ),
+                              SizedBox(height: metrics.sectionGap),
+
+                              HomeSection(
+                                title: AppLocalizations.of(context)
+                                    .targetDeviceInfo,
+                                icon: Icons.devices_rounded,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    TargetEndpointExpandSection(
+                                      ipController: _ipController,
+                                      portController: _portController,
+                                      secretKeyController:
+                                          _secretKeyController,
+                                      ipFocusNode: _ipFocusNode,
+                                      portFocusNode: _portFocusNode,
+                                      secretKeyFocusNode: _secretKeyFocusNode,
+                                      ipErrorMessage: _ipErrorMessage,
+                                      portErrorMessage: _portErrorMessage,
+                                      isEnabled: isServerRunning,
+                                      ipHistory: _ipHistory,
+                                      onIPSelected: (ip) {
+                                        _ipController.text = ip;
+                                        _validateIPAddress();
+                                      },
+                                      onIPDeleted: _deleteIPFromHistory,
+                                      onPortReset: () {
+                                        _portController.text =
+                                            '${AppConstants.defaultPort}';
+                                        _validatePort();
+                                      },
+                                      onSecretKeyClear: () async {
+                                        _secretKeyController.clear();
+                                        await _connectionPrefs
+                                            .clearTargetSecretKey();
+                                      },
+                                    ),
+                                    SizedBox(height: metrics.itemGap),
+                                    QuickIpChips(
+                                      serverAddress: serverAddress,
+                                      isEnabled: isServerRunning,
+                                      onIPSelected: (ip) {
+                                        _ipController.text = ip;
+                                        _validateIPAddress();
+                                      },
+                                    ),
+                                    SizedBox(height: metrics.itemGap + 2),
+                                    PeerActionsSection(
+                                      isServerRunning: isServerRunning,
+                                      canRequestClipboard:
+                                          _canRequestClipboard(),
+                                      selectedPeer: _selectedPeer,
+                                      onScan: _scanDevices,
+                                      onDiagnostics: _runNetworkDiagnostics,
+                                      onClipboard: _requestClipboard,
+                                      onClearPeer: () {
+                                        setState(() => _selectedPeer = null);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: metrics.sectionGap),
+
+                              HomeSection(
+                                title:
+                                    AppLocalizations.of(context).selectFiles,
+                                icon: Icons.folder_open_rounded,
+                                child: FileSelectionSection(
+                                  selectedItems: selectedItems,
+                                  isEnabled: isServerRunning,
+                                  isSending: isSending,
+                                  showTitle: false,
+                                  onSelectFiles: _selectFiles,
+                                  onSelectFolder: _selectFolder,
+                                  onRemoveFile: (index) {
+                                    final removed = selectedItems[index];
+                                    setState(() {
+                                      selectedItems.removeAt(index);
+                                    });
+                                    _cacheCleanupService
+                                        .deleteCacheFilesIfPresent([
+                                      removed.file.path,
+                                    ]);
+                                  },
+                                ),
+                              ),
+                              SizedBox(height: metrics.sectionGap),
+
+                              SendActionsSection(
+                                canSend: _canSend(),
+                                canShareViaQr: _canShareViaQr(),
+                                isSending: isSending,
+                                isCreatingWebShare: _isCreatingWebShare,
+                                selectedItemsCount: selectedItems.length,
+                                onSend: _sendFiles,
+                                onShareViaQr: _shareViaQr,
+                              ),
+
+                              if (isSending) ...[
+                                SizedBox(height: metrics.sectionGap),
+                                TransferProgressCard(
+                                  progress: _sendProgress.progress,
+                                  bytesTransferred:
+                                      _sendProgress.bytesTransferred,
+                                  totalBytes: _sendProgress.totalBytes,
+                                  transferSpeed: _sendProgress.speed,
+                                  estimatedTimeRemaining:
+                                      _sendProgress.estimatedTimeRemaining,
+                                  status: _sendProgress.status,
+                                  completedFilesCount:
+                                      _sendProgress.completedFilesCount,
+                                  totalFilesCount:
+                                      _sendProgress.totalFilesCount,
+                                ),
+                              ],
+
+                              SizedBox(height: metrics.bottomBreathing),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

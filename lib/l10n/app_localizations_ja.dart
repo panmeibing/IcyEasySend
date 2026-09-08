@@ -758,6 +758,18 @@ class AppLocalizationsJa extends AppLocalizations {
   String get author => '作成者';
 
   @override
+  String get update => '更新';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'GitHubリンクをコピーしました';
+
+  @override
+  String get openGitHubFailed => 'ブラウザを開けませんでした。代わりにリンクをコピーしました';
+
+  @override
   String get appDescription => 'シンプルで使いやすいローカルネットワークファイル転送ツール';
 
   @override

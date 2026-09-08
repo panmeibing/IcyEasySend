@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../home_ui.dart';
+import 'expandable_split_control.dart';
 
-/// Send and QR web-share action buttons.
+/// Primary send action with QR share behind the expand chevron.
 class SendActionsSection extends StatelessWidget {
   final bool canSend;
   final bool canShareViaQr;
@@ -23,58 +25,70 @@ class SendActionsSection extends StatelessWidget {
     required this.onShareViaQr,
   });
 
+  String _sendLabel(AppLocalizations l10n) {
+    if (isSending) return l10n.sending;
+    if (selectedItemsCount > 1) {
+      return l10n.filesCount(selectedItemsCount);
+    }
+    return l10n.sendFile;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final sendEnabled = canSend;
+    final labelColor = sendEnabled
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.75);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ElevatedButton.icon(
-          onPressed: canSend ? onSend : null,
-          icon: isSending
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.send),
-          label: Text(
-            isSending
-                ? l10n.sending
-                : selectedItemsCount > 1
-                ? l10n.filesCount(selectedItemsCount)
-                : l10n.sendFile,
-          ),
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+    return ExpandableSplitControl(
+      style: ExpandableSplitStyle.filled,
+      filledActive: sendEnabled,
+      chevronEnabled: !isSending,
+      radius: HomeUi.radiusLg,
+      primaryMinHeight: 52,
+      primary: TextButton.icon(
+        onPressed: sendEnabled ? onSend : null,
+        icon: isSending
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(Icons.send_rounded, color: labelColor),
+        label: Text(
+          _sendLabel(l10n),
+          style: TextStyle(
+            color: labelColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
+        style: TextButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape: const RoundedRectangleBorder(),
+          foregroundColor: Colors.white,
+        ),
+      ),
+      expanded: ExpandableSplitControl.panel(
+        reserveChevronSpace: true,
+        child: ExpandableSplitControl.outlinedAction(
           onPressed: canShareViaQr ? onShareViaQr : null,
+          enabled: canShareViaQr,
+          label: l10n.shareViaQr,
           icon: isCreatingWebShare
               ? const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Icon(Icons.qr_code_2),
-          label: Text(l10n.shareViaQr),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            foregroundColor: Colors.blue,
-            side: BorderSide(
-              color: canShareViaQr ? Colors.blue : Colors.grey,
-            ),
-          ),
+              : const Icon(Icons.qr_code_2_rounded),
         ),
-      ],
+      ),
     );
   }
 }

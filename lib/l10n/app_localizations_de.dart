@@ -809,6 +809,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get author => 'Autor';
 
   @override
+  String get update => 'Update';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'GitHub-Link kopiert';
+
+  @override
+  String get openGitHubFailed =>
+      'Browser konnte nicht geöffnet werden; Link stattdessen kopiert';
+
+  @override
   String get appDescription =>
       'Ein einfaches und benutzerfreundliches LAN-Dateiübertragungstool';
 

@@ -1491,6 +1491,30 @@ abstract class AppLocalizations {
   /// **'Author'**
   String get author;
 
+  /// No description provided for @update.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// No description provided for @github.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get github;
+
+  /// No description provided for @githubLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub link copied'**
+  String get githubLinkCopied;
+
+  /// No description provided for @openGitHubFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the browser; link copied instead'**
+  String get openGitHubFailed;
+
   /// No description provided for @appDescription.
   ///
   /// In en, this message translates to:

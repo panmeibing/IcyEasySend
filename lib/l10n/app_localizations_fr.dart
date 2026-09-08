@@ -814,6 +814,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get author => 'Auteur';
 
   @override
+  String get update => 'Mise à jour';
+
+  @override
+  String get github => 'GitHub';
+
+  @override
+  String get githubLinkCopied => 'Lien GitHub copié';
+
+  @override
+  String get openGitHubFailed =>
+      'Impossible d\'ouvrir le navigateur ; lien copié à la place';
+
+  @override
   String get appDescription =>
       'Un outil de transfert de fichiers LAN simple et facile à utiliser';
 
