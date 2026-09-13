@@ -6,6 +6,17 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'constants.dart';
 import 'log_util.dart';
 
+/// Preferred local IP plus a stable interface fingerprint.
+class LocalNetworkSnapshot {
+  final String preferredIp;
+  final String fingerprint;
+
+  const LocalNetworkSnapshot({
+    required this.preferredIp,
+    required this.fingerprint,
+  });
+}
+
 /// Utility class for network-related operations
 class NetworkUtil {
   static final String logTag = LogTags.network;
@@ -17,86 +28,115 @@ class NetworkUtil {
   /// 2. Other non-loopback IPv4 addresses
   /// 3. Fallback to 127.0.0.1
   static Future<String> getLocalIPAddress() async {
-    try {
-      LogUtil.dTag(logTag, '获取本地IP地址...');
+    final snapshot = await captureLocalNetwork(logSelection: true);
+    return snapshot.preferredIp;
+  }
 
-      // Get all network interfaces
+  /// One interface walk for preferred IP + fingerprint (used by network poll).
+  static Future<LocalNetworkSnapshot> captureLocalNetwork({
+    bool logSelection = false,
+  }) async {
+    try {
+      if (logSelection) {
+        LogUtil.dTag(logTag, '获取本地IP地址...');
+      }
+
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
         includeLinkLocal: false,
       );
 
-      LogUtil.dTag(logTag, '找到${interfaces.length}个网络接口');
+      if (logSelection) {
+        LogUtil.dTag(logTag, '找到${interfaces.length}个网络接口');
+      }
 
-      // Store addresses with their interface info for better selection
-      List<_NetworkAddressInfo> privateAddresses = [];
-      List<_NetworkAddressInfo> otherAddresses = [];
+      final privateAddresses = <_NetworkAddressInfo>[];
+      final otherAddresses = <_NetworkAddressInfo>[];
+      final fingerprintParts = <String>[];
 
-      // Categorize addresses
-      for (var interface in interfaces) {
-        LogUtil.dTag(logTag, '检查接口: ${interface.name}');
-        for (var addr in interface.addresses) {
-          if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
-            final ip = addr.address;
-            final interfaceName = interface.name.toLowerCase();
+      for (final interface in interfaces) {
+        if (logSelection) {
+          LogUtil.dTag(logTag, '检查接口: ${interface.name}');
+        }
+        for (final addr in interface.addresses) {
+          if (addr.isLoopback || addr.type != InternetAddressType.IPv4) {
+            continue;
+          }
+          final ip = addr.address;
+          final interfaceName = interface.name.toLowerCase();
 
-            // Check if it's a private network address
-            if (isPrivateNetwork(ip)) {
+          if (isPrivateNetwork(ip)) {
+            if (logSelection) {
               LogUtil.dTag(logTag, '发现私有网络地址: $ip (${interface.name})');
-              privateAddresses.add(
-                _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
-              );
-            } else {
-              LogUtil.dTag(logTag, '发现其他地址: $ip (${interface.name})');
-              otherAddresses.add(
-                _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
-              );
             }
+            privateAddresses.add(
+              _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
+            );
+            fingerprintParts.add('${interface.name}:$ip');
+          } else {
+            if (logSelection) {
+              LogUtil.dTag(logTag, '发现其他地址: $ip (${interface.name})');
+            }
+            otherAddresses.add(
+              _NetworkAddressInfo(ip: ip, interfaceName: interfaceName),
+            );
           }
         }
       }
 
-      // Prefer private network addresses (typical LAN)
+      fingerprintParts.sort();
+      final fingerprint = fingerprintParts.join('|');
+
       if (privateAddresses.isNotEmpty) {
-        // Sort by priority: physical adapters > virtual adapters, and 192.168 > 172 > 10
         privateAddresses.sort((a, b) {
-          // 1. Priority: Physical network card>Virtual network card
           final aIsVirtual = _isVirtualInterface(a.interfaceName);
           final bIsVirtual = _isVirtualInterface(b.interfaceName);
           if (aIsVirtual != bIsVirtual) {
             return aIsVirtual ? 1 : -1;
           }
-          // 2. Priority：192.168 > 172 > 10
-          final aPriority = _getIPPriority(a.ip);
-          final bPriority = _getIPPriority(b.ip);
-          return aPriority.compareTo(bPriority);
+          return _getIPPriority(a.ip).compareTo(_getIPPriority(b.ip));
         });
 
-        final selectedIP = privateAddresses.first.ip;
-        LogUtil.iTag(
-          logTag,
-          '本地IP地址: $selectedIP (${privateAddresses.first.interfaceName})',
+        final selected = privateAddresses.first;
+        if (logSelection) {
+          LogUtil.iTag(
+            logTag,
+            '本地IP地址: ${selected.ip} (${selected.interfaceName})',
+          );
+        }
+        return LocalNetworkSnapshot(
+          preferredIp: selected.ip,
+          fingerprint: fingerprint,
         );
-        return selectedIP;
       }
 
-      // Use other addresses if no private network found
       if (otherAddresses.isNotEmpty) {
-        final selectedIP = otherAddresses.first.ip;
-        LogUtil.iTag(
-          logTag,
-          '本地IP地址: $selectedIP (${otherAddresses.first.interfaceName})',
+        final selected = otherAddresses.first;
+        if (logSelection) {
+          LogUtil.iTag(
+            logTag,
+            '本地IP地址: ${selected.ip} (${selected.interfaceName})',
+          );
+        }
+        return LocalNetworkSnapshot(
+          preferredIp: selected.ip,
+          fingerprint: fingerprint,
         );
-        return selectedIP;
       }
 
-      // Fallback to localhost if no network interface found
-      LogUtil.wTag(logTag, '未找到有效网络接口，使用回环地址: 127.0.0.1');
-      return '127.0.0.1';
+      if (logSelection) {
+        LogUtil.wTag(logTag, '未找到有效网络接口，使用回环地址: 127.0.0.1');
+      }
+      return const LocalNetworkSnapshot(
+        preferredIp: '127.0.0.1',
+        fingerprint: '',
+      );
     } catch (e, stackTrace) {
-      // If error, return localhost
       LogUtil.eTag(logTag, '获取IP地址失败，使用回环地址: $e', e, stackTrace);
-      return '127.0.0.1';
+      return const LocalNetworkSnapshot(
+        preferredIp: '127.0.0.1',
+        fingerprint: '',
+      );
     }
   }
 
@@ -326,6 +366,15 @@ class NetworkUtil {
     }
 
     return ips;
+  }
+
+  /// Stable snapshot of live private IPv4 addresses (with interface names).
+  ///
+  /// Used to detect Wi‑Fi↔Wi‑Fi switches where [Connectivity] stays `wifi`
+  /// and may not emit, or where the preferred IP string briefly stays the same.
+  static Future<String> localNetworkFingerprint() async {
+    final snapshot = await captureLocalNetwork();
+    return snapshot.fingerprint;
   }
 
   /// Build the /24 subnet prefix from an IPv4 address.

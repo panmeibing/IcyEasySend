@@ -11,8 +11,22 @@ import '../../../transport/peer_directory.dart';
 import '../../../transport/transport_channel.dart';
 import 'channel_badge.dart';
 
-/// Dialog for picking a peer: LAN discoveries merged with relay-online paired
-/// devices, one row per [PeerRef.deviceId].
+/// Result of picking a peer in [DeviceScanDialog].
+///
+/// [allRoutes] is the full expanded list from that scan so the orbit can show
+/// every live path for the chosen device (and drop stale LAN chips).
+class DeviceScanSelection {
+  final PeerRef selected;
+  final List<PeerRef> allRoutes;
+
+  const DeviceScanSelection({
+    required this.selected,
+    required this.allRoutes,
+  });
+}
+
+/// Dialog for picking a peer route: LAN discoveries merged with relay-online
+/// paired devices, then expanded so LAN and relay are separate rows.
 class DeviceScanDialog extends StatefulWidget {
   final Set<String> localIps;
 
@@ -90,16 +104,30 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
         : const <String>{};
 
     if (persistLanHints) {
+      final discoveredIds = <String>{};
       for (final device in discovered) {
         final id = device.deviceId;
         if (id == null || id.isEmpty) {
           continue;
         }
+        discoveredIds.add(id);
         await PairedDeviceStore.instance.touch(
           id,
           deviceName: device.deviceName,
           lastSeenLan: device.displayAddress,
         );
+      }
+
+      // Peer left the LAN: drop the stale hint so settings / future scans
+      // do not keep advertising a dead address.
+      for (final device in paired) {
+        if (discoveredIds.contains(device.deviceId)) {
+          continue;
+        }
+        if (device.lastSeenLan == null) {
+          continue;
+        }
+        await PairedDeviceStore.instance.clearLastSeenLan(device.deviceId);
       }
     }
 
@@ -109,16 +137,19 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
       onlinePeers: online,
     );
 
+    final routes = PeerDirectory.expandRoutes(peers);
     final visible = widget.includeRelayPeers
-        ? peers
-        : peers.where((p) => p.hasLan).toList();
+        ? routes
+        : routes.where((p) => p.hasLan).toList();
 
     if (!mounted) return;
     setState(() => _peers = visible);
   }
 
   void _selectPeer(PeerRef peer) {
-    Navigator.of(context).pop(peer);
+    Navigator.of(context).pop(
+      DeviceScanSelection(selected: peer, allRoutes: List.unmodifiable(_peers)),
+    );
   }
 
   void _cancel() {
@@ -216,11 +247,10 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
           final base = peer.hasLan
               ? peer.lan!.address
               : (peer.deviceId == null ? '' : _shortId(peer.deviceId!));
-          final subtitle = peer.relayOnline && !peer.hasLan
-              ? (base.isEmpty ? 'relay' : '$base · relay')
-              : peer.relayOnline
-              ? '$base · LAN + relay'
-              : base;
+          final channel = peer.channelLabel;
+          final subtitle = channel == null
+              ? base
+              : (base.isEmpty ? channel : '$base · $channel');
 
           return ListTile(
             contentPadding: EdgeInsets.zero,

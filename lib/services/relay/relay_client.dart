@@ -159,8 +159,16 @@ class RelayClient {
   bool isOnline(String deviceId) => _onlinePeers.contains(deviceId);
 
   /// Applies new settings, reconnecting only if something actually changed.
+  ///
+  /// Same config after an intentional [disconnect] (e.g. HTTP server restart
+  /// on Wi‑Fi switch) still reconnects — otherwise [RelayService.start] would
+  /// no-op and presence / scan would stay empty until the user toggles relay.
   Future<void> applyConfig(RelayConfig config) async {
     if (_config == config) {
+      if (config.isActive && !isConnected) {
+        _reconnectAttempt = 0;
+        unawaited(connect());
+      }
       return;
     }
     _config = config;

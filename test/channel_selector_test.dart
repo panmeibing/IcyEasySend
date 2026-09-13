@@ -133,6 +133,36 @@ void main() {
     expect(relay.probeCalls, 0);
   });
 
+  test('preferredTransport relay skips LAN even when hasLan', () async {
+    final peer = PeerRef(
+      deviceId: 'abc',
+      lan: LanEndpoint.parse('192.168.1.10:9527'),
+      relayOnline: true,
+      preferredTransport: TransportKind.relay,
+    );
+
+    final selection = await selector.select(peer);
+
+    expect(selection!.channel.kind, TransportKind.relay);
+    expect(lan.probeCalls, 0);
+    expect(relay.probeCalls, 1);
+  });
+
+  test('preferredTransport lan skips relay even when relayOnline', () async {
+    final peer = PeerRef(
+      deviceId: 'abc',
+      lan: LanEndpoint.parse('192.168.1.10:9527'),
+      relayOnline: true,
+      preferredTransport: TransportKind.lan,
+    );
+
+    final selection = await selector.select(peer);
+
+    expect(selection!.channel.kind, TransportKind.lan);
+    expect(lan.probeCalls, 1);
+    expect(relay.probeCalls, 0);
+  });
+
   test('returns null when neither channel can reach the peer', () async {
     lan.result = ProbeResult.unreachable(
       kind: TransportKind.lan,

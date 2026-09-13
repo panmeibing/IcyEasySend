@@ -36,8 +36,14 @@ class ChannelSelector {
   }) : _statusProvider = statusProvider ?? TransferStatusProvider();
 
   /// Returns null when neither channel can reach [peer].
+  ///
+  /// When [PeerRef.preferredTransport] is set, only that channel is probed.
   Future<ChannelSelection?> select(PeerRef peer) async {
-    final lanFuture = peer.hasLan
+    final prefer = peer.preferredTransport;
+    final tryLan = peer.hasLan && prefer != TransportKind.relay;
+    final tryRelay = peer.relayOnline && prefer != TransportKind.lan;
+
+    final lanFuture = tryLan
         ? lan.probe(peer, timeout: lanWinWindow)
         : Future.value(
             ProbeResult.unavailable(
@@ -46,7 +52,7 @@ class ChannelSelector {
             ),
           );
 
-    final relayFuture = peer.relayOnline
+    final relayFuture = tryRelay
         ? relay.probe(peer, timeout: relayProbeTimeout)
         : Future.value(
             ProbeResult.unavailable(

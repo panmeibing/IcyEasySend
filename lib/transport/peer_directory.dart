@@ -2,15 +2,18 @@ import '../models/discovered_device.dart';
 import '../models/paired_device.dart';
 import 'transport_channel.dart';
 
-/// Builds one [PeerRef] per physical device from LAN discovery and relay presence.
+/// Builds [PeerRef]s from LAN discovery and relay presence.
 ///
-/// The merge key is [DiscoveredDevice.deviceId] / [PairedDevice.deviceId]. A
-/// device seen on both paths becomes a single row; pre-identity peers that
-/// only advertise an IP stay anonymous and cannot be merged with the relay.
+/// Merge is still keyed by [deviceId] (one physical device). Call
+/// [expandRoutes] when presenting a picker so LAN and relay become separate
+/// selectable rows.
 class PeerDirectory {
   const PeerDirectory._();
 
   /// Merges [discovered] with paired devices that are currently [onlinePeers].
+  ///
+  /// [PairedDevice.lastSeenLan] is intentionally not treated as a live LAN
+  /// route — only this scan's discoveries populate [PeerRef.lan].
   ///
   /// Paired devices that are offline and were not discovered on the LAN are
   /// omitted: the settings page already lists every trusted device, and a
@@ -61,9 +64,6 @@ class PeerDirectory {
       byId[device.deviceId] = PeerRef(
         deviceId: device.deviceId,
         deviceName: device.deviceName,
-        lan: device.lastSeenLan == null
-            ? null
-            : LanEndpoint.parse(device.lastSeenLan!),
         relayOnline: true,
       );
     }
@@ -71,6 +71,57 @@ class PeerDirectory {
     final peers = [...byId.values, ...anonymous];
     peers.sort(_compare);
     return peers;
+  }
+
+  /// One selectable row per live transport (LAN and/or relay).
+  ///
+  /// Dual-path devices become two [PeerRef]s that share [PeerRef.deviceId]
+  /// but pin [PeerRef.preferredTransport] so the user can choose the path.
+  static List<PeerRef> expandRoutes(Iterable<PeerRef> peers) {
+    final out = <PeerRef>[];
+    for (final peer in peers) {
+      final hasLan = peer.hasLan;
+      final hasRelay = peer.relayOnline;
+
+      if (hasLan && hasRelay) {
+        out.add(
+          PeerRef(
+            deviceId: peer.deviceId,
+            deviceName: peer.deviceName,
+            lan: peer.lan,
+            preferredTransport: TransportKind.lan,
+          ),
+        );
+        out.add(
+          PeerRef(
+            deviceId: peer.deviceId,
+            deviceName: peer.deviceName,
+            relayOnline: true,
+            preferredTransport: TransportKind.relay,
+          ),
+        );
+        continue;
+      }
+
+      if (hasLan) {
+        out.add(
+          peer.copyWith(preferredTransport: TransportKind.lan),
+        );
+        continue;
+      }
+
+      if (hasRelay) {
+        out.add(
+          peer.copyWith(preferredTransport: TransportKind.relay),
+        );
+        continue;
+      }
+
+      out.add(peer);
+    }
+
+    out.sort(_compareRoutes);
+    return out;
   }
 
   /// Turns a LAN discovery into a [PeerRef], stamping current relay presence.
@@ -105,5 +156,15 @@ class PeerDirectory {
       return nameCmp;
     }
     return a.describe().compareTo(b.describe());
+  }
+
+  static int _compareRoutes(PeerRef a, PeerRef b) {
+    final deviceCmp = _compare(a, b);
+    if (deviceCmp != 0) {
+      return deviceCmp;
+    }
+    return (a.preferredTransport?.index ?? -1).compareTo(
+      b.preferredTransport?.index ?? -1,
+    );
   }
 }

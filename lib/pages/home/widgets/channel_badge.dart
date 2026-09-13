@@ -19,10 +19,15 @@ class ChannelBadge extends StatelessWidget {
   });
 
   factory ChannelBadge.forPeer(PeerRef peer, {Key? key, double iconSize = 18}) {
+    final prefer = peer.preferredTransport;
     return ChannelBadge(
       key: key,
-      hasLan: peer.hasLan,
-      hasRelay: peer.relayOnline,
+      hasLan: prefer == TransportKind.relay
+          ? false
+          : peer.hasLan || prefer == TransportKind.lan,
+      hasRelay: prefer == TransportKind.lan
+          ? false
+          : peer.relayOnline || prefer == TransportKind.relay,
       iconSize: iconSize,
     );
   }

@@ -102,6 +102,21 @@ class PairedDeviceStore {
     await _persist();
   }
 
+  /// Drops the LAN hint when the peer was not seen on this scan.
+  Future<void> clearLastSeenLan(String deviceId) async {
+    await _ensureLoaded();
+    final index = _devices.indexWhere((d) => d.deviceId == deviceId);
+    if (index < 0) {
+      return;
+    }
+    final current = _devices[index];
+    if (current.lastSeenLan == null) {
+      return;
+    }
+    _devices[index] = current.copyWith(clearLastSeenLan: true);
+    await _persist();
+  }
+
   Future<void> remove(String deviceId) async {
     await _ensureLoaded();
     final before = _devices.length;

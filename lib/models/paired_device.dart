@@ -43,6 +43,7 @@ class PairedDevice {
     DateTime? pairedAt,
     bool? autoAccept,
     String? lastSeenLan,
+    bool clearLastSeenLan = false,
   }) {
     return PairedDevice(
       deviceId: deviceId,
@@ -51,7 +52,8 @@ class PairedDevice {
       platform: platform ?? this.platform,
       pairedAt: pairedAt ?? this.pairedAt,
       autoAccept: autoAccept ?? this.autoAccept,
-      lastSeenLan: lastSeenLan ?? this.lastSeenLan,
+      lastSeenLan:
+          clearLastSeenLan ? null : (lastSeenLan ?? this.lastSeenLan),
     );
   }
 

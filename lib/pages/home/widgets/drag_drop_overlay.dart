@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../home_ui.dart';
 
 /// Full-screen overlay shown while dragging files onto the home page.
 class DragDropOverlay extends StatelessWidget {
@@ -10,33 +11,37 @@ class DragDropOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
-        color: Colors.blue.withValues(alpha: 0.1),
+        color: HomeUi.primary.withValues(alpha: 0.08),
         child: Center(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.blue, width: 3),
+              borderRadius: BorderRadius.circular(HomeUi.radiusLg),
+              border: Border.all(color: HomeUi.primary, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  spreadRadius: 5,
+                  color: HomeUi.ink.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.file_download, size: 64, color: Colors.blue),
+                const Icon(
+                  Icons.file_download_rounded,
+                  size: 56,
+                  color: HomeUi.primary,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   AppLocalizations.of(context).releaseToAdd,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: HomeUi.primary,
                   ),
                 ),
               ],

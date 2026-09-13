@@ -35,36 +35,36 @@ class ClipboardController {
     required VoidCallback onSuccess,
     required VoidCallback onError,
   }) async {
-    if (peer.hasLan) {
-      await syncClipboard(
+    if (peer.preferredTransport == TransportKind.relay || !peer.hasLan) {
+      final deviceId = peer.deviceId;
+      if (deviceId == null || deviceId.isEmpty || !peer.relayOnline) {
+        if (context.mounted) {
+          final l10n = AppLocalizations.of(context);
+          await DialogHelper.showErrorDialog(
+            context,
+            message: l10n.targetDeviceUnavailable,
+            title: l10n.connectionFailed,
+            confirmText: l10n.confirm,
+          );
+        }
+        onError();
+        return;
+      }
+
+      await _syncViaRelay(
         context: context,
-        targetIP: peer.lan!.ip,
-        targetPort: targetPort ?? peer.lan!.port,
-        secretKey: secretKey,
+        peerDeviceId: deviceId,
         onSuccess: onSuccess,
         onError: onError,
       );
       return;
     }
 
-    final deviceId = peer.deviceId;
-    if (deviceId == null || deviceId.isEmpty || !peer.relayOnline) {
-      if (context.mounted) {
-        final l10n = AppLocalizations.of(context);
-        await DialogHelper.showErrorDialog(
-          context,
-          message: l10n.targetDeviceUnavailable,
-          title: l10n.connectionFailed,
-          confirmText: l10n.confirm,
-        );
-      }
-      onError();
-      return;
-    }
-
-    await _syncViaRelay(
+    await syncClipboard(
       context: context,
-      peerDeviceId: deviceId,
+      targetIP: peer.lan!.ip,
+      targetPort: targetPort ?? peer.lan!.port,
+      secretKey: secretKey,
       onSuccess: onSuccess,
       onError: onError,
     );

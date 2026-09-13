@@ -75,25 +75,26 @@ class LanEndpoint {
   String toString() => address;
 }
 
-/// A peer device, independent of how it is reached.
+/// A peer device, optionally pinned to one transport for UI selection.
 ///
-/// The same physical device may be reachable over several channels at once, so
-/// callers should hold one [PeerRef] per device rather than one per route.
-///
-/// [deviceId] is null when nothing but an address is known — currently the case
-/// for manually entered IPs. It becomes the merge key once devices advertise
-/// their public key over `/health` and multicast.
+/// Directory merge still produces one row per physical device. Scan / orbit
+/// then expand dual-path peers into two selectable [PeerRef]s that share the
+/// same [deviceId] but differ in [preferredTransport].
 class PeerRef {
   final String? deviceId;
   final String? deviceName;
   final LanEndpoint? lan;
   final bool relayOnline;
 
+  /// When set, [ChannelSelector] only probes this transport.
+  final TransportKind? preferredTransport;
+
   const PeerRef({
     this.deviceId,
     this.deviceName,
     this.lan,
     this.relayOnline = false,
+    this.preferredTransport,
   });
 
   /// A peer known only by its local network address.
@@ -106,10 +107,44 @@ class PeerRef {
       deviceId: deviceId,
       deviceName: deviceName,
       lan: LanEndpoint.parse(address),
+      preferredTransport: TransportKind.lan,
     );
   }
 
   bool get hasLan => lan != null;
+
+  /// Short channel label for scan / orbit / dock ("LAN" or "relay").
+  String? get channelLabel {
+    switch (preferredTransport) {
+      case TransportKind.lan:
+        return 'LAN';
+      case TransportKind.relay:
+        return 'relay';
+      case null:
+        if (hasLan && relayOnline) return 'LAN + relay';
+        if (hasLan) return 'LAN';
+        if (relayOnline) return 'relay';
+        return null;
+    }
+  }
+
+  /// Same physical device by [deviceId], else by LAN ip:port.
+  bool isSameDevice(PeerRef other) {
+    if (deviceId != null &&
+        other.deviceId != null &&
+        deviceId == other.deviceId) {
+      return true;
+    }
+    if (lan != null && other.lan != null) {
+      return lan!.ip == other.lan!.ip && lan!.port == other.lan!.port;
+    }
+    return identical(this, other);
+  }
+
+  /// Same selectable route (device + preferred transport).
+  bool isSameRoute(PeerRef other) {
+    return isSameDevice(other) && preferredTransport == other.preferredTransport;
+  }
 
   /// Short human-readable form for logs and error messages.
   String describe() {
@@ -126,12 +161,18 @@ class PeerRef {
     String? deviceName,
     LanEndpoint? lan,
     bool? relayOnline,
+    TransportKind? preferredTransport,
+    bool clearLan = false,
+    bool clearPreferredTransport = false,
   }) {
     return PeerRef(
       deviceId: deviceId ?? this.deviceId,
       deviceName: deviceName ?? this.deviceName,
-      lan: lan ?? this.lan,
+      lan: clearLan ? null : (lan ?? this.lan),
       relayOnline: relayOnline ?? this.relayOnline,
+      preferredTransport: clearPreferredTransport
+          ? null
+          : (preferredTransport ?? this.preferredTransport),
     );
   }
 

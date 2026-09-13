@@ -50,7 +50,6 @@ class ShareIntentHandler {
     required bool isSending,
     required bool Function() isMounted,
     required void Function(List<TransferFileItem> items) onItemsAdded,
-    required VoidCallback onScrollToBottom,
   }) async {
     LogUtil.iTag(logTag, '开始处理分享文件: ${sharedFiles.length} 个');
 
@@ -103,8 +102,6 @@ class ShareIntentHandler {
       context,
       AppLocalizations.of(context).filesAdded(validItems.length),
     );
-
-    onScrollToBottom();
   }
 
   Future<void> cleanupShareCacheForItems(

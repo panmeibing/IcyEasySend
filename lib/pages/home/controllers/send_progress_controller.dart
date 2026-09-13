@@ -107,7 +107,6 @@ class SendProgressController {
     required int fileCount,
     required String preparingLabel,
     required VoidCallback onUiUpdate,
-    required VoidCallback scrollToBottom,
   }) {
     ScreenWakeLockService.acquire();
     _overallThrottle.reset();
@@ -127,7 +126,6 @@ class SendProgressController {
     completedFileIndices.clear();
 
     onUiUpdate();
-    scrollToBottom();
   }
 
   void onTransferEnd({

@@ -126,6 +126,12 @@ class RelayService {
       await client.applyConfig(config);
       await _syncSubscriptions(await _pairedDevices.loadAll());
 
+      // applyConfig reconnects when needed; await a first attempt so scan /
+      // presence are not empty for several seconds after a server restart.
+      if (config.isActive && !client.isConnected) {
+        await client.connect();
+      }
+
       if (config.isActive) {
         LogUtil.iTag(logTag, '中转已启用: ${config.displayHost}');
       }

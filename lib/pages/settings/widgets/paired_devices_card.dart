@@ -16,7 +16,6 @@ import '../../../utils/constants.dart';
 import '../../../utils/dialog_helper.dart';
 import '../../../utils/log_util.dart';
 import '../../../utils/network_util.dart';
-import '../../../transport/transport_channel.dart';
 import '../../home/widgets/channel_badge.dart';
 import '../../home/widgets/device_scan_dialog.dart';
 import '../../pairing/pairing_confirm_dialog.dart';
@@ -97,13 +96,14 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
     final localIps = await NetworkUtil.getLocalPrivateIPs();
     if (!mounted) return;
 
-    final target = await showDialog<PeerRef>(
+    final selection = await showDialog<DeviceScanSelection>(
       context: context,
       builder: (_) => DeviceScanDialog(
         localIps: localIps,
         includeRelayPeers: false,
       ),
     );
+    final target = selection?.selected;
     if (target == null || !mounted || target.lan == null) return;
 
     setState(() => _pairing = true);
@@ -377,7 +377,8 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       leading: CircleAvatar(
         backgroundColor: Colors.green.withValues(alpha: 0.1),
         child: ChannelBadge(
-          hasLan: hasLanHint,
+          // lastSeenLan is a hint only — not a confirmed live LAN route.
+          hasLan: false,
           hasRelay: online,
           iconSize: 18,
         ),
@@ -390,7 +391,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       subtitle: Text(
         [
           device.shortDeviceId,
-          if (hasLanHint) device.lastSeenLan!,
+          if (hasLanHint) 'last LAN ${device.lastSeenLan}',
           if (online) 'relay',
         ].join(' · '),
         style: const TextStyle(fontSize: 12),

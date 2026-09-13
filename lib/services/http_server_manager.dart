@@ -67,7 +67,16 @@ class HTTPServerManager {
   // Network connectivity monitoring
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _networkPollTimer;
   String? _lastKnownIP;
+  String? _lastNetworkFingerprint;
+  bool _handlingNetworkChange = false;
+
+  /// How often to re-check interfaces while the server is up.
+  ///
+  /// Needed because switching Wi‑Fi↔Wi‑Fi often keeps [ConnectivityResult.wifi]
+  /// and does not fire [Connectivity.onConnectivityChanged].
+  static const Duration _networkPollInterval = Duration(seconds: 4);
 
   HTTPServerManager({
     HealthCheckHandler? healthCheckHandler,
@@ -178,37 +187,23 @@ class HTTPServerManager {
   void startNetworkMonitoring() {
     LogUtil.iTag(logTag, '开始监听网络变化...');
 
+    _connectivitySubscription?.cancel();
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
       (List<ConnectivityResult> results) async {
         LogUtil.iTag(logTag, '检测到网络变化: $results');
-
         // Wait a bit for network to stabilize
         await Future.delayed(const Duration(seconds: 1));
-
-        // Check if server is running
-        if (!isRunning()) {
-          LogUtil.dTag(logTag, '服务器未运行，跳过网络变化处理');
-          return;
-        }
-
-        // Get current IP address
-        final currentIP = await NetworkUtil.getLocalIPAddress();
-
-        // Check if IP has changed
-        if (_lastKnownIP != null && _lastKnownIP != currentIP) {
-          LogUtil.iTag(logTag, 'IP地址已变化: $_lastKnownIP -> $currentIP');
-
-          // Restart server to update IP
-          await _restartServerOnNetworkChange();
-        } else {
-          LogUtil.dTag(logTag, 'IP地址未变化: $currentIP');
-          _lastKnownIP = currentIP;
-        }
+        await _evaluateNetworkChange(reason: 'connectivity');
       },
       onError: (error) {
         LogUtil.eTag(logTag, '网络监听出错: $error');
       },
     );
+
+    _networkPollTimer?.cancel();
+    _networkPollTimer = Timer.periodic(_networkPollInterval, (_) {
+      unawaited(_evaluateNetworkChange(reason: 'poll'));
+    });
   }
 
   /// Stop monitoring network connectivity changes
@@ -216,6 +211,59 @@ class HTTPServerManager {
     LogUtil.iTag(logTag, '停止监听网络变化');
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
+    _networkPollTimer?.cancel();
+    _networkPollTimer = null;
+  }
+
+  /// Restart when the preferred IP or the live interface set changes.
+  Future<void> _evaluateNetworkChange({required String reason}) async {
+    if (_handlingNetworkChange) {
+      return;
+    }
+    if (!isRunning()) {
+      LogUtil.dTag(logTag, '服务器未运行，跳过网络变化处理 ($reason)');
+      return;
+    }
+
+    // Lock before awaits so poll + connectivity cannot both restart.
+    _handlingNetworkChange = true;
+    try {
+      final snapshot = await NetworkUtil.captureLocalNetwork(
+        logSelection: reason != 'poll',
+      );
+      if (!isRunning()) {
+        return;
+      }
+
+      final currentIP = snapshot.preferredIp;
+      final fingerprint = snapshot.fingerprint;
+
+      final ipChanged = _lastKnownIP != null && _lastKnownIP != currentIP;
+      final interfacesChanged =
+          _lastNetworkFingerprint != null &&
+          _lastNetworkFingerprint != fingerprint;
+
+      if (!ipChanged && !interfacesChanged) {
+        LogUtil.dTag(
+          logTag,
+          '网络未变化 ($reason): ip=$currentIP',
+        );
+        _lastKnownIP = currentIP;
+        _lastNetworkFingerprint = fingerprint;
+        return;
+      }
+
+      LogUtil.iTag(
+        logTag,
+        '网络已变化 ($reason): '
+        'ip=$_lastKnownIP->$currentIP, '
+        'fingerprint changed=$interfacesChanged',
+      );
+
+      await _restartServerOnNetworkChange();
+    } finally {
+      _handlingNetworkChange = false;
+    }
   }
 
   /// Restart server when network changes
@@ -337,9 +385,11 @@ class HTTPServerManager {
         _healthCheckHandler.serverPortGetter = () => _currentPort;
 
         // Get the local IP address
-        final localIP = await NetworkUtil.getLocalIPAddress();
+        final network = await NetworkUtil.captureLocalNetwork(logSelection: true);
+        final localIP = network.preferredIp;
         _serverAddress = '$localIP:$tryPort';
-        _lastKnownIP = localIP; // Store current IP for change detection
+        _lastKnownIP = localIP;
+        _lastNetworkFingerprint = network.fingerprint;
 
         LogUtil.iTag(logTag, '✅ 服务器启动成功！');
         LogUtil.iTag(logTag, '监听地址: 0.0.0.0:$tryPort');

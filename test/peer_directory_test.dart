@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:icy_easy_send/models/discovered_device.dart';
 import 'package:icy_easy_send/models/paired_device.dart';
 import 'package:icy_easy_send/transport/peer_directory.dart';
+import 'package:icy_easy_send/transport/transport_channel.dart';
 
 void main() {
   final phoneKey = base64Encode(Uint8List(32));
@@ -62,6 +63,42 @@ void main() {
     expect(peers.single.deviceName, 'Laptop');
     expect(peers.single.hasLan, isFalse);
     expect(peers.single.relayOnline, isTrue);
+  });
+
+  test('does not revive stale lastSeenLan as a live LAN route', () {
+    final peers = PeerDirectory.merge(
+      paired: [
+        paired(
+          id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          name: 'Laptop',
+          lastSeenLan: '192.168.1.50:9527',
+        ),
+      ],
+      onlinePeers: {'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'},
+    );
+
+    expect(peers, hasLength(1));
+    expect(peers.single.hasLan, isFalse);
+    expect(peers.single.relayOnline, isTrue);
+  });
+
+  test('expandRoutes splits dual-path peers into LAN and relay rows', () {
+    final peers = PeerDirectory.expandRoutes([
+      PeerRef(
+        deviceId: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        deviceName: 'Phone',
+        lan: LanEndpoint.parse('192.168.1.10:9527'),
+        relayOnline: true,
+      ),
+    ]);
+
+    expect(peers, hasLength(2));
+    expect(peers[0].preferredTransport, TransportKind.lan);
+    expect(peers[0].hasLan, isTrue);
+    expect(peers[0].relayOnline, isFalse);
+    expect(peers[1].preferredTransport, TransportKind.relay);
+    expect(peers[1].hasLan, isFalse);
+    expect(peers[1].relayOnline, isTrue);
   });
 
   test('omits paired devices that are offline and not on the LAN', () {
