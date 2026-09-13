@@ -3,7 +3,7 @@ class AppConstants {
   // Information about this project
   static const String projectName = "Icy Easy Send";
   static const String projectNameTight = "IcyEasySend";
-  static const String version = "v2.0.0";
+  static const String version = "v2.1.0";
   static const String author = "冰冷的希望";
 
   /// Public project page (releases / source).
