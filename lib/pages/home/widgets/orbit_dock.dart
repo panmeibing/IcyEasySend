@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../transport/transport_channel.dart';
+import '../../../utils/format_util.dart';
 import '../home_ui.dart';
 
 /// Bottom dock: target summary, progress, send / QR.
@@ -17,6 +18,8 @@ class OrbitDock extends StatelessWidget {
   final String? manualTargetLabel;
   final double progress;
   final String progressStatus;
+  final double transferSpeed;
+  final Duration? estimatedTimeRemaining;
   final VoidCallback onMore;
   final VoidCallback onSend;
   final VoidCallback onShareViaQr;
@@ -34,6 +37,8 @@ class OrbitDock extends StatelessWidget {
     required this.manualTargetLabel,
     required this.progress,
     required this.progressStatus,
+    required this.transferSpeed,
+    required this.estimatedTimeRemaining,
     required this.onMore,
     required this.onSend,
     required this.onShareViaQr,
@@ -128,6 +133,8 @@ class OrbitDock extends StatelessWidget {
             _DockProgress(
               progress: progress,
               status: progressStatus,
+              transferSpeed: transferSpeed,
+              estimatedTimeRemaining: estimatedTimeRemaining,
             ),
           ],
           const SizedBox(height: 14),
@@ -233,15 +240,22 @@ class _DockIconButton extends StatelessWidget {
 class _DockProgress extends StatelessWidget {
   final double progress;
   final String status;
+  final double transferSpeed;
+  final Duration? estimatedTimeRemaining;
 
   const _DockProgress({
     required this.progress,
     required this.status,
+    required this.transferSpeed,
+    required this.estimatedTimeRemaining,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final pct = (progress.clamp(0.0, 1.0) * 100).round();
+    final showRate = transferSpeed > 0 || estimatedTimeRemaining != null;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -256,9 +270,7 @@ class _DockProgress extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  status.isNotEmpty
-                      ? status
-                      : AppLocalizations.of(context).transferring,
+                  status.isNotEmpty ? status : l10n.transferring,
                   style: const TextStyle(
                     color: HomeUi.ink,
                     fontSize: 12,
@@ -288,6 +300,43 @@ class _DockProgress extends StatelessWidget {
               color: HomeUi.primary,
             ),
           ),
+          if (showRate) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (transferSpeed > 0)
+                  Expanded(
+                    child: Text(
+                      FormatUtil.formatTransferSpeedLabel(
+                        l10n.transferSpeed,
+                        transferSpeed,
+                      ),
+                      style: const TextStyle(
+                        color: HomeUi.inkMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                else
+                  const Spacer(),
+                if (estimatedTimeRemaining != null)
+                  Text(
+                    FormatUtil.formatRemainingTimeLabel(
+                      l10n.remainingTime,
+                      estimatedTimeRemaining!,
+                    ),
+                    style: const TextStyle(
+                      color: HomeUi.inkMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

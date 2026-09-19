@@ -4,6 +4,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../models/transfer_file_item.dart';
 import '../../../services/screen_wake_lock_service.dart';
 import '../../../utils/transfer_progress_throttle.dart';
+import '../../../utils/transfer_rate_tracker.dart';
 
 /// Mutable progress snapshot for the home-page transfer card.
 ///
@@ -14,7 +15,6 @@ class SendProgressController {
   double progress = 0.0;
   int bytesTransferred = 0;
   int totalBytes = 0;
-  DateTime? startTime;
   double speed = 0.0;
   Duration? estimatedTimeRemaining;
   String status = '';
@@ -27,6 +27,7 @@ class SendProgressController {
 
   final TransferProgressThrottle _overallThrottle = TransferProgressThrottle();
   final TransferProgressThrottle _fileThrottle = TransferProgressThrottle();
+  final TransferRateTracker _rateTracker = TransferRateTracker();
 
   void onOverallProgress({
     required double progress,
@@ -44,18 +45,13 @@ class SendProgressController {
         this.bytesTransferred = bytesTransferred;
         this.totalBytes = totalBytes;
 
-        if (startTime != null) {
-          final elapsed = DateTime.now().difference(startTime!);
-          if (elapsed.inMilliseconds > 0) {
-            speed = bytesTransferred / (elapsed.inMilliseconds / 1000.0);
-            if (speed > 0) {
-              final remainingBytes = totalBytes - bytesTransferred;
-              estimatedTimeRemaining = Duration(
-                seconds: (remainingBytes / speed).toInt(),
-              );
-            }
-          }
-        }
+        _rateTracker.onProgress(
+          bytesTransferred: bytesTransferred,
+          totalBytes: totalBytes,
+        );
+        speed = _rateTracker.speed;
+        estimatedTimeRemaining = _rateTracker.estimatedTimeRemaining;
+
         onUiUpdate();
       },
     );
@@ -111,13 +107,13 @@ class SendProgressController {
     ScreenWakeLockService.acquire();
     _overallThrottle.reset();
     _fileThrottle.reset();
+    _rateTracker.reset();
 
     totalFilesCount = fileCount;
     completedFilesCount = 0;
     progress = 0.0;
     bytesTransferred = 0;
     totalBytes = 0;
-    startTime = DateTime.now();
     speed = 0.0;
     estimatedTimeRemaining = null;
     status = preparingLabel;
@@ -133,13 +129,13 @@ class SendProgressController {
     required VoidCallback clearSelectedItems,
   }) {
     ScreenWakeLockService.release();
+    _rateTracker.reset();
 
     completedFilesCount = 0;
     totalFilesCount = 0;
     progress = 0.0;
     bytesTransferred = 0;
     totalBytes = 0;
-    startTime = null;
     speed = 0.0;
     estimatedTimeRemaining = null;
     status = '';

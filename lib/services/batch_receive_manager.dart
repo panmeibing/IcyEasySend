@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/constants.dart';
 import '../utils/format_util.dart';
 import '../utils/transfer_progress_throttle.dart';
+import '../utils/transfer_rate_tracker.dart';
 import '../utils/transfer_status_provider.dart';
 import 'screen_wake_lock_service.dart';
 
@@ -351,6 +352,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   bool _closeScheduled = false;
   Timer? _countdownTimer;
   Timer? _updateTimer;
+  final TransferRateTracker _rateTracker = TransferRateTracker();
 
   // Local copy of pending files (can be updated dynamically)
   late List<PendingFileInfo> _displayedFiles;
@@ -424,6 +426,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
 
       if (_isAccepted) {
         setState(() {
+          _refreshOverallRate();
           // Check if all files are completed
           _allCompleted = _displayedFiles.every((file) => file.isCompleted);
         });
@@ -440,6 +443,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   void _notifyProgressUpdate() {
     if (mounted && _isAccepted) {
       setState(() {
+        _refreshOverallRate();
         // Check if all files are completed
         _allCompleted = _displayedFiles.every((file) => file.isCompleted);
       });
@@ -448,6 +452,21 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
         _scheduleAutoClose();
       }
     }
+  }
+
+  void _refreshOverallRate() {
+    if (_allCompleted) {
+      return;
+    }
+    final totalBytes = _getTotalSize();
+    final bytesReceived = _displayedFiles.fold<int>(
+      0,
+      (sum, file) => sum + file.bytesReceived,
+    );
+    _rateTracker.onProgress(
+      bytesTransferred: bytesReceived,
+      totalBytes: totalBytes,
+    );
   }
 
   void _scheduleAutoClose() {
@@ -472,6 +491,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     _countdownTimer = null;
 
     ScreenWakeLockService.acquire();
+    _rateTracker.reset();
 
     setState(() {
       _isAccepted = true;
@@ -583,6 +603,30 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                 '${l10n.totalSizeBatch}: ${FormatUtil.formatBytes(totalSize)}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
+              if (_isAccepted &&
+                  !_allCompleted &&
+                  (_rateTracker.speed > 0 ||
+                      _rateTracker.estimatedTimeRemaining != null)) ...[
+                const SizedBox(height: 6),
+                if (_rateTracker.speed > 0)
+                  Text(
+                    FormatUtil.formatTransferSpeedLabel(
+                      l10n.transferSpeed,
+                      _rateTracker.speed,
+                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  ),
+                if (_rateTracker.estimatedTimeRemaining != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    FormatUtil.formatRemainingTimeLabel(
+                      l10n.remainingTime,
+                      _rateTracker.estimatedTimeRemaining!,
+                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  ),
+                ],
+              ],
               const SizedBox(height: 16),
 
               // File list

@@ -437,6 +437,8 @@ class HomePageState extends State<HomePage> {
                     manualTargetLabel: _manualTargetLabel(),
                     progress: _sendProgress.progress,
                     progressStatus: _sendProgress.status,
+                    transferSpeed: _sendProgress.speed,
+                    estimatedTimeRemaining: _sendProgress.estimatedTimeRemaining,
                     onMore: _showOrbitMore,
                     onSend: _sendFiles,
                     onShareViaQr: _shareViaQr,

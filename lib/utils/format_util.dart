@@ -37,20 +37,30 @@ class FormatUtil {
     }
   }
 
-  /// Format duration to human-readable format
+  /// Format duration as zero-padded `HH:MM:SS`.
   ///
   /// Examples:
-  /// - 30 秒
-  /// - 2 分 30 秒
-  /// - 1 小时 15 分
+  /// - 00:00:30
+  /// - 00:02:05
+  /// - 01:15:00
+  /// - 26:03:09 (hours are not capped at 24)
   static String formatDuration(Duration duration) {
-    if (duration.inSeconds < 60) {
-      return '${duration.inSeconds} 秒';
-    } else if (duration.inMinutes < 60) {
-      return '${duration.inMinutes} 分 ${duration.inSeconds % 60} 秒';
-    } else {
-      return '${duration.inHours} 小时 ${duration.inMinutes % 60} 分';
-    }
+    final totalSeconds = duration.inSeconds < 0 ? 0 : duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(hours)}:${two(minutes)}:${two(seconds)}';
+  }
+
+  /// Localized transfer rate line, e.g. `传输速度: 1.5 MB/s`.
+  static String formatTransferSpeedLabel(String label, double bytesPerSecond) {
+    return '$label: ${formatSpeed(bytesPerSecond)}';
+  }
+
+  /// Localized remaining-time line, e.g. `剩余时间: 00:25:23`.
+  static String formatRemainingTimeLabel(String label, Duration duration) {
+    return '$label: ${formatDuration(duration)}';
   }
 
   /// Format full date time for detail view
