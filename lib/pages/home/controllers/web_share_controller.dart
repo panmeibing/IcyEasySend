@@ -85,6 +85,9 @@ class WebShareController {
       if (!context.mounted || !isMounted()) return;
 
       ToastHelper.showSuccess(context, l10n.webShareCreated);
+      // The dialog stays open until the guest finishes. Stop the button
+      // spinner before that wait, otherwise QR looks stuck loading.
+      onCreatingEnd();
 
       await WebShareQrDialog.show(
         context,

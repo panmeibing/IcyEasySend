@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart' as path_provider;
 import '../services/preferences_service.dart';
 import 'constants.dart';
 import 'log_util.dart';
+import 'ohos_platform.dart';
+import 'ohos_public_downloads.dart';
 
 /// Platform related tools and methods
 class PlatformUtil {
@@ -60,6 +62,18 @@ class PlatformUtil {
       } else if (Platform.isIOS) {
         LogUtil.dTag(logTag, '平台: iOS');
         directory = await path_provider.getApplicationDocumentsDirectory();
+      } else if (isOhosPlatform) {
+        // HarmonyOS: path_provider's "downloads" is app-sandbox only. Prefer the
+        // user-visible public Downloads (2-in-1 API or Download/<bundle>/).
+        LogUtil.dTag(logTag, '平台: ohos');
+        final publicPath = await OhosPublicDownloads.resolvePath();
+        if (publicPath != null && publicPath.isNotEmpty) {
+          directory = Directory(publicPath);
+        } else {
+          LogUtil.wTag(logTag, '鸿蒙公共下载目录不可用，回退到应用目录');
+          directory = await path_provider.getDownloadsDirectory() ??
+              await path_provider.getApplicationDocumentsDirectory();
+        }
       } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
         LogUtil.dTag(logTag, '平台: ${Platform.operatingSystem}');
         directory = await path_provider.getDownloadsDirectory();

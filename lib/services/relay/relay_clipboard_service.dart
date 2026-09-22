@@ -12,6 +12,8 @@ import '../../models/clipboard_data_model.dart';
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
+import '../../utils/ohos_clipboard_share.dart';
+import '../../utils/inbound_ui.dart';
 import '../../utils/operation_result.dart';
 import '../../utils/relay_message_provider.dart';
 import '../clipboard_service.dart';
@@ -438,7 +440,12 @@ class RelayClipboardService {
         return;
       }
 
-      final content = await _clipboardService.getClipboardContent();
+      final content = await OhosClipboardShare.resolveForPeerShare(
+        context: contextGetter?.call(),
+        allowCacheFallback: true,
+        preferencesService: _preferences,
+        readLive: _clipboardService.getClipboardContent,
+      );
       if (content == null) {
         await _sendResponse(
           session,
@@ -837,14 +844,11 @@ class RelayClipboardService {
   }
 
   bool _hasUsableUi() {
-    if (confirmShare != null) {
-      return true;
-    }
-    if (isInBackgroundGetter?.call() ?? false) {
-      return false;
-    }
-    final context = contextGetter?.call();
-    return context != null && context.mounted;
+    return canShowInboundUi(
+      contextGetter: contextGetter,
+      isInBackgroundGetter: isInBackgroundGetter,
+      forceAvailable: confirmShare != null,
+    );
   }
 
   Future<RelayCryptoWorker> _openWorker() async {

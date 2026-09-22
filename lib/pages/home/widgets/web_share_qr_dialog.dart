@@ -130,6 +130,10 @@ class _WebShareQrDialogState extends State<WebShareQrDialog> {
     final qrSize = (screenWidth * 0.55).clamp(180.0, 260.0);
 
     return AlertDialog(
+      // Flutter-OH defaults AlertDialog.scrollable to true on HarmonyOS, which
+      // wraps content in another scroll view. That gives this SingleChildScrollView
+      // unbounded height, so the route stays up with nothing painted.
+      scrollable: false,
       title: Row(
         children: [
           const Icon(Icons.qr_code_2, color: Colors.blue),

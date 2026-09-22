@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:icy_easy_send/utils/constants.dart';
+import 'package:icy_easy_send/utils/ohos_platform.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -117,7 +119,17 @@ class ClipboardService {
   Future<ClipboardDataModel?> getClipboardContent() async {
     LogUtil.dTag(logTag, '正在读取本地剪切板...');
 
-    if (Platform.isAndroid || Platform.isIOS) {
+    // HarmonyOS: silent pasteboard read needs ACL + runtime grant.
+    // Share flows call [OhosClipboardShare] (silent → paste dialog).
+    // Other callers still skip silent read here to avoid empty/failed probes.
+    if (isOhosPlatform) {
+      LogUtil.dTag(logTag, '鸿蒙 getClipboardContent 跳过（由 OhosClipboardShare 处理）');
+      return null;
+    }
+
+    final useNativeClipboard = Platform.isAndroid || Platform.isIOS;
+
+    if (useNativeClipboard) {
       try {
         final imageData = await _readNativeImage();
         if (imageData != null) {
@@ -149,7 +161,7 @@ class ClipboardService {
     }
 
     // Native text after binary content — avoids treating copied images as text.
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (useNativeClipboard) {
       try {
         final nativeText = await _readNativeText();
         if (nativeText != null) {
@@ -168,6 +180,21 @@ class ClipboardService {
     }
     if (textData != null) {
       return textData;
+    }
+
+    // Desktop fallback when super_clipboard has no plain text.
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text != null && text.isNotEmpty) {
+        LogUtil.iTag(logTag, 'Flutter Clipboard 兜底读取成功，长度: ${text.length}');
+        return ClipboardDataModel(
+          type: ClipboardDataType.text,
+          textContent: text,
+        );
+      }
+    } catch (e, stackTrace) {
+      LogUtil.wTag(logTag, 'Flutter Clipboard 兜底读取失败: $e', e, stackTrace);
     }
 
     LogUtil.wTag(logTag, '剪切板为空或不包含支持的格式');
@@ -501,6 +528,25 @@ class ClipboardService {
     try {
       LogUtil.dTag(logTag, '正在写入剪切板，类型: ${data.typeDescription}');
 
+      // Text first: HarmonyOS (and any platform without super_clipboard) can still
+      // use Flutter's Clipboard channel.
+      if (data.type == ClipboardDataType.text && data.textContent != null) {
+        if (isOhosPlatform) {
+          return NativeClipboardService.setTextToClipboard(data.textContent!);
+        }
+
+        final clipboard = SystemClipboard.instance;
+        if (clipboard == null) {
+          return NativeClipboardService.setTextToClipboard(data.textContent!);
+        }
+
+        final item = DataWriterItem();
+        item.add(Formats.plainText(data.textContent!));
+        await clipboard.write([item]);
+        LogUtil.iTag(logTag, '成功写入文本剪切板');
+        return true;
+      }
+
       final clipboard = SystemClipboard.instance;
       if (clipboard == null) {
         LogUtil.wTag(logTag, '剪切板 API 不可用');
@@ -508,14 +554,6 @@ class ClipboardService {
       }
 
       final item = DataWriterItem();
-
-      // 处理文本类型
-      if (data.type == ClipboardDataType.text && data.textContent != null) {
-        item.add(Formats.plainText(data.textContent!));
-        await clipboard.write([item]);
-        LogUtil.iTag(logTag, '成功写入文本剪切板');
-        return true;
-      }
 
       // 处理文件类型
       if (data.type == ClipboardDataType.file &&

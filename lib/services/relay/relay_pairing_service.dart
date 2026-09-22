@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../utils/constants.dart';
+import '../../utils/inbound_ui.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
 import '../../utils/operation_result.dart';
@@ -481,11 +482,10 @@ class RelayPairingService {
   }
 
   bool _hasUsableUi() {
-    if (isInBackgroundGetter?.call() ?? false) {
-      return false;
-    }
-    final context = contextGetter?.call();
-    return context != null && context.mounted;
+    return canShowInboundUi(
+      contextGetter: contextGetter,
+      isInBackgroundGetter: isInBackgroundGetter,
+    );
   }
 
   String _describeRefusal(String? reason) {

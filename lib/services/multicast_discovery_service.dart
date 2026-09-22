@@ -10,6 +10,7 @@ import '../utils/log_util.dart';
 import '../utils/multicast_lock_helper.dart';
 import '../utils/multicast_socket_options.dart';
 import '../utils/network_util.dart';
+import '../utils/ohos_platform.dart';
 import 'identity_service.dart';
 
 /// UDP multicast / broadcast LAN discovery (LocalSend-style).
@@ -480,5 +481,6 @@ class MulticastDiscoveryService {
     _multicastLockHeld = false;
   }
 
-  bool get _supportsReusePort => Platform.isLinux || Platform.isAndroid;
+  bool get _supportsReusePort =>
+      Platform.isLinux || Platform.isAndroid || isOhosPlatform;
 }

@@ -11,6 +11,7 @@ import '../services/clipboard_cache_service.dart';
 import '../services/preferences_service.dart';
 import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
+import '../utils/ohos_clipboard_share.dart';
 import '../utils/toast_helper.dart';
 
 /// 剪切板请求处理器
@@ -91,18 +92,8 @@ class ClipboardHandler {
             savedSecretKey == secretKey) {
           skipConfirmation = true;
           LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
-
-          // Toast only when UI is available (foreground)
-          final currentCtx = contextGetter?.call();
-          if (!_isInBackground &&
-              currentCtx != null &&
-              currentCtx.mounted) {
-            final l10n = AppLocalizations.of(currentCtx);
-            ToastHelper.showSuccess(
-              currentCtx,
-              l10n.clipboardSharedWithSecretKey(requesterDeviceName),
-            );
-          }
+          // Toast only after content is actually resolved — especially on
+          // HarmonyOS where paste-to-share still runs after key auto-accept.
         } else {
           LogUtil.wTag(logTag, '秘钥验证失败或未设置本机秘钥');
         }
@@ -112,8 +103,22 @@ class ClipboardHandler {
       if (skipConfirmation) {
         userAccepted = true;
       } else if (_isInBackground) {
-        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝剪切板请求');
-        return _buildBackgroundRejectedResponse();
+        // Prefer showing the dialog whenever a mounted UI context still exists.
+        // HarmonyOS can report "background" while still visible.
+        final ctx = contextGetter?.call();
+        if (ctx != null && ctx.mounted) {
+          LogUtil.wTag(
+            logTag,
+            '生命周期标记为后台，但 UI 上下文可用，仍弹出剪切板确认',
+          );
+          userAccepted = await _showClipboardRequestDialog(
+            ctx,
+            requesterDeviceName,
+          );
+        } else {
+          LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝剪切板请求');
+          return _buildBackgroundRejectedResponse();
+        }
       } else {
         final ctx = contextGetter?.call();
         if (ctx == null || !ctx.mounted) {
@@ -131,16 +136,18 @@ class ClipboardHandler {
         return _buildRejectedResponse();
       }
 
-      // 用户同意，获取剪切板内容（后台可回退到单槽缓存）
-      final shareResult = await ClipboardCacheService.instance
-          .getContentForSharing(
-            allowCacheFallback: _isInBackground,
-            preferencesService: _preferencesService,
-          );
-      final clipboardData = shareResult.data;
+      // LAN + OHOS share one resolver (live/cache, or paste dialog on OHOS).
+      final clipboardData = await OhosClipboardShare.resolveForPeerShare(
+        context: contextGetter?.call(),
+        allowCacheFallback: true,
+        preferencesService: _preferencesService,
+        readLive: () => ClipboardCacheService.instance.refreshFromSystem(
+          preferencesService: _preferencesService,
+        ),
+      );
 
       if (clipboardData == null) {
-        if (shareResult.cacheMissInBackground) {
+        if (_isInBackground) {
           LogUtil.wTag(logTag, '后台无可用剪切板缓存');
           return _buildBackgroundCacheMissResponse();
         }
@@ -148,8 +155,15 @@ class ClipboardHandler {
         return _buildEmptyClipboardResponse();
       }
 
-      if (shareResult.fromCache) {
-        LogUtil.iTag(logTag, '使用缓存剪切板内容分享');
+      if (skipConfirmation) {
+        final currentCtx = contextGetter?.call();
+        if (currentCtx != null && currentCtx.mounted) {
+          final l10n = AppLocalizations.of(currentCtx);
+          ToastHelper.showSuccess(
+            currentCtx,
+            l10n.clipboardSharedWithSecretKey(requesterDeviceName),
+          );
+        }
       }
 
       // 检查剪切板大小
@@ -190,16 +204,15 @@ class ClipboardHandler {
     BuildContext context,
     String requesterDeviceName,
   ) async {
-    // 使用 Completer 来处理超时
-    final completer = Completer<bool>();
-    bool dialogClosed = false;
+    var dialogClosed = false;
 
     // 设置超时定时器
     final timeoutTimer = Timer(AppConstants.receiveConfirmationTimeout, () {
-      if (!dialogClosed && !completer.isCompleted) {
+      if (!dialogClosed) {
         dialogClosed = true;
-        Navigator.of(context, rootNavigator: true).pop();
-        completer.complete(false);
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop(false);
+        }
         LogUtil.wTag(logTag, '剪切板请求确认超时');
       }
     });
@@ -212,6 +225,7 @@ class ClipboardHandler {
       final result = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
+        useRootNavigator: true,
         builder: (dialogContext) => _ClipboardRequestDialog(
           requesterDeviceName: requesterDeviceName,
           onAccept: () {

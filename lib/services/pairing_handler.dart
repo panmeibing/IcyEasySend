@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shelf/shelf.dart';
 
 import '../utils/constants.dart';
+import '../utils/inbound_ui.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import 'identity_service.dart';
@@ -201,11 +202,10 @@ class PairingHandler {
   }
 
   bool _hasUsableUi() {
-    if (isInBackgroundGetter?.call() ?? false) {
-      return false;
-    }
-    final context = contextGetter?.call();
-    return context != null && context.mounted;
+    return canShowInboundUi(
+      contextGetter: contextGetter,
+      isInBackgroundGetter: isInBackgroundGetter,
+    );
   }
 
   /// Drops pending pairings; called when the server stops.

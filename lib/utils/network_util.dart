@@ -5,6 +5,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 import 'constants.dart';
 import 'log_util.dart';
+import 'ohos_platform.dart';
 
 /// Preferred local IP plus a stable interface fingerprint.
 class LocalNetworkSnapshot {
@@ -244,6 +245,10 @@ class NetworkUtil {
       } else if (Platform.isLinux) {
         final linuxInfo = await deviceInfo.linuxInfo;
         deviceName = linuxInfo.name;
+      } else if (isOhosPlatform) {
+        // device_info_plus_ohos exposes marketName / brand / productModel.
+        final info = await deviceInfo.deviceInfo;
+        deviceName = displayNameFromOhosDeviceData(info.data);
       } else {
         // Fallback to hostname
         try {
@@ -292,6 +297,24 @@ class NetworkUtil {
     if (ip.startsWith('172.')) return 2;
     if (ip.startsWith('10.')) return 3;
     return 4; // other
+  }
+
+  /// User-facing name from HarmonyOS [deviceInfo] map fields.
+  ///
+  /// Prefers marketing name (e.g. "HUAWEI Mate 60"), then brand + model.
+  static String displayNameFromOhosDeviceData(Map<String, dynamic> data) {
+    final market = '${data['marketName'] ?? ''}'.trim();
+    if (market.isNotEmpty) return market;
+
+    final brand = '${data['brand'] ?? ''}'.trim();
+    final model = '${data['productModel'] ?? ''}'.trim();
+    final combined = [brand, model].where((s) => s.isNotEmpty).join(' ');
+    if (combined.isNotEmpty) return combined;
+
+    final software = '${data['softwareModel'] ?? ''}'.trim();
+    if (software.isNotEmpty) return software;
+
+    return 'HarmonyOS Device';
   }
 
   /// Check if the device is connected to WiFi

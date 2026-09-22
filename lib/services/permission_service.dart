@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:icy_easy_send/utils/log_util.dart';
+import 'package:icy_easy_send/utils/ohos_platform.dart';
+import 'package:icy_easy_send/utils/ohos_public_downloads.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 /// Result of permission request operation
@@ -79,6 +81,17 @@ class PermissionService {
         // Only request photo library permission if specifically accessing photos
         // For general file selection, no permission is needed
         return PermissionRequestResult(granted: true);
+      } else if (isOhosPlatform) {
+        // HarmonyOS: warm public Downloads. Clipboard uses OhosClipboardShare
+        // (READ_PASTEBOARD when ACL+grant allow, else paste dialog).
+        try {
+          await ph.Permission.storage.request();
+        } catch (e, stackTrace) {
+          LogUtil.wTag(logTag, '鸿蒙存储权限请求失败: $e', e, stackTrace);
+        }
+        // Prefer cached path; only re-resolve when missing (avoids re-picker).
+        await OhosPublicDownloads.resolvePath();
+        return PermissionRequestResult(granted: true);
       } else {
         // Desktop platforms don't require runtime permissions
         return PermissionRequestResult(granted: true);
@@ -117,6 +130,9 @@ class PermissionService {
         return true;
       } else if (Platform.isIOS) {
         // On iOS, file_picker doesn't require permissions for document selection
+        return true;
+      } else if (isOhosPlatform) {
+        // Sandbox / public Downloads both work; align with requestStoragePermission.
         return true;
       } else {
         // Desktop platforms don't require runtime permissions

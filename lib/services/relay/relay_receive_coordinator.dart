@@ -9,6 +9,7 @@ import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/disk_space_error.dart';
 import '../../utils/error_messages.dart';
+import '../../utils/inbound_ui.dart';
 import '../../utils/log_util.dart';
 import '../../utils/transfer_status_provider.dart';
 import '../batch_receive_manager.dart';
@@ -291,10 +292,13 @@ class RelayReceiveCoordinator {
     }
 
     // Read late, so the decision is made on the freshest possible view of
-    // whether there is anyone to ask.
-    final context = (isInBackgroundGetter?.call() ?? false)
-        ? null
-        : contextGetter?.call();
+    // whether there is anyone to ask. Mounted context wins over "background".
+    if (!_hasUsableUi()) {
+      LogUtil.wTag(logTag, '无可用界面，拒绝中转传输: ${_short(peerDeviceId)}');
+      await _rejectSession(session, RelayRejectReason.noUi);
+      return;
+    }
+    final context = contextGetter?.call();
     if (context == null || !context.mounted) {
       LogUtil.wTag(logTag, '无可用界面，拒绝中转传输: ${_short(peerDeviceId)}');
       await _rejectSession(session, RelayRejectReason.noUi);
@@ -424,11 +428,10 @@ class RelayReceiveCoordinator {
   }
 
   bool _hasUsableUi() {
-    if (isInBackgroundGetter?.call() ?? false) {
-      return false;
-    }
-    final context = contextGetter?.call();
-    return context != null && context.mounted;
+    return canShowInboundUi(
+      contextGetter: contextGetter,
+      isInBackgroundGetter: isInBackgroundGetter,
+    );
   }
 
   // -- file transfer --------------------------------------------------------

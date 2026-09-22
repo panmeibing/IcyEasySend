@@ -18,6 +18,7 @@ import 'services/pairing_prompter.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/log_util.dart';
+import 'utils/ohos_platform.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,8 +80,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Treat only paused/hidden as true background for inbound request policy.
     // `inactive` can occur during system dialogs while still visible.
-    final treatAsBackground =
-        state == AppLifecycleState.paused || state == AppLifecycleState.hidden;
+    //
+    // HarmonyOS Flutter embedding frequently reports `hidden` while the app is
+    // still on screen; treating that as background silently rejects inbound
+    // receive confirmations. On OHOS, only `paused` counts as background.
+    final treatAsBackground = isOhosPlatform
+        ? state == AppLifecycleState.paused
+        : state == AppLifecycleState.paused ||
+            state == AppLifecycleState.hidden;
     _serverManager.setInBackground(treatAsBackground);
 
     LogUtil.dTag(

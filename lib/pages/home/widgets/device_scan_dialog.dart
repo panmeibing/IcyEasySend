@@ -51,6 +51,10 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
   int _scannedCount = 0;
   int _totalCount = 0;
 
+  /// Bumps on each scan / rebuild so overlapping async merges cannot paint
+  /// stale peer lists after a newer scan has already started.
+  int _rebuildGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -60,10 +64,12 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
   @override
   void dispose() {
     _discoveryService.cancel();
+    _rebuildGeneration++;
     super.dispose();
   }
 
   Future<void> _startScan() async {
+    _rebuildGeneration++;
     setState(() {
       _isScanning = true;
       _peers = [];
@@ -98,7 +104,10 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
     List<DiscoveredDevice> discovered, {
     required bool persistLanHints,
   }) async {
+    final generation = _rebuildGeneration;
     final paired = await PairedDeviceStore.instance.loadAll();
+    if (!mounted || generation != _rebuildGeneration) return;
+
     final online = widget.includeRelayPeers
         ? RelayService.instance.client.onlinePeers
         : const <String>{};
@@ -116,6 +125,7 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
           deviceName: device.deviceName,
           lastSeenLan: device.displayAddress,
         );
+        if (!mounted || generation != _rebuildGeneration) return;
       }
 
       // Peer left the LAN: drop the stale hint so settings / future scans
@@ -128,6 +138,7 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
           continue;
         }
         await PairedDeviceStore.instance.clearLastSeenLan(device.deviceId);
+        if (!mounted || generation != _rebuildGeneration) return;
       }
     }
 
@@ -142,7 +153,7 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
         ? routes
         : routes.where((p) => p.hasLan).toList();
 
-    if (!mounted) return;
+    if (!mounted || generation != _rebuildGeneration) return;
     setState(() => _peers = visible);
   }
 
@@ -164,6 +175,12 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final size = MediaQuery.sizeOf(context);
+    // Fixed bounds avoid AlertDialog intrinsic measurement of ListView, which
+    // on HarmonyOS can leave the dialog body blank once peers appear.
+    final dialogWidth = (size.width * 0.85).clamp(280.0, 420.0);
+    // Keep the dialog compact: room for progress + a few peer rows, not half the screen.
+    final contentHeight = (size.height * 0.38).clamp(200.0, 320.0);
 
     return AlertDialog(
       title: Row(
@@ -174,9 +191,9 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
         ],
       ),
       content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8,
+        width: dialogWidth,
+        height: contentHeight,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (_isScanning) ...[
@@ -192,23 +209,27 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
                     : l10n.scanningDevices,
                 textAlign: TextAlign.center,
               ),
-              if (_peers.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _buildPeerList(),
-              ],
-            ] else if (_peers.isEmpty) ...[
-              Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
               const SizedBox(height: 12),
-              Text(
-                l10n.noDevicesFound,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.noDevicesFoundHint,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ] else if (_peers.isEmpty) ...[
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.noDevicesFound,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.noDevicesFoundHint,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
               ),
             ] else ...[
               Text(
@@ -216,8 +237,9 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
                 style: TextStyle(fontSize: 13, color: Colors.grey[600]),
               ),
               const SizedBox(height: 8),
-              _buildPeerList(),
             ],
+            if (_peers.isNotEmpty) Expanded(child: _buildPeerList()),
+            if (_isScanning && _peers.isEmpty) const Spacer(),
           ],
         ),
       ),
@@ -236,41 +258,37 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
   }
 
   Widget _buildPeerList() {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxHeight: 320),
-      child: ListView.separated(
-        shrinkWrap: true,
-        itemCount: _peers.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final peer = _peers[index];
-          final base = peer.hasLan
-              ? peer.lan!.address
-              : (peer.deviceId == null ? '' : _shortId(peer.deviceId!));
-          final channel = peer.channelLabel;
-          final subtitle = channel == null
-              ? base
-              : (base.isEmpty ? channel : '$base · $channel');
+    return ListView.separated(
+      itemCount: _peers.length,
+      separatorBuilder: (context, index) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final peer = _peers[index];
+        final base = peer.hasLan
+            ? peer.lan!.address
+            : (peer.deviceId == null ? '' : _shortId(peer.deviceId!));
+        final channel = peer.channelLabel;
+        final subtitle = channel == null
+            ? base
+            : (base.isEmpty ? channel : '$base · $channel');
 
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: CircleAvatar(
-              backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              child: ChannelBadge.forPeer(peer),
-            ),
-            title: Text(
-              peer.deviceName?.isNotEmpty == true
-                  ? peer.deviceName!
-                  : peer.describe(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(subtitle),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _selectPeer(peer),
-          );
-        },
-      ),
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(
+            backgroundColor: Colors.blue.withValues(alpha: 0.1),
+            child: ChannelBadge.forPeer(peer),
+          ),
+          title: Text(
+            peer.deviceName?.isNotEmpty == true
+                ? peer.deviceName!
+                : peer.describe(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(subtitle),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _selectPeer(peer),
+        );
+      },
     );
   }
 }

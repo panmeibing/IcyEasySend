@@ -133,10 +133,19 @@ class BatchReceiveManager {
     bool autoAccept,
     Future<void> Function()? onComplete,
   ) async {
-    if (!context.mounted) return;
-
     final pendingFiles = _pendingFilesBySender[senderIP];
     if (pendingFiles == null || pendingFiles.isEmpty) return;
+
+    // Yield so shelf handlers always open the dialog on a fresh UI frame.
+    await Future<void>.delayed(Duration.zero);
+    if (!context.mounted) {
+      for (final fileInfo in pendingFiles) {
+        if (!fileInfo.completer.isCompleted) {
+          fileInfo.completer.complete(false);
+        }
+      }
+      return;
+    }
 
     // Get localization
     final l10n = AppLocalizations.of(context);
@@ -157,6 +166,7 @@ class BatchReceiveManager {
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
+        useRootNavigator: true,
         builder: (dialogContext) => _BatchReceiveDialog(
           key: dialogKey,
           senderIP: senderIP,
@@ -551,7 +561,11 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     final l10n = AppLocalizations.of(context);
     final totalSize = _getTotalSize();
     final fileCount = _displayedFiles.length;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final size = MediaQuery.sizeOf(context);
+    // Fixed bounds: AlertDialog + Flexible/ListView intrinsic sizing blanks out
+    // on HarmonyOS the same way the scan dialog did.
+    final dialogWidth = (size.width * 0.85).clamp(280.0, 420.0);
+    final contentHeight = (size.height * 0.45).clamp(240.0, 380.0);
 
     return PopScope(
       canPop: !_isAccepted || _allCompleted,
@@ -574,9 +588,9 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
           ],
         ),
         content: SizedBox(
-          width: screenWidth * AppConstants.dialogWidthPercent,
+          width: dialogWidth,
+          height: contentHeight,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Sender info
@@ -627,7 +641,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                   ),
                 ],
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // File list
               Text(
@@ -636,15 +650,13 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
               ),
               const SizedBox(height: 8),
 
-              Flexible(
+              Expanded(
                 child: Container(
-                  constraints: const BoxConstraints(maxHeight: 300),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ListView.separated(
-                    shrinkWrap: true,
                     itemCount: _displayedFiles.length,
                     separatorBuilder: (context, index) =>
                         Divider(height: 1, color: Colors.grey[300]),
@@ -713,7 +725,7 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
               // Status message
               if (_isAccepted) ...[
@@ -726,12 +738,14 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        l10n.allFilesReceiveComplete,
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                      Expanded(
+                        child: Text(
+                          l10n.allFilesReceiveComplete,
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ],
@@ -750,9 +764,14 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        l10n.receivingFiles2,
-                        style: TextStyle(color: Colors.blue[700], fontSize: 14),
+                      Expanded(
+                        child: Text(
+                          l10n.receivingFiles2,
+                          style: TextStyle(
+                            color: Colors.blue[700],
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ],
                   ),

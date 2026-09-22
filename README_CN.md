@@ -4,14 +4,14 @@
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 一个高效、跨平台的文件传输应用——默认走局域网，也可自建中转实现跨网传输
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[功能特性](#功能特性) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
+[功能特性](#功能特性) • [分支说明](#分支说明-main-与鸿蒙) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
 
 </div>
 
@@ -26,10 +26,39 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 - 🚀 **高速传输**: 有局域网时直连，速度仅受限于网络带宽
 - 🔒 **安全可靠**: 局域网流量不出本网；中转流量端到端加密，服务器只能看到密文
 - 🌐 **跨网可选**: 自建中转并配对后，可在不同局域网间传文件、同步剪切板
-- 📱 **跨平台支持**: 一套代码，支持 Android、iOS、Windows、macOS、Linux
+- 📱 **跨平台支持**: Android、iOS、Windows、macOS、Linux；鸿蒙 NEXT 在专用分支构建
 - 🎯 **简单易用**: 扫描设备或输入 IP；中转场景用设备码配对即可
 - 📦 **批量传输**: 支持一次性发送多个文件，自动管理传输队列
 - 📋 **剪切板同步**: 跨设备同步文本、文件和图片（局域网或中转）
+
+---
+
+## 🌿 分支说明：`main` 与鸿蒙
+
+本仓库将 **官方 Flutter 平台** 与 **鸿蒙 NEXT** 分开维护，避免两套工具链互相污染。
+
+| | **`main`** | **`feat/support_harmony_os`**（鸿蒙分支） |
+|---|---|---|
+| **目标平台** | Android、iOS、Windows、macOS、Linux | 鸿蒙 NEXT（同一套 Dart 业务；OH 插件通过 overrides 注入） |
+| **Flutter SDK** | 官方 Flutter **3.41.2+** | 独立安装的 **Flutter-OH `oh-3.41.9-release`**（不要覆盖官方 SDK，也不要对 Flutter-OH 执行 `flutter upgrade`） |
+| **`pubspec.yaml`** | 依赖源文件 | **与 `main` 保持一致**，不在此文件写鸿蒙专用依赖 |
+| **OH 插件** | 不使用 | 由 `installers/HarmonyOS/pubspec_overrides.yaml` 提供，经 `pub-get.ps1` 复制为仓库根目录 `pubspec_overrides.yaml`（已 gitignore） |
+| **原生工程** | `android/`、`ios/`、`windows/` 等 | `ohos/` 源码同样入库；忽略 `oh_modules/`、`build/`、HAP，以及带签名的本机 `build-profile.json5` |
+| **构建命令** | 系统 `flutter` / 常规 CI | 仅使用 `installers/HarmonyOS/flutter-oh.cmd …` |
+| **适合提交的内容** | 应用代码 + 官方平台工程 | 同一套 Dart + `ohos/` 源码 + `installers/HarmonyOS/` 脚本 |
+
+**日常约定**
+
+- 做 HAP / 真机鸿蒙开发：切到 **`feat/support_harmony_os`**，按 [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md) 搭建并 Run。
+- 做 Android / iOS / 桌面：在 **`main`**（或其他非 OH 分支）。切回前请 **删除** 根目录可能残留的 `pubspec_overrides.yaml`，再用官方 `flutter pub get`。
+- 向 `main` 合入时，不要提交 `pubspec_overrides.yaml`、HAP / `oh_modules` 或 DevEco 签名文件。`ohos/` **源码**可以像 `android/` 一样合入。
+- 分支差异见 [`installers/HarmonyOS/readme.md`](installers/HarmonyOS/readme.md)；上架见 [`installers/HarmonyOS/release-signing.md`](installers/HarmonyOS/release-signing.md)。
+
+**鸿蒙端行为差异（功能一致，受系统限制）**
+
+- 接收文件写入 **公共下载目录**（文件管理可见的 `Download/<包名>/`），而不仅是应用沙箱。
+- 已在 AGC/Profile 勾选 `READ_PASTEBOARD` 时优先静默读剪切板；否则（常见于手机）走 **「粘贴以分享」** 对话框。设备密钥匹配只跳过允许/拒绝确认；需要粘贴框时仍会弹出。
+- 部分插件（如 wakelock OH 变体、系统分享意图）为部分接入或暂缓，细节见鸿蒙安装说明。
 
 ---
 
@@ -82,14 +111,15 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 
 ### 环境要求
 
-- Flutter SDK: 3.41.2 或更高版本
+- Flutter SDK: 3.41.2 或更高版本（官方），用于 Android / iOS / 桌面
 - Dart SDK: 3.11.0 或更高版本
 - 对应平台的开发环境：
     - Android: Android Studio / Android SDK
-    - iOS: Xcode (仅 macOS)
+    - iOS: Xcode（仅 macOS）
     - Windows: Visual Studio 2022
     - macOS: Xcode
     - Linux: 相关开发工具链
+    - 鸿蒙 NEXT: DevEco Studio + Flutter-OH `oh-3.41.9`（见 [分支说明](#分支说明-main-与鸿蒙)）
 
 ### 安装步骤
 
@@ -100,19 +130,33 @@ git clone <repository-url>
 cd icy_easy_send
 ```
 
-2. **安装依赖**
+2. **按目标平台选择分支**
 
 ```bash
-flutter pub get
+# 官方平台
+git checkout main
+
+# 鸿蒙 NEXT HAP
+git checkout feat/support_harmony_os
 ```
 
-3. **运行应用**
+3. **安装依赖**
+
+```bash
+# main / Android / iOS / 桌面 — 官方 Flutter
+flutter pub get
+
+# 鸿蒙分支 — 使用 OH 包装脚本（复制 overrides 后再 pub get）
+# .\installers\HarmonyOS\pub-get.ps1
+```
+
+4. **运行应用**
 
 ```bash
 # Android
 flutter run -d android
 
-# iOS (需要 macOS)
+# iOS（需要 macOS）
 flutter run -d ios
 
 # Windows
@@ -123,6 +167,9 @@ flutter run -d macos
 
 # Linux
 flutter run -d linux
+
+# 鸿蒙（在 feat/support_harmony_os 上；通常在 Windows 主机）
+# .\installers\HarmonyOS\flutter-oh.cmd run
 ```
 
 ### 构建发布版本
@@ -134,7 +181,7 @@ flutter build apk --release
 # Android App Bundle
 flutter build appbundle --release
 
-# iOS (需要 macOS)
+# iOS（需要 macOS）
 flutter build ios --release
 
 # Windows
@@ -145,8 +192,12 @@ flutter build macos --release
 
 # Linux
 flutter build linux --release
+
+# 鸿蒙 HAP（feat/support_harmony_os + Flutter-OH）
+# .\installers\HarmonyOS\flutter-oh.cmd build hap --release
 ```
 
+鸿蒙调试环境见 [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md)；上架见 [`installers/HarmonyOS/release-signing.md`](installers/HarmonyOS/release-signing.md)。
 ---
 
 ## 📱 使用说明
@@ -173,6 +224,7 @@ flutter build linux --release
     - 选定对端（输入 IP，或主页上扫描选中的设备芯片）
     - 点击主页的「同步对方剪切板」
     - 对方确认后，其剪切板内容会同步到你的设备
+    - 在 **鸿蒙** 上，若已授予 `READ_PASTEBOARD` 会优先静默读取；否则可能弹出 **「粘贴以分享」**。密钥匹配只跳过允许/拒绝确认；需要粘贴框时仍会弹出。
 
 5. **跨网中转（可选）**
     - 在自己的服务器上部署 `relayd`（见 [`relay/README.md`](relay/README.md)）
@@ -443,6 +495,14 @@ LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
 1. 在设置中检查应用权限
 2. 手动授予存储、照片库等权限
 3. 如果权限被永久拒绝，需要在系统设置中手动开启
+
+### 鸿蒙：提示剪切板同步成功但对端拿不到内容
+
+1. 若静默读失败，确认仍会弹出 **「粘贴以分享」**，且用户已粘贴并确定
+2. 密钥正确只表示自动接受请求，不表示可以跳过粘贴步骤（无权限时）
+3. 若 `module.json5` 已声明 `READ_PASTEBOARD`，Release Profile 也必须勾选该项
+
+更多鸿蒙构建 / 环境问题见 [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md)。
 
 ---
 

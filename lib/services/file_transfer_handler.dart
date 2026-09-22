@@ -293,15 +293,38 @@ class FileTransferHandler {
           );
         }
       } else if (_isInBackground) {
-        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
-        return Response(
-          403,
-          body: jsonEncode({
-            'accepted': false,
-            'message': ErrorMessages.backgroundRejectNeedsSecretKey,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        // Prefer showing the dialog whenever a mounted UI context still exists.
+        // HarmonyOS (and sometimes Android) can report "background" while the
+        // app remains visible; rejecting here would drop inbound transfers
+        // without any confirmation UI.
+        final ctx = contextGetter?.call();
+        if (ctx != null && ctx.mounted) {
+          LogUtil.wTag(
+            logTag,
+            '生命周期标记为后台，但 UI 上下文可用，仍弹出批量接收确认',
+          );
+          _expectedFileCounts[senderIP] = pendingFiles.length;
+          _completedFileCounts[senderIP] = 0;
+          accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
+            context: ctx,
+            files: pendingFiles,
+            senderIP: senderIP,
+            senderDeviceName: senderDeviceName,
+            onComplete: () async {
+              await saveBatchHistories(senderIP);
+            },
+          );
+        } else {
+          LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
+          return Response(
+            403,
+            body: jsonEncode({
+              'accepted': false,
+              'message': ErrorMessages.backgroundRejectNeedsSecretKey,
+            }),
+            headers: {'Content-Type': 'application/json'},
+          );
+        }
       } else {
         final ctx = contextGetter?.call();
         if (ctx == null || !ctx.mounted) {

@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "模块描述"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Ability描述"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "IcyEasySend"
+    },
+    {
+      "name": "perm_reason_download",
+      "value": "用于将接收到的文件保存到系统下载目录，便于在文件管理中查看"
+    },
+    {
+      "name": "perm_reason_pasteboard",
+      "value": "用于在本机授权后读取剪切板，以便与局域网/中转对端同步文本内容"
+    }
+  ]
+}

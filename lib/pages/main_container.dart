@@ -35,6 +35,14 @@ class _MainContainerState extends State<MainContainer> {
   final GlobalKey<HomePageState> _homePageKey = GlobalKey<HomePageState>();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefer the shell context for inbound receive/clipboard dialogs so a tab
+    // switch cannot leave the HTTP layer with a stale HomePage element.
+    widget.serverManager.setContext(context);
+  }
+
+  @override
   void initState() {
     super.initState();
     // Register the refresh callback with the server manager

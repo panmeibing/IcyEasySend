@@ -1,0 +1,46 @@
+{
+  // Local copy is ohos/build-profile.json5 (gitignored).
+  // apply-ohos-native.ps1 creates it from this file when missing.
+  //
+  // After DevEco → Signing Configs → Automatically generate signature:
+  //   1) signingConfigs[] is filled by DevEco
+  //   2) You MUST set products[0].signingConfig to that config name (usually "default")
+  //      or run: .\installers\HarmonyOS\ensure-signing-config.ps1
+  //   Without step 2, Run installs entry-default-unsigned.hap and fails with 9568320.
+  "app": {
+    "signingConfigs": [],
+    "products": [
+      {
+        "name": "default",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "targetSdkVersion": "6.1.1(24)",
+        "runtimeOS": "HarmonyOS"
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug"
+      },
+      {
+        "name": "profile"
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

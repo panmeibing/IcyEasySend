@@ -119,11 +119,10 @@ class HomePageState extends State<HomePage> {
       sharingIntentService: widget.sharingIntentService,
     );
 
-    // Set context for server manager
+    // Dialog context is owned by MainContainer (stable shell). Home only
+    // registers network/server status callbacks for this tab.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        widget.serverManager.setContext(context);
-        // Register network change callback
         widget.serverManager.addNetworkChangeCallback(_onNetworkChanged);
         widget.serverManager.addServerStatusCallback(_onServerStatusChanged);
       }
