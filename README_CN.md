@@ -1,6 +1,8 @@
-# Icy Easy Send
-
 <div align="center">
+
+<img src="lib/images/icon_256x256.png" width="120" alt="Icy Easy Send">
+
+# Icy Easy Send
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
@@ -11,7 +13,7 @@
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[功能特性](#功能特性) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
+[界面预览](#界面预览) • [功能特性](#功能特性) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
 
 </div>
 
@@ -30,6 +32,37 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 - 🎯 **简单易用**: 扫描设备或输入 IP；中转场景用设备码配对即可
 - 📦 **批量传输**: 支持一次性发送多个文件，自动管理传输队列
 - 📋 **剪切板同步**: 跨设备同步文本、文件和图片（局域网或中转）
+
+---
+
+## 📸 界面预览
+
+<p align="center">
+  <strong>文件传输</strong><br>
+  扫描附近设备，一键发送文件，对方确认后即可接收
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/file-transfer.jpg" alt="文件传输" width="90%">
+</p>
+
+<p align="center">
+  <strong>剪切板同步</strong><br>
+  跨设备同步文本与媒体，对方需明确允许后才会同步
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/clipboard-sync.jpg" alt="剪切板同步" width="90%">
+</p>
+
+<p align="center">
+  <strong>二维码分享</strong><br>
+  通过二维码或链接分享，对方无需安装应用即可在浏览器下载
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/qr-share.jpg" alt="二维码分享" width="90%">
+</p>
 
 ---
 

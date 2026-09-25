@@ -1,6 +1,8 @@
-# Icy Easy Send
-
 <div align="center">
+
+<img src="lib/images/icon_256x256.png" width="120" alt="Icy Easy Send">
+
+# Icy Easy Send
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
@@ -11,7 +13,7 @@ An efficient, cross-platform file transfer application — LAN by default, optio
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
+[Screenshots](#-screenshots) • [Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
 
 </div>
 
@@ -32,6 +34,37 @@ with no internet and no accounts. Across different networks, you can optionally 
 - 🎯 **Easy to Use**: Scan for peers or enter an IP; pair by device code when using relay
 - 📦 **Batch Transfer**: Send multiple files at once with automatic queue management
 - 📋 **Clipboard Sync**: Synchronize text, files, and images across devices (LAN or relay)
+
+---
+
+## 📸 Screenshots
+
+<p align="center">
+  <strong>File Transfer</strong><br>
+  Scan nearby devices, send files in one tap, and confirm receipt on the other side
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/file-transfer.jpg" alt="File Transfer" width="90%">
+</p>
+
+<p align="center">
+  <strong>Clipboard Sync</strong><br>
+  Sync text and media across devices with an explicit allow / deny prompt
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/clipboard-sync.jpg" alt="Clipboard Sync" width="90%">
+</p>
+
+<p align="center">
+  <strong>QR Code Share</strong><br>
+  Share via QR code or link — recipients can download in a browser without installing the app
+</p>
+
+<p align="center">
+  <img src="lib/images/screenshot/qr-share.jpg" alt="QR Code Share" width="90%">
+</p>
 
 ---
 
