@@ -6,14 +6,14 @@
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 An efficient, cross-platform file transfer application — LAN by default, optional self-hosted relay for cross-network use
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[Screenshots](#-screenshots) • [Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
+[Screenshots](#-screenshots) • [Features](#-features) • [Branches](#-branches-main-vs-harmonyos) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
 
 </div>
 
@@ -30,7 +30,7 @@ with no internet and no accounts. Across different networks, you can optionally 
 - 🚀 **High-Speed Transfer**: Direct LAN connection when available; speed limited only by network bandwidth
 - 🔒 **Secure & Reliable**: LAN traffic stays on your network; relay traffic is end-to-end encrypted (server sees ciphertext only)
 - 🌐 **Cross-Network (optional)**: Pair once via your own relay, then send files and sync clipboard across LANs
-- 📱 **Cross-Platform**: One codebase supporting Android, iOS, Windows, macOS, and Linux
+- 📱 **Cross-Platform**: Android, iOS, Windows, macOS, and Linux on `main`; HarmonyOS NEXT on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
 - 🎯 **Easy to Use**: Scan for peers or enter an IP; pair by device code when using relay
 - 📦 **Batch Transfer**: Send multiple files at once with automatic queue management
 - 📋 **Clipboard Sync**: Synchronize text, files, and images across devices (LAN or relay)
@@ -113,11 +113,46 @@ with no internet and no accounts. Across different networks, you can optionally 
 
 ---
 
+## 🌿 Branches: `main` vs HarmonyOS
+
+Official Flutter targets and **HarmonyOS NEXT** stay on separate branches so the two toolchains stay independent. `main` contains Android, iOS, Windows, macOS, and Linux. The HarmonyOS project (`ohos/`) and its build scripts live on **`feat/support_harmony_os`**.
+
+| | **`main`** | **`feat/support_harmony_os`** |
+|---|---|---|
+| **Platforms** | Android, iOS, Windows, macOS, Linux | HarmonyOS NEXT, same Dart app; OH plugins injected via overrides |
+| **Flutter SDK** | Official Flutter **3.41.2+** | A separate install of **Flutter-OH `oh-3.41.9-release`**. Keep it beside the official SDK, and leave `flutter upgrade` off that tree |
+| **`pubspec.yaml`** | Dependency source of truth | Kept aligned with `main`. OH plugins stay out of this file |
+| **OH plugins** | Unused | `installers/HarmonyOS/pubspec_overrides.yaml`, copied to a gitignored root `pubspec_overrides.yaml` by `pub-get.ps1` |
+| **Native project** | `android/`, `ios/`, `windows/`, `macos/`, `linux/` | Tracked `ohos/` sources. `oh_modules/`, `build/`, HAP/APP packages, and the local signing `build-profile.json5` stay out of git |
+| **Build command** | System `flutter` | `installers/HarmonyOS/flutter-oh.cmd` only |
+
+**Day-to-day**
+
+- Build and run HAP on **`feat/support_harmony_os`**. Environment and debug Run: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md).
+- Android, iOS, and desktop work stays on **`main`**. Before switching back, delete any root `pubspec_overrides.yaml`, then run official `flutter pub get`.
+- Keep these out of commits toward `main`: root `pubspec_overrides.yaml`, HAP / `oh_modules`, and DevEco signing files (`.p12`, `.cer`, `.p7b`, local `build-profile.json5`). `ohos/` **source** can merge the same way as `android/`.
+
+Docs on that branch (same paths on [Gitee](https://gitee.com/pan-meibing/icy-easy-send/tree/feat/support_harmony_os/installers/HarmonyOS)):
+
+| Doc | Contents |
+|---|---|
+| [readme.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/readme.md) | What the HarmonyOS branch changes relative to `main` |
+| [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md) | DevEco Studio, Flutter-OH, and debug Run on a device or emulator |
+| [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md) | Release signing, `.app` build, and AppGallery upload |
+
+**On HarmonyOS** the features match the other platforms, with these OS limits:
+
+- Received files are saved under a **public Downloads** path that Files can show (`Download/<package>/`).
+- With ACL and a Profile that includes `READ_PASTEBOARD`, the app tries a silent clipboard read first (more often available on PC / 2-in-1). Otherwise it falls back to a **Paste to share** dialog, which is the usual path on phones. A matching device secret key skips only the allow / deny confirm. When the paste dialog is required, it still appears.
+- A few plugins (the wakelock OH variant, system share intent) are only partly wired. Details are in the HarmonyOS installer readme.
+
+---
+
 ## 🚀 Quick Start
 
 ### Requirements
 
-- Flutter SDK: 3.41.2 or higher
+- Flutter SDK: 3.41.2 or higher (official), for Android / iOS / desktop on `main`
 - Dart SDK: 3.11.0 or higher
 - Platform-specific development environment:
     - Android: Android Studio / Android SDK
@@ -125,6 +160,7 @@ with no internet and no accounts. Across different networks, you can optionally 
     - Windows: Visual Studio 2022
     - macOS: Xcode
     - Linux: Relevant development toolchain
+    - HarmonyOS NEXT: DevEco Studio + Flutter-OH `oh-3.41.9-release` on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
 
 ### Installation
 
@@ -135,13 +171,30 @@ git clone <repository-url>
 cd icy_easy_send
 ```
 
-2. **Install dependencies**
+2. **Check out the branch for your target**
 
 ```bash
+# Android, iOS, Windows, macOS, Linux
+git checkout main
+
+# HarmonyOS NEXT
+git checkout feat/support_harmony_os
+```
+
+3. **Install dependencies**
+
+```bash
+# main — official Flutter
 flutter pub get
 ```
 
-3. **Run the application**
+On `feat/support_harmony_os` (Windows), use the OH wrapper. It copies plugin overrides, then runs `pub get`:
+
+```powershell
+.\installers\HarmonyOS\pub-get.ps1
+```
+
+4. **Run the application**
 
 ```bash
 # Android
@@ -158,6 +211,12 @@ flutter run -d macos
 
 # Linux
 flutter run -d linux
+```
+
+HarmonyOS (on `feat/support_harmony_os`, typically a Windows host):
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd run
 ```
 
 ### Build Release Version
@@ -182,6 +241,14 @@ flutter build macos --release
 flutter build linux --release
 ```
 
+HarmonyOS HAP (`feat/support_harmony_os` + Flutter-OH):
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd build hap --release
+```
+
+Debug setup: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md). Store release: [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md).
+
 ---
 
 ## 📱 Usage
@@ -203,11 +270,13 @@ flutter build linux --release
     - A confirmation dialog appears when someone sends you files
     - Review the file list and click "Receive"
     - Files are automatically saved to the downloads folder
+    - On HarmonyOS, that path is the public Downloads directory Files can show (`Download/<package>/`)
 
 4. **Sync Clipboard**
     - Select a peer (IP or scanned/relay peer chip on the home page)
     - Click the "Sync Remote Clipboard" button
     - After the other party confirms, their clipboard content syncs to your device
+    - On **HarmonyOS**, the peer tries a silent clipboard read when `READ_PASTEBOARD` is granted. Otherwise a **Paste to share** dialog appears. A matching secret key skips only the allow / deny prompt; the paste step still runs when that dialog is required
 
 5. **Cross-network via relay (optional)**
     - Deploy `relayd` on your own server (see [`relay/README.md`](relay/README.md))
@@ -483,6 +552,14 @@ the configuration file)
 1. Check app permissions in settings
 2. Manually grant storage, photo library, and other permissions
 3. If permissions are permanently denied, manually enable them in system settings
+
+### HarmonyOS: clipboard sync reports success, but the peer gets nothing
+
+1. If the silent read failed, confirm **Paste to share** still appears and the user pasted, then confirmed
+2. A matching secret key only auto-accepts the request. Paste-to-share still runs when ACL or silent read is unavailable
+3. If `module.json5` declares `READ_PASTEBOARD`, the Release Profile must list that permission as well
+
+More HarmonyOS build and environment issues: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md).
 
 ---
 

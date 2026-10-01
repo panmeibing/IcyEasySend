@@ -6,14 +6,14 @@
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 一个高效、跨平台的文件传输应用——默认走局域网，也可自建中转实现跨网传输
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[界面预览](#界面预览) • [功能特性](#功能特性) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
+[界面预览](#界面预览) • [功能特性](#功能特性) • [分支说明](#分支说明-main-与鸿蒙) • [快速开始](#快速开始) • [使用说明](#使用说明) • [技术架构](#技术架构) • [开发指南](#开发指南)
 
 </div>
 
@@ -28,7 +28,7 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 - 🚀 **高速传输**: 有局域网时直连，速度仅受限于网络带宽
 - 🔒 **安全可靠**: 局域网流量不出本网；中转流量端到端加密，服务器只能看到密文
 - 🌐 **跨网可选**: 自建中转并配对后，可在不同局域网间传文件、同步剪切板
-- 📱 **跨平台支持**: 一套代码，支持 Android、iOS、Windows、macOS、Linux
+- 📱 **跨平台支持**: `main` 支持 Android、iOS、Windows、macOS、Linux；鸿蒙 NEXT 在 [`feat/support_harmony_os`](#分支说明-main-与鸿蒙)
 - 🎯 **简单易用**: 扫描设备或输入 IP；中转场景用设备码配对即可
 - 📦 **批量传输**: 支持一次性发送多个文件，自动管理传输队列
 - 📋 **剪切板同步**: 跨设备同步文本、文件和图片（局域网或中转）
@@ -111,18 +111,54 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 
 ---
 
+## 🌿 分支说明：`main` 与鸿蒙
+
+**官方 Flutter 平台**与 **鸿蒙 NEXT** 分分支维护，两套工具链互不覆盖。`main` 包含 Android、iOS、Windows、macOS、Linux。鸿蒙工程（`ohos/`）和构建脚本在 **`feat/support_harmony_os`**。
+
+| | **`main`** | **`feat/support_harmony_os`**（鸿蒙分支） |
+|---|---|---|
+| **目标平台** | Android、iOS、Windows、macOS、Linux | 鸿蒙 NEXT，同一套 Dart 业务；OH 插件通过 overrides 注入 |
+| **Flutter SDK** | 官方 Flutter **3.41.2+** | 单独安装的 **Flutter-OH `oh-3.41.9-release`**。与官方 SDK 分开存放，不要在 Flutter-OH 目录里执行 `flutter upgrade` |
+| **`pubspec.yaml`** | 依赖源文件 | **与 `main` 保持一致**。OH 插件不写进这个文件 |
+| **OH 插件** | 不使用 | 由 `installers/HarmonyOS/pubspec_overrides.yaml` 提供，经 `pub-get.ps1` 复制为仓库根目录的 `pubspec_overrides.yaml`（已 gitignore） |
+| **原生工程** | `android/`、`ios/`、`windows/`、`macos/`、`linux/` | `ohos/` 源码入库。`oh_modules/`、`build/`、HAP/APP，以及带签名的本机 `build-profile.json5` 不入库 |
+| **构建命令** | 系统 `flutter` | 只用 `installers/HarmonyOS/flutter-oh.cmd` |
+
+**日常约定**
+
+- 编译、运行 HAP：切到 **`feat/support_harmony_os`**。环境与真机 / 模拟器调试见 [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md)。
+- Android、iOS、桌面：留在 **`main`**。切回前删除根目录可能残留的 `pubspec_overrides.yaml`，再用官方 `flutter pub get`。
+- 向 `main` 合入时请排除：根目录 `pubspec_overrides.yaml`、HAP / `oh_modules`、DevEco 签名文件（`.p12`、`.cer`、`.p7b`、本机 `build-profile.json5`）。`ohos/` **源码**可以像 `android/` 一样合入。
+
+该分支上的说明（[Gitee 同路径](https://gitee.com/pan-meibing/icy-easy-send/tree/feat/support_harmony_os/installers/HarmonyOS)）：
+
+| 文档 | 内容 |
+|---|---|
+| [readme.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/readme.md) | 鸿蒙分支相对 `main` 的差异 |
+| [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md) | DevEco Studio、Flutter-OH，以及真机 / 模拟器调试运行 |
+| [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md) | 发布签名、构建 `.app`、上传应用市场 |
+
+**鸿蒙端**功能与其他平台一致，受系统限制的地方如下：
+
+- 接收的文件写入 **公共下载目录**，可在文件管理里看到（`Download/<包名>/`）。
+- 已在 ACL 与 Profile 中包含 `READ_PASTEBOARD` 时，优先静默读取剪切板（PC / 2in1 上更常见）。否则回退到 **「粘贴以分享」** 对话框，手机上通常走这条路径。设备密钥匹配只跳过允许 / 拒绝确认；需要粘贴框时仍会弹出。
+- 少数插件（wakelock 的 OH 变体、系统分享意图）只做了部分接入，细节见鸿蒙安装说明。
+
+---
+
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Flutter SDK: 3.41.2 或更高版本
+- Flutter SDK: 3.41.2 或更高版本（官方），用于 `main` 上的 Android / iOS / 桌面
 - Dart SDK: 3.11.0 或更高版本
 - 对应平台的开发环境：
     - Android: Android Studio / Android SDK
-    - iOS: Xcode (仅 macOS)
+    - iOS: Xcode（仅 macOS）
     - Windows: Visual Studio 2022
     - macOS: Xcode
     - Linux: 相关开发工具链
+    - 鸿蒙 NEXT：DevEco Studio + Flutter-OH `oh-3.41.9-release`，分支为 [`feat/support_harmony_os`](#分支说明-main-与鸿蒙)
 
 ### 安装步骤
 
@@ -133,19 +169,36 @@ git clone <repository-url>
 cd icy_easy_send
 ```
 
-2. **安装依赖**
+2. **按目标平台切换分支**
 
 ```bash
+# Android、iOS、Windows、macOS、Linux
+git checkout main
+
+# 鸿蒙 NEXT
+git checkout feat/support_harmony_os
+```
+
+3. **安装依赖**
+
+```bash
+# main — 官方 Flutter
 flutter pub get
 ```
 
-3. **运行应用**
+在 `feat/support_harmony_os` 上（Windows）用 OH 包装脚本。它会先复制插件 overrides，再执行 `pub get`：
+
+```powershell
+.\installers\HarmonyOS\pub-get.ps1
+```
+
+4. **运行应用**
 
 ```bash
 # Android
 flutter run -d android
 
-# iOS (需要 macOS)
+# iOS（需要 macOS）
 flutter run -d ios
 
 # Windows
@@ -156,6 +209,12 @@ flutter run -d macos
 
 # Linux
 flutter run -d linux
+```
+
+鸿蒙（在 `feat/support_harmony_os` 上，通常为 Windows 主机）：
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd run
 ```
 
 ### 构建发布版本
@@ -180,6 +239,14 @@ flutter build macos --release
 flutter build linux --release
 ```
 
+鸿蒙 HAP（`feat/support_harmony_os` + Flutter-OH）：
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd build hap --release
+```
+
+调试环境见 [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md)；上架见 [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md)。
+
 ---
 
 ## 📱 使用说明
@@ -201,11 +268,13 @@ flutter build linux --release
     - 当有人向你发送文件时，会弹出确认对话框
     - 查看文件列表并点击「接收」
     - 文件会自动保存到下载文件夹
+    - 在鸿蒙上，保存位置是文件管理可见的公共下载目录（`Download/<包名>/`）
 
 4. **同步剪切板**
     - 选定对端（输入 IP，或主页上扫描选中的设备芯片）
     - 点击主页的「同步对方剪切板」
     - 对方确认后，其剪切板内容会同步到你的设备
+    - 在 **鸿蒙** 上，已授予 `READ_PASTEBOARD` 时优先静默读取；否则弹出 **「粘贴以分享」**。密钥匹配只跳过允许 / 拒绝确认；需要粘贴框时仍会弹出
 
 5. **跨网中转（可选）**
     - 在自己的服务器上部署 `relayd`（见 [`relay/README.md`](relay/README.md)）
@@ -476,6 +545,14 @@ LogUtil.eTag('TAG', '这是一条错误日志', error, stackTrace);
 1. 在设置中检查应用权限
 2. 手动授予存储、照片库等权限
 3. 如果权限被永久拒绝，需要在系统设置中手动开启
+
+### 鸿蒙：提示剪切板同步成功，但对端没有内容
+
+1. 若静默读取失败，确认仍会弹出 **「粘贴以分享」**，并且用户已经粘贴并确定
+2. 密钥正确只表示自动接受请求。没有权限或静默读取不可用时，粘贴步骤仍然需要
+3. 若 `module.json5` 声明了 `READ_PASTEBOARD`，Release Profile 也要勾选该项
+
+更多鸿蒙构建与环境问题见 [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md)。
 
 ---
 

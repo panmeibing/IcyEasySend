@@ -71,7 +71,27 @@ app.*.map.json
 /android/app/*.jks
 *.jks
 
+# main branch should ignore ohos folder
 ohos/
+
+# HarmonyOS: track ohos/ like android/ (AppScope, EntryAbility, module.json5, icons).
+# Per-machine / generated paths are listed in ohos/.gitignore and ohos/entry/.gitignore
+# (oh_modules, node_modules, build, .hvigor, flutter_assets, local.properties,
+#  build-profile.json5 with DevEco signing secrets, GeneratedPluginRegistrant.ets).
+
+# Local backups of old ohos/ trees (contain HAP / .so / kernel blobs — do not commit)
+ohos.bak_legacy/
+ohos.bak*/
+
+# HarmonyOS / Flutter build artifacts that must never enter git
+*.hap
+*.hsp
+kernel_blob.bin
+isolate_snapshot_data
+vm_snapshot_data
+
+# HarmonyOS local overrides (copied from installers/HarmonyOS by pub-get.ps1)
+pubspec_overrides.yaml
 
 # Go relay service build outputs
 relay/relayd
