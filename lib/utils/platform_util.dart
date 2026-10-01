@@ -115,7 +115,7 @@ class PlatformUtil {
         );
       }
 
-      return getDownloadsDirectory();
+      return await getDownloadsDirectory();
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '获取接收保存目录失败: $e', e, stackTrace);
       return getDownloadsDirectory();

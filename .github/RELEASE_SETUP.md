@@ -36,7 +36,11 @@ GitHub → Actions → Release → Run workflow
 | Linux arm64 | `IcyEasySend-linux-arm64-v1.3.0.deb` / `.tar.gz` |
 | Windows x64 | `IcyEasySend-windows-v1.3.0-setup.exe` / `-portable.zip` |
 | macOS | `IcyEasySend-macOS-v1.3.0.dmg`（未签名） |
-| Android | `IcyEasySend-android-v1.3.0.apk` / `.aab` |
+| Android 手机（arm64） | `IcyEasySend-android-arm64-v8a-v1.3.0.apk` |
+| Android 旧 32 位手机 | `IcyEasySend-android-armeabi-v7a-v1.3.0.apk` |
+| Android 模拟器 / x86_64 | `IcyEasySend-android-x86_64-v1.3.0.apk` |
+| Android 全架构 | `IcyEasySend-android-v1.3.0.apk`（不确定 CPU 架构时下载） |
+| Android Play | `IcyEasySend-android-v1.3.0.aab` |
 | iOS | `IcyEasySend-ios-v1.3.0.ipa`（未签名） |
 
 ## 必须配置的 GitHub Secrets
