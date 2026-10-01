@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:icy_easy_send/l10n/app_localizations.dart';
 import 'package:icy_easy_send/models/paired_device.dart';
+import 'package:icy_easy_send/services/language_service.dart';
 import 'package:icy_easy_send/pages/pairing/pairing_confirm_dialog.dart';
 import 'package:icy_easy_send/services/identity_service.dart';
 import 'package:icy_easy_send/services/paired_device_store.dart';
@@ -23,6 +26,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// that catches a swapped key, the switches that let a user refuse to take
 /// part, and the two-step commit that keeps one side from trusting a device
 /// the other side walked away from.
+const _deviceInfoChannel = MethodChannel(
+  'dev.fluttercommunity.plus/device_info',
+);
+
 void main() {
   late Directory workspace;
   late IdentityService initiatorIdentity;
@@ -38,6 +45,27 @@ void main() {
   setUp(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
+    // CI has no device_info implementation. Without this, getDeviceName logs
+    // a MissingPluginException and falls back to the hostname.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_deviceInfoChannel, (call) async {
+      if (call.method != 'getDeviceInfo') {
+        return null;
+      }
+      return <String, dynamic>{
+        'name': 'Test Device',
+        'version': '1',
+        'id': 'test',
+        'idLike': <String>['linux'],
+        'versionCodename': 'test',
+        'versionId': '1',
+        'prettyName': 'Test Device',
+        'buildId': '1',
+        'variant': '',
+        'variantId': '',
+        'machineId': 'test-machine',
+      };
+    });
 
     workspace = await Directory.systemTemp.createTemp('relay-pairing');
     initiatorIdentity = IdentityService.forTesting(
@@ -80,6 +108,8 @@ void main() {
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_deviceInfoChannel, null);
     await initiator.stop();
     await initiatorClient.shutdown();
     await peerClient.shutdown();
@@ -386,8 +416,16 @@ void main() {
     late BuildContext peerContext;
 
     Future<void> startPeerWithUi(WidgetTester tester) async {
+      // Pin both the dialog and PairingMessages to English. The dialog follows
+      // the widget locale; PairingMessages follows LanguageService. On a runner
+      // whose locale matches nothing, MaterialApp would otherwise fall back to
+      // the first supported locale (German) and the button text would not match.
+      await LanguageService.instance.setLanguage('en');
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) {
               peerContext = context;
@@ -396,6 +434,7 @@ void main() {
           ),
         ),
       );
+      await tester.pump();
 
       // Started outside the fake clock: everything the two services do is
       // ordinary asynchronous work, and only the dialog belongs to the widget
