@@ -62,7 +62,7 @@ class FileTransferController {
         if (!context.mounted) {
           return [];
         }
-        return _collectAndValidatePaths(context, paths);
+        return await _collectAndValidatePaths(context, paths);
       }
 
       return [];
@@ -118,7 +118,7 @@ class FileTransferController {
       if (!context.mounted) {
         return [];
       }
-      return _validateTransferItems(context, items);
+      return await _validateTransferItems(context, items);
     } on FileSystemException {
       if (context.mounted) {
         await _showFileAccessError(context);
@@ -145,7 +145,7 @@ class FileTransferController {
       if (!context.mounted) {
         return [];
       }
-      return _validateTransferItems(context, items);
+      return await _validateTransferItems(context, items);
     } catch (e) {
       if (context.mounted) {
         await _showFileError(context, e);

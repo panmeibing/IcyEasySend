@@ -294,11 +294,20 @@ jobs:
         run: |
           VERSION="${{ needs.resolve-version.outputs.version }}"
           flutter pub get
+          # Fat APK first, then copy it out. The split build does not
+          # emit app-release.apk, and a later Gradle run may replace outputs.
           flutter build apk --release
-          flutter build appbundle --release
           mkdir -p release
           cp build/app/outputs/flutter-apk/app-release.apk \
             "release/IcyEasySend-android-v${VERSION}.apk"
+          flutter build apk --release --split-per-abi
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+            "release/IcyEasySend-android-arm64-v8a-v${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+            "release/IcyEasySend-android-armeabi-v7a-v${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+            "release/IcyEasySend-android-x86_64-v${VERSION}.apk"
+          flutter build appbundle --release
           cp build/app/outputs/bundle/release/app-release.aab \
             "release/IcyEasySend-android-v${VERSION}.aab"
 
@@ -374,7 +383,11 @@ jobs:
             - Linux arm64: `.deb` / `.tar.gz`
             - Windows x64: `.exe` 安装包 / `.zip` 便携包
             - macOS: 未签名 `.dmg`
-            - Android: `.apk` / `.aab`
+            - Android 手机（arm64）: `IcyEasySend-android-arm64-v8a-*.apk`
+            - Android 旧 32 位手机: `IcyEasySend-android-armeabi-v7a-*.apk`
+            - Android 模拟器 / x86_64: `IcyEasySend-android-x86_64-*.apk`
+            - Android 全架构（不确定 CPU 架构时下载）: `IcyEasySend-android-v*.apk`
+            - Android 上架 Google Play: `.aab`
             - iOS: 未签名 `.ipa`（需自行重签名或侧载工具安装）
           files: dist/**
           fail_on_unmatched_files: true

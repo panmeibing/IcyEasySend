@@ -325,7 +325,7 @@ class ClipboardService {
         return null;
       }
 
-      return _readFileFromUri(uri);
+      return await _readFileFromUri(uri);
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, 'super_clipboard 读取 fileUri 失败: $e', e, stackTrace);
       return null;
