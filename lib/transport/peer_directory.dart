@@ -159,12 +159,24 @@ class PeerDirectory {
   }
 
   static int _compareRoutes(PeerRef a, PeerRef b) {
-    final deviceCmp = _compare(a, b);
-    if (deviceCmp != 0) {
-      return deviceCmp;
+    final nameCmp = (a.deviceName ?? '').toLowerCase().compareTo(
+      (b.deviceName ?? '').toLowerCase(),
+    );
+    if (nameCmp != 0) {
+      return nameCmp;
     }
-    return (a.preferredTransport?.index ?? -1).compareTo(
+    final idCmp = (a.deviceId ?? '').compareTo(b.deviceId ?? '');
+    if (idCmp != 0) {
+      return idCmp;
+    }
+    // Same device, two rows. Do not use [PeerRef.describe] here: only the LAN
+    // row includes an address, so that string sorts the relay row first.
+    final transportCmp = (a.preferredTransport?.index ?? -1).compareTo(
       b.preferredTransport?.index ?? -1,
     );
+    if (transportCmp != 0) {
+      return transportCmp;
+    }
+    return (a.lan?.address ?? '').compareTo(b.lan?.address ?? '');
   }
 }
