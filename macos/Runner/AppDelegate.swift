@@ -18,6 +18,31 @@ class AppDelegate: FlutterAppDelegate {
       binaryMessenger: controller.engine.binaryMessenger
     )
     
+    let filesChannel = FlutterMethodChannel(
+      name: "com.icyhope.icy_easy_send/files",
+      binaryMessenger: controller.engine.binaryMessenger
+    )
+    filesChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "openFile":
+        guard let args = call.arguments as? [String: Any],
+              let path = args["path"] as? String, !path.isEmpty else {
+          result(FlutterError(code: "bad-path", message: "missing path", details: nil))
+          return
+        }
+        if !FileManager.default.fileExists(atPath: path) {
+          result("missing")
+          return
+        }
+        // Hand the file to Launch Services. A sandboxed app can do this for
+        // files it is allowed to read; spawning /usr/bin/open gets the process killed.
+        let opened = NSWorkspace.shared.open(URL(fileURLWithPath: path))
+        result(opened ? nil : "no-app")
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     clipboardChannel.setMethodCallHandler { [weak self] (call, result) in
       switch call.method {
       case "getImageFromClipboard":
