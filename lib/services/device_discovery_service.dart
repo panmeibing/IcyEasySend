@@ -36,7 +36,7 @@ class DeviceDiscoveryService {
   Future<List<DiscoveredDevice>> scan({
     required Set<String> localIps,
     void Function(int scanned, int total, List<DiscoveredDevice> found)?
-        onProgress,
+    onProgress,
   }) async {
     _cancelled = false;
 
@@ -102,10 +102,7 @@ class DeviceDiscoveryService {
       }
 
       if (found.isNotEmpty) {
-        LogUtil.iTag(
-          logTag,
-          '组播发现 ${found.length} 台设备，跳过 HTTP 全量扫描',
-        );
+        LogUtil.iTag(logTag, '组播发现 ${found.length} 台设备，跳过 HTTP 全量扫描');
         reportProgress(scanned: 1, total: 1);
         return found;
       }
@@ -128,7 +125,7 @@ class DeviceDiscoveryService {
     required Set<String> foundIps,
     required void Function(DiscoveredDevice device) onDeviceFound,
     required void Function({required int scanned, required int total})
-        reportProgress,
+    reportProgress,
   }) async {
     final ips = await NetworkUtil.getSubnetIPsForScan(excludeIps: localIps);
     if (ips.isEmpty) {
@@ -164,13 +161,11 @@ class DeviceDiscoveryService {
       return;
     }
 
-    final missedAfterFastPass =
-        ips.where((ip) => !foundIps.contains(ip)).toList();
+    final missedAfterFastPass = ips
+        .where((ip) => !foundIps.contains(ip))
+        .toList();
     if (missedAfterFastPass.isNotEmpty) {
-      LogUtil.dTag(
-        logTag,
-        'HTTP 重试: ${missedAfterFastPass.length} 个 IP 的默认端口',
-      );
+      LogUtil.dTag(logTag, 'HTTP 重试: ${missedAfterFastPass.length} 个 IP 的默认端口');
 
       await _scanIpsStreaming(
         ips: missedAfterFastPass,

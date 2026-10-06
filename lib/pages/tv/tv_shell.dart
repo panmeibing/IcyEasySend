@@ -99,7 +99,9 @@ class _TvShellState extends State<TvShell> {
       return KeyEventResult.handled;
     }
     final edge = current.rect.left;
-    final hasControlOnTheLeft = _pageScope.traversalDescendants.any((candidate) {
+    final hasControlOnTheLeft = _pageScope.traversalDescendants.any((
+      candidate,
+    ) {
       return candidate != current &&
           candidate.canRequestFocus &&
           !candidate.skipTraversal &&

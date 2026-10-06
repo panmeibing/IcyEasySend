@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icy_easy_send/services/identity_service.dart';
 import 'package:icy_easy_send/services/pairing_handler.dart';
+import 'package:icy_easy_send/utils/constants.dart';
 import 'package:shelf/shelf.dart';
 
 /// Covers the paths a peer can reach without a user interface, which is
@@ -42,8 +43,18 @@ void main() {
         post('/pair/request', 'not json'),
       );
 
-      expect(response.statusCode, 500);
+      expect(response.statusCode, 400);
       expect((await jsonOf(response))['accepted'], isFalse);
+    });
+
+    test('refuses an oversized body', () async {
+      final handler = PairingHandler(contextGetter: () => null);
+
+      final response = await handler.handlePairRequest(
+        post('/pair/request', 'x' * (AppConstants.maxJsonBodyBytes + 1)),
+      );
+
+      expect(response.statusCode, 413);
     });
 
     test('rejects a request without a device id or public key', () async {
@@ -57,20 +68,22 @@ void main() {
       expect((await jsonOf(response))['reason'], 'bad_request');
     });
 
-    test('rejects a device id that is not the fingerprint of the key',
-        () async {
-      final handler = PairingHandler(contextGetter: () => null);
+    test(
+      'rejects a device id that is not the fingerprint of the key',
+      () async {
+        final handler = PairingHandler(contextGetter: () => null);
 
-      final response = await handler.handlePairRequest(
-        post('/pair/request', {
-          'deviceId': '0' * 32,
-          'publicKey': validKey,
-          'deviceName': 'Impostor',
-        }),
-      );
+        final response = await handler.handlePairRequest(
+          post('/pair/request', {
+            'deviceId': '0' * 32,
+            'publicKey': validKey,
+            'deviceName': 'Impostor',
+          }),
+        );
 
-      expect((await jsonOf(response))['reason'], 'identity_mismatch');
-    });
+        expect((await jsonOf(response))['reason'], 'identity_mismatch');
+      },
+    );
 
     test('rejects a public key of the wrong length', () async {
       final handler = PairingHandler(contextGetter: () => null);
@@ -152,18 +165,20 @@ void main() {
       expect((await jsonOf(response))['reason'], 'unknown_pairing');
     });
 
-    test('a cancelled pairing is acknowledged without trusting anyone',
-        () async {
-      final handler = PairingHandler(contextGetter: () => null);
+    test(
+      'a cancelled pairing is acknowledged without trusting anyone',
+      () async {
+        final handler = PairingHandler(contextGetter: () => null);
 
-      final response = await handler.handlePairConfirm(
-        post('/pair/confirm', {'deviceId': 'peer-1', 'accepted': false}),
-      );
+        final response = await handler.handlePairConfirm(
+          post('/pair/confirm', {'deviceId': 'peer-1', 'accepted': false}),
+        );
 
-      expect(response.statusCode, 200);
-      final body = await jsonOf(response);
-      expect(body['ok'], isTrue);
-      expect(body['paired'], isFalse);
-    });
+        expect(response.statusCode, 200);
+        final body = await jsonOf(response);
+        expect(body['ok'], isTrue);
+        expect(body['paired'], isFalse);
+      },
+    );
   });
 }

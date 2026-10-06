@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:shelf/shelf.dart';
 
 import '../models/discovered_device.dart';
 import '../models/multicast_announcement.dart';
 import '../utils/log_util.dart';
+import '../utils/server_http_util.dart';
 import 'multicast_discovery_service.dart';
 
 /// Handles HTTP discovery registration (LocalSend-style TCP response).
@@ -17,28 +15,25 @@ class DiscoverRegisterHandler {
   final String logTag = LogTags.network;
 
   Future<Response> handleRegister(Request request) async {
-    final connectionInfo = request.context['shelf.io.connection_info'];
-    final remoteAddress = connectionInfo == null
-        ? null
-        : (connectionInfo as dynamic).remoteAddress as InternetAddress?;
-    final clientIp = remoteAddress?.address;
+    final clientIp = ServerHttpUtil.remoteAddress(request);
 
     if (clientIp == null) {
       LogUtil.wTag(logTag, '发现注册请求缺少客户端 IP');
-      return Response.badRequest(
-        body: jsonEncode({'status': 'error', 'message': 'missing client ip'}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({
+        'status': 'error',
+        'message': 'missing client ip',
+      }, status: 400);
     }
 
     try {
-      final body = await request.readAsString();
-      final announcement = MulticastAnnouncement.tryParse(utf8.encode(body));
+      final announcement = MulticastAnnouncement.tryParse(
+        await ServerHttpUtil.readBytes(request),
+      );
       if (announcement == null) {
-        return Response.badRequest(
-          body: jsonEncode({'status': 'error', 'message': 'invalid payload'}),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return ServerHttpUtil.json({
+          'status': 'error',
+          'message': 'invalid payload',
+        }, status: 400);
       }
 
       final device = DiscoveredDevice(
@@ -59,16 +54,15 @@ class DiscoverRegisterHandler {
         );
       }
 
-      return Response.ok(
-        jsonEncode({'status': 'ok'}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({'status': 'ok'});
+    } on RequestBodyTooLargeException {
+      return ServerHttpUtil.json({
+        'status': 'error',
+        'message': 'payload too large',
+      }, status: 413);
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, '发现注册处理失败: $e', e, stackTrace);
-      return Response.internalServerError(
-        body: jsonEncode({'status': 'error'}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({'status': 'error'}, status: 500);
     }
   }
 }

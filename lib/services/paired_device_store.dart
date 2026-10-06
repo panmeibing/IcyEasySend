@@ -58,10 +58,7 @@ class PairedDeviceStore {
     await _ensureLoaded();
     final index = _devices.indexWhere((d) => d.deviceId == device.deviceId);
     if (index >= 0 && _devices[index].publicKey != device.publicKey) {
-      LogUtil.wTag(
-        logTag,
-        '拒绝更新已配对设备 ${device.deviceId}: 公钥与信任记录不一致',
-      );
+      LogUtil.wTag(logTag, '拒绝更新已配对设备 ${device.deviceId}: 公钥与信任记录不一致');
       return false;
     }
 

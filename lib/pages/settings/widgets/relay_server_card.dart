@@ -114,7 +114,10 @@ class _RelayServerCardState extends State<RelayServerCard> {
 
     setState(() => _testing = false);
     if (result.isSuccess) {
-      ToastHelper.showSuccess(context, AppLocalizations.of(context).testSucceeded);
+      ToastHelper.showSuccess(
+        context,
+        AppLocalizations.of(context).testSucceeded,
+      );
     } else {
       ToastHelper.showError(context, result.errorMessage ?? '');
     }

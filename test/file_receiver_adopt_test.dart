@@ -157,9 +157,9 @@ void main() {
     );
 
     expect(result.isSuccess, isTrue, reason: result.errorMessage);
-    expect(
-      await File(p.join(saveDir.path, 'resumed.bin')).readAsBytes(),
-      [...head, ...tail],
-    );
+    expect(await File(p.join(saveDir.path, 'resumed.bin')).readAsBytes(), [
+      ...head,
+      ...tail,
+    ]);
   });
 }

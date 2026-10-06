@@ -52,8 +52,7 @@ class PairedDevice {
       platform: platform ?? this.platform,
       pairedAt: pairedAt ?? this.pairedAt,
       autoAccept: autoAccept ?? this.autoAccept,
-      lastSeenLan:
-          clearLastSeenLan ? null : (lastSeenLan ?? this.lastSeenLan),
+      lastSeenLan: clearLastSeenLan ? null : (lastSeenLan ?? this.lastSeenLan),
     );
   }
 
@@ -79,7 +78,8 @@ class PairedDevice {
     if (deviceId is! String || deviceId.isEmpty) {
       return null;
     }
-    if (publicKey is! String || IdentityService.decodePublicKey(publicKey) == null) {
+    if (publicKey is! String ||
+        IdentityService.decodePublicKey(publicKey) == null) {
       return null;
     }
 

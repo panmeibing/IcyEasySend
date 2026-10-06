@@ -104,7 +104,12 @@ class NativeClipboardService {
       LogUtil.iTag(logTag, '原生 MethodChannel 剪切板读取成功，长度: ${text.length}');
       return text.trim();
     } on PlatformException catch (e, stackTrace) {
-      LogUtil.wTag(logTag, '原生 MethodChannel 剪切板读取失败: ${e.message}', e, stackTrace);
+      LogUtil.wTag(
+        logTag,
+        '原生 MethodChannel 剪切板读取失败: ${e.message}',
+        e,
+        stackTrace,
+      );
       return null;
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, '原生 MethodChannel 剪切板读取异常: $e', e, stackTrace);

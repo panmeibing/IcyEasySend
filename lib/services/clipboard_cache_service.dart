@@ -75,10 +75,7 @@ class ClipboardCacheService {
       final text = (payload['textContent'] as String?)?.trim();
       if (text == null || text.isEmpty) return false;
       return update(
-        ClipboardDataModel(
-          type: ClipboardDataType.text,
-          textContent: text,
-        ),
+        ClipboardDataModel(type: ClipboardDataType.text, textContent: text),
         preferencesService: preferencesService,
       );
     }

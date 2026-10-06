@@ -104,10 +104,7 @@ class FileTransferService {
     final selection = await selector.select(resolved);
     if (selection == null) {
       final reason = selector.unreachableMessage(resolved);
-      LogUtil.wTag(
-        logTag,
-        '选路失败: ${resolved.describe()}, 原因=$reason',
-      );
+      LogUtil.wTag(logTag, '选路失败: ${resolved.describe()}, 原因=$reason');
       return {
         for (final item in files)
           item.transferName: OperationResult<TransferData>.failure(reason),

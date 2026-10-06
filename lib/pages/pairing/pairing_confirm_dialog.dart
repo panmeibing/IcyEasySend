@@ -188,7 +188,6 @@ class PairingConfirmDialog extends StatefulWidget {
 }
 
 class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
-
   Timer? _countdownTimer;
   int _remainingSeconds = 0;
 
@@ -347,8 +346,7 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final failed =
-        _peerDecision != null &&
-        _peerDecision != PairingPeerDecision.accepted;
+        _peerDecision != null && _peerDecision != PairingPeerDecision.accepted;
     if (AppFormFactor.isTv) {
       final l10n = AppLocalizations.of(context);
       return PopScope(
@@ -398,8 +396,12 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
           children: [
             Text(
               _isInitiator
-                  ? AppLocalizations.of(context).outgoingRequest(widget.peerDeviceName)
-                  : AppLocalizations.of(context).incomingRequest(widget.peerDeviceName),
+                  ? AppLocalizations.of(
+                      context,
+                    ).outgoingRequest(widget.peerDeviceName)
+                  : AppLocalizations.of(
+                      context,
+                    ).incomingRequest(widget.peerDeviceName),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
@@ -472,11 +474,7 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
 
   Widget _buildPeerStatus(ThemeData theme) {
     final (icon, color, text) = switch (_peerDecision) {
-      null => (
-        null,
-        theme.hintColor,
-        AppLocalizations.of(context).waitingPeer,
-      ),
+      null => (null, theme.hintColor, AppLocalizations.of(context).waitingPeer),
       PairingPeerDecision.accepted => (
         Icons.check_circle_outline,
         Colors.green,

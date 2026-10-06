@@ -9,10 +9,7 @@ import 'package:icy_easy_send/transport/transport_channel.dart';
 import 'package:icy_easy_send/utils/operation_result.dart';
 
 class _RecordingChannel implements TransportChannel {
-  _RecordingChannel({
-    this.kind = TransportKind.lan,
-    this.results = const {},
-  });
+  _RecordingChannel({this.kind = TransportKind.lan, this.results = const {}});
 
   @override
   final TransportKind kind;

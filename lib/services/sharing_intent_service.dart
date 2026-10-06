@@ -46,8 +46,8 @@ class SharingIntentService {
     }
 
     try {
-      _earlyCapturedSharing =
-          await FlutterSharingIntent.instance.getInitialSharing();
+      _earlyCapturedSharing = await FlutterSharingIntent.instance
+          .getInitialSharing();
       final paths = _extractPaths(_earlyCapturedSharing);
       LogUtil.iTag(logTag, '启动前捕获分享: ${paths.length} 个文件');
       for (final path in paths) {
@@ -110,10 +110,7 @@ class SharingIntentService {
     // getInitialSharing() against cache cleanup / HomePage startup.
     await captureInitialSharingEarly();
     if (_earlyCapturedSharing != null) {
-      LogUtil.iTag(
-        logTag,
-        '使用启动前捕获的分享: ${_earlyCapturedSharing!.length} 个条目',
-      );
+      LogUtil.iTag(logTag, '使用启动前捕获的分享: ${_earlyCapturedSharing!.length} 个条目');
       _handleSharedMedia(_earlyCapturedSharing!, notifyListeners: false);
     }
   }
@@ -173,7 +170,9 @@ class SharingIntentService {
   /// Delete on-disk cache copies created by the share intent plugin.
   Future<void> cleanupSharedCacheFiles(Iterable<File> files) async {
     final cacheCleanup = CacheCleanupService();
-    await cacheCleanup.deleteCacheFilesIfPresent(files.map((file) => file.path));
+    await cacheCleanup.deleteCacheFilesIfPresent(
+      files.map((file) => file.path),
+    );
   }
 
   /// Dispose the service

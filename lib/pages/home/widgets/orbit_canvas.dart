@@ -14,10 +14,7 @@ class OrbitSatellite {
   final PeerRef peer;
   final double angleDegrees;
 
-  const OrbitSatellite({
-    required this.peer,
-    required this.angleDegrees,
-  });
+  const OrbitSatellite({required this.peer, required this.angleDegrees});
 
   /// Random ring angle, avoiding the bottom scan FAB and crowding.
   static double pickAngle(
@@ -50,6 +47,43 @@ class OrbitSatellite {
     var d = (a - b).abs() % 360.0;
     if (d > 180.0) d = 360.0 - d;
     return d;
+  }
+
+  /// [satellites] with [peer] first. A route already on the ring keeps its
+  /// angle so it does not jump.
+  static List<OrbitSatellite> bringToFront(
+    List<OrbitSatellite> satellites,
+    PeerRef peer,
+  ) {
+    final rest = [...satellites];
+    final index = rest.indexWhere((s) => s.peer.isSameRoute(peer));
+    final angle = index >= 0
+        ? rest.removeAt(index).angleDegrees
+        : pickAngle(rest);
+    return [
+      OrbitSatellite(peer: peer, angleDegrees: angle),
+      ...rest,
+    ].take(maxVisible).toList();
+  }
+
+  /// [satellites] with every route of [device] replaced by [routes], so a
+  /// path that has gone away (e.g. the old LAN after leaving Wi-Fi) is dropped.
+  static List<OrbitSatellite> replaceDevice(
+    List<OrbitSatellite> satellites,
+    PeerRef device,
+    Iterable<PeerRef> routes,
+  ) {
+    var next = [
+      for (final s in satellites)
+        if (!s.peer.isSameDevice(device)) s,
+    ];
+    for (final route in routes) {
+      next = [
+        OrbitSatellite(peer: route, angleDegrees: pickAngle(next)),
+        ...next,
+      ].take(maxVisible).toList();
+    }
+    return next;
   }
 }
 

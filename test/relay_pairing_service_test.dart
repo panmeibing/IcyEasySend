@@ -49,23 +49,23 @@ void main() {
     // a MissingPluginException and falls back to the hostname.
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(_deviceInfoChannel, (call) async {
-      if (call.method != 'getDeviceInfo') {
-        return null;
-      }
-      return <String, dynamic>{
-        'name': 'Test Device',
-        'version': '1',
-        'id': 'test',
-        'idLike': <String>['linux'],
-        'versionCodename': 'test',
-        'versionId': '1',
-        'prettyName': 'Test Device',
-        'buildId': '1',
-        'variant': '',
-        'variantId': '',
-        'machineId': 'test-machine',
-      };
-    });
+          if (call.method != 'getDeviceInfo') {
+            return null;
+          }
+          return <String, dynamic>{
+            'name': 'Test Device',
+            'version': '1',
+            'id': 'test',
+            'idLike': <String>['linux'],
+            'versionCodename': 'test',
+            'versionId': '1',
+            'prettyName': 'Test Device',
+            'buildId': '1',
+            'variant': '',
+            'variantId': '',
+            'machineId': 'test-machine',
+          };
+        });
 
     workspace = await Directory.systemTemp.createTemp('relay-pairing');
     initiatorIdentity = IdentityService.forTesting(
@@ -276,8 +276,10 @@ void main() {
       final stored = await initiatorStore.find(peerDeviceId);
       expect(stored!.publicKey, await peerIdentity.getPublicKeyBase64());
       expect(stored.deviceName, 'Peer');
-      expect(initiatorClient.sent.last.payload['type'],
-          RelayPayloadType.pairConfirm);
+      expect(
+        initiatorClient.sent.last.payload['type'],
+        RelayPayloadType.pairConfirm,
+      );
       expect(initiatorClient.sent.last.payload['accepted'], isTrue);
     });
 
@@ -344,18 +346,21 @@ void main() {
       platform: 'windows',
     );
 
-    test('refuses a request whose key does not match its device code', () async {
-      final answer = await ask(
-        PairRequest(
-          publicKey: await peerIdentity.getPublicKeyBase64(),
-          deviceName: 'Impostor',
-          platform: 'windows',
-        ),
-      );
+    test(
+      'refuses a request whose key does not match its device code',
+      () async {
+        final answer = await ask(
+          PairRequest(
+            publicKey: await peerIdentity.getPublicKeyBase64(),
+            deviceName: 'Impostor',
+            platform: 'windows',
+          ),
+        );
 
-      expect(answer!['accepted'], isFalse);
-      expect(answer['reason'], 'identity_mismatch');
-    });
+        expect(answer!['accepted'], isFalse);
+        expect(answer['reason'], 'identity_mismatch');
+      },
+    );
 
     test('refuses everyone when inbound pairing is switched off', () async {
       await PreferencesService().saveRelayPairingEnabled(false);
@@ -397,18 +402,20 @@ void main() {
       expect(answer['reason'], 'no_ui');
     });
 
-    test('a confirmation for a request that was never answered is ignored',
-        () async {
-      startPeer();
+    test(
+      'a confirmation for a request that was never answered is ignored',
+      () async {
+        startPeer();
 
-      await initiatorClient.sendPayload(
-        toDeviceId: peerDeviceId,
-        payload: const PairConfirm(accepted: true).toJson(),
-      );
-      await pumpEventQueue();
+        await initiatorClient.sendPayload(
+          toDeviceId: peerDeviceId,
+          payload: const PairConfirm(accepted: true).toJson(),
+        );
+        await pumpEventQueue();
 
-      expect(await peerStore.find(initiatorDeviceId), isNull);
-    });
+        expect(await peerStore.find(initiatorDeviceId), isNull);
+      },
+    );
   });
 
   group('the whole exchange', () {
@@ -541,8 +548,9 @@ void main() {
       });
     });
 
-    testWidgets('the initiator backing out leaves the peer untrusting',
-        (tester) async {
+    testWidgets('the initiator backing out leaves the peer untrusting', (
+      tester,
+    ) async {
       await startPeerWithUi(tester);
 
       OperationResult<RelayPairingProposal>? asked;
@@ -575,8 +583,9 @@ void main() {
       });
     });
 
-    testWidgets('rejecting without block still allows a later request',
-        (tester) async {
+    testWidgets('rejecting without block still allows a later request', (
+      tester,
+    ) async {
       await startPeerWithUi(tester);
 
       OperationResult<RelayPairingProposal>? asked;
@@ -598,7 +607,8 @@ void main() {
       await tester.tap(find.text(PairingMessages.instance.codesDiffer));
       await settleUntil(
         tester,
-        () => find.text(PairingMessages.instance.codesDiffer).evaluate().isEmpty,
+        () =>
+            find.text(PairingMessages.instance.codesDiffer).evaluate().isEmpty,
         what: 'the peer dialog to close',
       );
 
@@ -638,8 +648,9 @@ void main() {
       expect(asked2!.isSuccess, isTrue);
     });
 
-    testWidgets('blocking remembers the peer and refuses the next request',
-        (tester) async {
+    testWidgets('blocking remembers the peer and refuses the next request', (
+      tester,
+    ) async {
       await startPeerWithUi(tester);
 
       OperationResult<RelayPairingProposal>? asked;
@@ -697,7 +708,10 @@ void main() {
         what: 'the blocked refusal',
       );
 
-      expect(peerClient.sent.last.payload['type'], RelayPayloadType.pairResponse);
+      expect(
+        peerClient.sent.last.payload['type'],
+        RelayPayloadType.pairResponse,
+      );
       expect(peerClient.sent.last.payload['accepted'], isFalse);
       expect(peerClient.sent.last.payload['reason'], 'blocked');
       expect(find.text(PairingMessages.instance.codesMatch), findsNothing);

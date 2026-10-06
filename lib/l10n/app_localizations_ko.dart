@@ -1406,16 +1406,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get ipAddressSpecial2 => '브로드캐스트 주소 255.255.255.255를 사용할 수 없습니다';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ 서브넷 불일치\n로컬 IP: $localIP (서브넷: $localNetwork.x)\n대상 IP: $targetIP (서브넷: $targetNetwork.x)\n\n팁: 두 기기가 파일을 전송하려면 같은 로컬 네트워크(같은 서브넷)에 있어야 합니다.\nC 클래스 IPv4 주소의 경우 두 IP 주소의 처음 세 숫자가 같아야 합니다. 예를 들어 둘 다 192.169.2이고 마지막 숫자만 다릅니다\n가장 간단한 방법은 두 기기를 같은 WiFi 또는 라우터에 연결하는 것입니다.\n';
-  }
-
-  @override
   String get responseParseError => '서버 응답을 구문 분석할 수 없습니다';
 
   @override
@@ -1780,4 +1770,201 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get deleteAllRecords => '모두 삭제';
+
+  @override
+  String get peerErrorBadRequest =>
+      '상대 기기가 요청을 인식하지 못했습니다. 두 기기를 같은 버전으로 업데이트하세요.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      '받을 수 있는 파일이 없습니다(잘못된 이름, 중복 또는 크기 제한 초과).';
+
+  @override
+  String get peerErrorBusy => '상대 기기가 사용 중입니다. 잠시 후 다시 시도하세요.';
+
+  @override
+  String get peerErrorNoUi => '상대 기기에서 지금 확인 창을 표시할 수 없습니다. 상대 기기에서 앱을 여세요.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      '상대 기기에 이 전송의 확인 기록이 없습니다. 만료되었을 수 있으니 다시 보내세요.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      '전송이 확인된 후 이 기기의 네트워크 주소가 바뀌었습니다. 다시 보내세요.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      '파일이 상대 기기가 수락한 내용과 일치하지 않습니다. 다시 보내세요.';
+
+  @override
+  String get peerErrorDiskFull => '상대 기기의 저장 공간이 부족합니다.';
+
+  @override
+  String get peerErrorSaveFailed => '상대 기기에서 파일을 저장하지 못했습니다.';
+
+  @override
+  String get peerErrorInternal => '상대 기기에서 예기치 않은 오류가 발생했습니다.';
+
+  @override
+  String get peerErrorClipboardTooLarge => '클립보드 내용이 상대 기기의 크기 제한을 초과합니다.';
+
+  @override
+  String get relayResponseUnreadable => '릴레이 응답을 해석할 수 없습니다';
+
+  @override
+  String get relayServerUrlInvalid => '릴레이 서버 주소가 올바르지 않습니다';
+
+  @override
+  String relayUploadFailed(String details) {
+    return '릴레이 업로드 실패: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return '릴레이 업로드 실패\n상태 코드: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return '릴레이 다운로드 실패: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return '릴레이 다운로드 실패\n상태 코드: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached => '상대 기기가 데이터 스트림에 연결하지 않았습니다';
+
+  @override
+  String get relayPayloadTooLarge => '파일이 릴레이 서버의 1회 전송 한도를 초과합니다';
+
+  @override
+  String get relaySendFailed => '릴레이로 메시지를 보내지 못했습니다';
+
+  @override
+  String get relayPeerNoResponse => '상대 기기가 응답하지 않습니다';
+
+  @override
+  String get relayNoStreamId => '릴레이 서버가 데이터 스트림 ID를 반환하지 않았습니다';
+
+  @override
+  String get relayServerTimeout => '릴레이 서버 응답 시간이 초과되었습니다';
+
+  @override
+  String get relayDisconnected => '릴레이 연결이 끊어졌습니다';
+
+  @override
+  String get relayServerPeerOffline => '상대 기기가 릴레이 서버에 연결되어 있지 않습니다';
+
+  @override
+  String get relayServerTooManyStreams => '릴레이 서버의 동시 전송 한도를 초과했습니다';
+
+  @override
+  String get relayServerRateLimited => '요청이 너무 많습니다. 잠시 후 다시 시도하세요';
+
+  @override
+  String get relayServerTokenRejected => '릴레이 서버가 액세스 토큰을 거부했습니다';
+
+  @override
+  String get relayServerIdentityRejected => '릴레이 서버가 이 기기의 신원을 거부했습니다';
+
+  @override
+  String get relayServerUnknownError => '릴레이 서버가 알 수 없는 오류를 반환했습니다';
+
+  @override
+  String get relayStreamTampered => '전송 중 데이터가 변경되거나 잘려서 폐기했습니다';
+
+  @override
+  String get relaySessionInvalid => '릴레이 세션 데이터가 올바르지 않습니다';
+
+  @override
+  String get relayPeerNoManifest => '상대 기기가 파일 목록을 보내지 않았습니다';
+
+  @override
+  String get relayPeerStalled => '상대 기기가 오랫동안 파일을 보내지 않았습니다';
+
+  @override
+  String get relayPeerCancelled => '상대 기기가 전송을 취소했습니다';
+
+  @override
+  String get relayResumeFailed => '중단된 지점부터 이어서 받을 수 없습니다';
+
+  @override
+  String get relayConfigIncomplete => '릴레이 서버 주소와 액세스 토큰을 모두 입력하세요';
+
+  @override
+  String get relayAuthRejected => '릴레이 서버가 액세스 토큰 또는 기기 신원을 거부했습니다';
+
+  @override
+  String get relayUnreachable => '릴레이 서버에 연결할 수 없습니다. 주소와 네트워크를 확인하세요';
+
+  @override
+  String relayConnectFailed(String details) {
+    return '릴레이 서버 연결 실패: $details';
+  }
+
+  @override
+  String get relayTransferTimeout => '릴레이 전송 시간이 초과되었습니다';
+
+  @override
+  String get transferCancelled => '파일 전송이 취소되었습니다';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP이(가) 이 기기($localIP)와 같은 네트워크에 있지 않을 수 있습니다. 전송에 실패하면 두 기기를 같은 WiFi 또는 라우터에 연결하세요.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName이(가) 비밀 키 인증을 통과하여 파일 $count개를 자동으로 받습니다';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      '저장소 권한이 영구적으로 거부되었습니다. 설정에서 수동으로 활성화하세요.\n\n파일을 다운로드 폴더에 저장하려면 이 권한이 필요합니다.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      '파일을 다운로드 폴더에 저장하려면 저장소 권한이 필요합니다.\n\n설정에서 권한을 허용할 수 있습니다.';
+
+  @override
+  String get storagePermissionRequestFailed => '저장소 권한 요청에 실패했습니다';
+
+  @override
+  String permissionRequestError(String details) {
+    return '권한 요청 오류: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\n세부 정보: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count개';
+  }
+
+  @override
+  String get devInfoSavePath => '[받은 파일 저장 경로]';
+
+  @override
+  String get devInfoLogPath => '[로그 파일 경로]';
+
+  @override
+  String get devInfoHistoryPath => '[기록 파일 경로]';
+
+  @override
+  String get logFileNotFound => '로그 파일이 없습니다';
+
+  @override
+  String logReadFailed(String details) {
+    return '로그 파일을 읽지 못했습니다: $details';
+  }
+
+  @override
+  String get edit => '편집';
 }

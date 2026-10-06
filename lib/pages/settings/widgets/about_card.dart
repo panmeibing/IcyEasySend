@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/toast_helper.dart';
+import 'settings_section.dart';
 
 /// About card widget
 class AboutCard extends StatelessWidget {
@@ -34,9 +35,7 @@ class AboutCard extends StatelessWidget {
     bool notifyOpenFailed = false,
   }) async {
     final l10n = AppLocalizations.of(context);
-    await Clipboard.setData(
-      const ClipboardData(text: AppConstants.githubUrl),
-    );
+    await Clipboard.setData(const ClipboardData(text: AppConstants.githubUrl));
     if (!context.mounted) return;
     ToastHelper.showSuccess(
       context,
@@ -53,30 +52,7 @@ class AboutCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.info_outline,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.about,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+            SettingsCardHeader(icon: Icons.info_outline, title: l10n.about),
             const SizedBox(height: 20),
 
             // App icon and info

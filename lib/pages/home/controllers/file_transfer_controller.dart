@@ -211,7 +211,8 @@ class FileTransferController {
       return true;
     }
 
-    final permissionResult = await _permissionService.requestStoragePermission();
+    final permissionResult = await _permissionService
+        .requestStoragePermission();
     if (permissionResult.granted) {
       return true;
     }
@@ -221,16 +222,12 @@ class FileTransferController {
     }
 
     if (permissionResult.permanentlyDenied) {
-      await _showPermissionDeniedDialog(
-        context,
-        permissionResult.errorMessage,
-      );
+      await _showPermissionDeniedDialog(context, permissionResult.errorMessage);
     } else {
       final l10n = AppLocalizations.of(context);
       await DialogHelper.showErrorDialog(
         context,
-        message:
-            permissionResult.errorMessage ?? l10n.permissionDenied,
+        message: permissionResult.errorMessage ?? l10n.permissionDenied,
         title: l10n.error,
         confirmText: l10n.confirm,
       );
@@ -275,10 +272,9 @@ class FileTransferController {
     required Function() onTransferEnd,
     VoidCallback? onHistoryUpdated,
   }) async {
-    final resolvedPeer = peer ??
-        (targetIP.isEmpty
-            ? null
-            : PeerRef.lanAddress('$targetIP:$targetPort'));
+    final resolvedPeer =
+        peer ??
+        (targetIP.isEmpty ? null : PeerRef.lanAddress('$targetIP:$targetPort'));
     if (files.isEmpty || resolvedPeer == null) {
       return;
     }
@@ -394,7 +390,7 @@ class FileTransferController {
       }
     } finally {
       onTransferEnd();
-      
+
       // Clean up app cache after transfer completes (Android only).
       // Share intent and file_picker both copy large files into this directory.
       if (Platform.isAndroid) {

@@ -1,21 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../../l10n/app_localizations.dart';
-import '../../pages/tv/tv_widgets.dart';
-import '../../ui/form_factor.dart';
+import '../../l10n/current_localizations.dart';
 import '../../models/clipboard_data_model.dart';
 import '../../utils/constants.dart';
+import '../../utils/hex_util.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
 import '../../utils/operation_result.dart';
 import '../../utils/relay_message_provider.dart';
+import '../clipboard_request_prompter.dart';
 import '../clipboard_service.dart';
 import '../identity_service.dart';
 import '../paired_device_store.dart';
@@ -185,8 +184,9 @@ class RelayClipboardService {
 
       final responseTimeout =
           AppConstants.relayClipboardReplyTimeout +
-          TransferHttp.transferTimeout(AppConstants.maxClipboardSizeMB *
-              AppConstants.bytesPerMB);
+          TransferHttp.transferTimeout(
+            AppConstants.maxClipboardSizeMB * AppConstants.bytesPerMB,
+          );
 
       final response = await _client.sendAndAwaitReply(
         toDeviceId: peerDeviceId,
@@ -233,7 +233,7 @@ class RelayClipboardService {
           data: ClipboardDataModel.fromJson(parsed.clipboardData!),
         );
       } catch (e) {
-        LogUtil.wTag(logTag, '???????????: $e');
+        LogUtil.wTag(logTag, '中转剪切板内容无法解析: $e');
         return OperationResult.failure(_messages.clipboardFailed);
       }
     } finally {
@@ -403,7 +403,7 @@ class RelayClipboardService {
             signature: request.signature,
             senderPublicKey: peerKey,
           )) {
-        LogUtil.wTag(logTag, '???????????: $peerDeviceId');
+        LogUtil.wTag(logTag, '中转剪切板请求签名无效: $peerDeviceId');
         await _sendResponse(
           session,
           accepted: false,
@@ -429,7 +429,10 @@ class RelayClipboardService {
           );
           return;
         }
-        accepted = await _confirmShare(context, name);
+        accepted = await ClipboardRequestPrompter.instance.confirm(
+          context,
+          requesterDeviceName: name,
+        );
       }
       if (!accepted) {
         await _sendResponse(
@@ -474,7 +477,7 @@ class RelayClipboardService {
 
       LogUtil.iTag(
         logTag,
-        '??????? ($plainSize bytes JSON / ${content.sizeInBytes} bytes blob)',
+        '剪切板走数据面 ($plainSize bytes JSON / ${content.sizeInBytes} bytes blob)',
       );
       worker = await _openWorker();
       await _shareViaStream(
@@ -509,7 +512,7 @@ class RelayClipboardService {
       role: RelayStreamRole.sender,
     );
     if (!stream.isSuccess) {
-      LogUtil.wTag(logTag, '??????????: ${stream.errorMessage}');
+      LogUtil.wTag(logTag, '创建剪切板数据流失败: ${stream.errorMessage}');
       await _sendResponse(
         session,
         accepted: false,
@@ -555,7 +558,7 @@ class RelayClipboardService {
       codec: codec,
     );
     if (!uploaded.isSuccess) {
-      LogUtil.wTag(logTag, '??????????: ${uploaded.errorMessage}');
+      LogUtil.wTag(logTag, '剪切板数据流上传失败: ${uploaded.errorMessage}');
       // Still wait briefly so the initiator is not left hanging forever if it
       // already started the GET; the ack timeout covers the rest.
       try {
@@ -566,12 +569,12 @@ class RelayClipboardService {
 
     final doneInbound = await doneFuture;
     if (!doneInbound.isSuccess) {
-      LogUtil.wTag(logTag, '??????????: ${doneInbound.errorMessage}');
+      LogUtil.wTag(logTag, '未收到剪切板完成确认: ${doneInbound.errorMessage}');
       return;
     }
     final done = ClipboardDone.tryParse(doneInbound.data!);
     if (done == null || !done.ok) {
-      LogUtil.wTag(logTag, '?????????: ${done?.error}');
+      LogUtil.wTag(logTag, '对方未能写入剪切板: ${done?.error}');
     }
   }
 
@@ -638,12 +641,11 @@ class RelayClipboardService {
   }) async {
     final uri = _client.streamUri(streamId);
     if (uri == null) {
-      return OperationResult.failure('?????????');
+      return OperationResult.failure(appText.relayServerUrlInvalid);
     }
 
     final headers = await _client.streamHeaders(streamId);
-    final dio =
-        _dioFactory?.call(size) ?? TransferHttp.createForUpload(size);
+    final dio = _dioFactory?.call(size) ?? TransferHttp.createForUpload(size);
     final wireLength = RelayFrameCodec.encryptedLength(size);
 
     try {
@@ -654,10 +656,7 @@ class RelayClipboardService {
           fileKey,
         ),
         options: Options(
-          headers: {
-            ...headers,
-            Headers.contentLengthHeader: wireLength,
-          },
+          headers: {...headers, Headers.contentLengthHeader: wireLength},
           contentType: 'application/octet-stream',
           responseType: ResponseType.plain,
           validateStatus: (status) => status != null,
@@ -667,18 +666,14 @@ class RelayClipboardService {
         return OperationResult.success();
       }
       return OperationResult.failure(
-        '??????\n???: ${response.statusCode}',
+        appText.relayUploadFailedStatus(response.statusCode ?? 0),
       );
     } on DioException catch (e) {
       return OperationResult.failure(
-        TransferHttp.describeFailure(
-          e,
-          transport: TransferTransport.relay,
-          verb: '??',
-        ),
+        TransferHttp.describeFailure(e, transport: TransferTransport.relay),
       );
     } catch (e) {
-      return OperationResult.failure('??????: $e');
+      return OperationResult.failure(appText.relayUploadFailed('$e'));
     } finally {
       dio.close();
     }
@@ -693,11 +688,10 @@ class RelayClipboardService {
   }) async {
     final uri = _client.streamUri(streamId);
     if (uri == null) {
-      return OperationResult.failure('?????????');
+      return OperationResult.failure(appText.relayServerUrlInvalid);
     }
 
-    final dio =
-        _dioFactory?.call(size) ?? TransferHttp.createForDownload(size);
+    final dio = _dioFactory?.call(size) ?? TransferHttp.createForDownload(size);
     try {
       final response = await dio.get<ResponseBody>(
         uri.toString(),
@@ -709,7 +703,7 @@ class RelayClipboardService {
       );
       if (response.statusCode != 200 || response.data == null) {
         return OperationResult.failure(
-          '?????????\n???: ${response.statusCode}',
+          appText.relayDownloadFailedStatus(response.statusCode ?? 0),
         );
       }
 
@@ -727,13 +721,14 @@ class RelayClipboardService {
         TransferHttp.describeFailure(
           e,
           transport: TransferTransport.relay,
-          verb: '??',
+          direction: TransferDirection.download,
         ),
       );
     } on RelayCryptoException catch (e) {
-      return OperationResult.failure('???????????????: $e');
+      LogUtil.wTag(logTag, '剪切板数据流校验失败: $e');
+      return OperationResult.failure(appText.relayStreamTampered);
     } catch (e) {
-      return OperationResult.failure('??????: $e');
+      return OperationResult.failure(appText.relayDownloadFailed('$e'));
     } finally {
       // Safe here because the response stream is fully drained into the
       // builder above before this runs.
@@ -805,47 +800,6 @@ class RelayClipboardService {
       kind: RelayKind.transfer,
       payload: ClipboardReject(sessionId: sessionId, reason: reason).toJson(),
     );
-  }
-
-  Future<bool> _confirmShare(
-    BuildContext context,
-    String requesterDeviceName,
-  ) async {
-    final l10n = AppLocalizations.of(context);
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        if (AppFormFactor.isTv) {
-          return TvChoiceDialog(
-            title: l10n.clipboardRequest,
-            message: l10n.clipboardRequestFrom(requesterDeviceName),
-            primaryLabel: l10n.reject,
-            secondaryLabel: l10n.allowClipboardRequest,
-            onPrimary: () => Navigator.of(dialogContext).pop(false),
-            onSecondary: () => Navigator.of(dialogContext).pop(true),
-          );
-        }
-        return AlertDialog(
-          title: Text(l10n.clipboardRequest),
-          content: Text(l10n.clipboardRequestFrom(requesterDeviceName)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.reject),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.allowClipboardRequest),
-            ),
-          ],
-        );
-      },
-    ).timeout(
-      AppConstants.receiveConfirmationTimeout,
-      onTimeout: () => false,
-    );
-    return result == true;
   }
 
   bool _hasUsableUi() {
@@ -922,12 +876,5 @@ class RelayClipboardService {
     return null;
   }
 
-  static String _randomHex(int bytes) {
-    final random = Random.secure();
-    final buffer = StringBuffer();
-    for (var i = 0; i < bytes; i++) {
-      buffer.write(random.nextInt(256).toRadixString(16).padLeft(2, '0'));
-    }
-    return buffer.toString();
-  }
+  static String _randomHex(int bytes) => HexUtil.random(bytes);
 }

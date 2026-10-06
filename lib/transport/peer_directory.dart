@@ -30,9 +30,7 @@ class PeerDirectory {
       final lan = LanEndpoint(ip: device.ip, port: device.port);
       final id = device.deviceId;
       if (id == null || id.isEmpty) {
-        anonymous.add(
-          PeerRef(deviceName: device.deviceName, lan: lan),
-        );
+        anonymous.add(PeerRef(deviceName: device.deviceName, lan: lan));
         continue;
       }
 
@@ -41,7 +39,8 @@ class PeerDirectory {
         deviceId: id,
         deviceName: _preferName(device.deviceName, existing?.deviceName),
         lan: lan,
-        relayOnline: onlinePeers.contains(id) || (existing?.relayOnline ?? false),
+        relayOnline:
+            onlinePeers.contains(id) || (existing?.relayOnline ?? false),
       );
     }
 
@@ -104,16 +103,12 @@ class PeerDirectory {
       }
 
       if (hasLan) {
-        out.add(
-          peer.copyWith(preferredTransport: TransportKind.lan),
-        );
+        out.add(peer.copyWith(preferredTransport: TransportKind.lan));
         continue;
       }
 
       if (hasRelay) {
-        out.add(
-          peer.copyWith(preferredTransport: TransportKind.relay),
-        );
+        out.add(peer.copyWith(preferredTransport: TransportKind.relay));
         continue;
       }
 

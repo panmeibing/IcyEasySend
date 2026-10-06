@@ -12,7 +12,7 @@ import '../../services/language_service.dart';
 import '../../services/paired_device_store.dart';
 import '../../services/preferences_service.dart';
 import '../../services/relay/relay_service.dart';
-import '../../services/validation_service.dart';
+import '../../services/transfer_history_service.dart';
 import '../../ui/form_factor.dart';
 import '../../utils/constants.dart';
 import '../../utils/dialog_helper.dart';
@@ -20,6 +20,7 @@ import '../../utils/toast_helper.dart';
 import '../home/home_ui.dart';
 import '../pairing/pairing_confirm_dialog.dart';
 import '../settings/controllers/device_controller.dart';
+import '../settings/controllers/transfer_controller.dart';
 import 'tv_file_browser.dart';
 import 'tv_widgets.dart';
 
@@ -35,6 +36,10 @@ class TvSettingsPage extends StatefulWidget {
 class _TvSettingsPageState extends State<TvSettingsPage> {
   final PreferencesService _preferences = PreferencesService();
   late final DeviceController _devices = DeviceController(_preferences);
+  late final TransferController _transfer = TransferController(
+    _preferences,
+    TransferHistoryService(),
+  );
 
   String _name = '';
   String? _savePath;
@@ -54,10 +59,10 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
 
   Future<void> _load() async {
     final info = await _devices.loadDeviceInfo();
-    final path = await _preferences.getCustomReceiveSavePath();
-    final concurrent = await _preferences.getConcurrentTransfers();
-    final history = await _preferences.getMaxHistoryItems();
-    final clipboard = await _preferences.getMaxClipboardSize();
+    final path = await _transfer.loadCustomReceiveSavePath();
+    final concurrent = await _transfer.loadConcurrentTransfers();
+    final history = await _transfer.loadMaxHistoryItems();
+    final clipboard = await _transfer.loadMaxClipboardSize();
     final paired = await PairedDeviceStore.instance.loadAll();
     final relay = await _preferences.getRelayConfig();
     if (!mounted) return;
@@ -72,9 +77,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
       _historyLimit = history;
       _clipboardMb = clipboard;
       _pairedCount = paired.length;
-      _relayLabel = relay.isActive
-          ? relay.displayHost
-          : l10n.statusDisabled;
+      _relayLabel = relay.isActive ? relay.displayHost : l10n.statusDisabled;
       _loading = false;
     });
   }
@@ -88,18 +91,8 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
 
     final rows = <_Setting>[
       _Setting(l10n.deviceName, _name, _editName),
-      _Setting(
-        l10n.savePath,
-        _savePath == null || _savePath!.isEmpty
-            ? l10n.tvDownloadsFolder
-            : _savePath!,
-        _editPath,
-      ),
-      _Setting(
-        l10n.pairedDevicesTitle,
-        '$_pairedCount',
-        _editPaired,
-      ),
+      _Setting(l10n.savePath, _savePath ?? l10n.tvDownloadsFolder, _editPath),
+      _Setting(l10n.pairedDevicesTitle, '$_pairedCount', _editPaired),
       _Setting(l10n.title, _relayLabel, _editRelay),
       _Setting(l10n.language, _language, _editLanguage),
       _Setting(
@@ -110,7 +103,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           value: _concurrent,
           min: 1,
           max: AppConstants.maxConcurrentTransfers,
-          onSave: _preferences.saveConcurrentTransfers,
+          onSave: _transfer.saveConcurrentTransfers,
         ),
       ),
       _Setting(
@@ -121,7 +114,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           value: _historyLimit,
           min: AppConstants.allowMinHistoryItems,
           max: AppConstants.allowMaxHistoryItems,
-          onSave: _preferences.saveMaxHistoryItems,
+          onSave: _saveHistoryLimit,
         ),
       ),
       _Setting(
@@ -132,7 +125,7 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
           value: _clipboardMb,
           min: AppConstants.minClipboardSizeMB,
           max: AppConstants.maxClipboardSizeMB,
-          onSave: _preferences.saveMaxClipboardSize,
+          onSave: _transfer.saveMaxClipboardSize,
         ),
       ),
       _Setting(
@@ -176,30 +169,22 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
       // returns the folder that is open when the user confirms.
       final String? selected;
       if (Platform.isAndroid && AppFormFactor.isTv) {
-        final picked = await showTvFileBrowser(
-          context,
-          selectDirectory: true,
-        );
+        final picked = await showTvFileBrowser(context, selectDirectory: true);
         selected = picked == null || picked.isEmpty ? null : picked.first;
       } else {
         selected = await FilePicker.platform.getDirectoryPath();
       }
       if (selected == null || selected.isEmpty || !mounted) return;
-      final writable = await ValidationService().validateDirectoryWritable(
-        selected,
-      );
+      final change = await _transfer.setCustomReceiveSavePath(selected);
       if (!mounted) return;
-      if (!writable.isSuccess) {
-        ToastHelper.showError(context, l10n.savePathNotWritable);
-        return;
+      switch (change) {
+        case ReceivePathChange.notWritable:
+          ToastHelper.showError(context, l10n.savePathNotWritable);
+        case ReceivePathChange.saveFailed:
+          ToastHelper.showError(context, l10n.tvPathUnchanged);
+        case ReceivePathChange.saved:
+          await _load();
       }
-      final saved = await _preferences.saveCustomReceiveSavePath(selected);
-      if (!mounted) return;
-      if (!saved) {
-        ToastHelper.showError(context, l10n.tvPathUnchanged);
-        return;
-      }
-      await _load();
     } catch (_) {
       if (!mounted) return;
       ToastHelper.showError(context, l10n.tvPathUnchanged);
@@ -300,6 +285,34 @@ class _TvSettingsPageState extends State<TvSettingsPage> {
       },
     );
     if (mounted) await _load();
+  }
+
+  /// Lowering the limit deletes history at once, so it is confirmed first,
+  /// the same as on the phone settings page.
+  Future<bool> _saveHistoryLimit(int newCount) async {
+    final l10n = AppLocalizations.of(context);
+    final currentCount = await _transfer.getCurrentHistoryCount();
+    if (!mounted) return false;
+    if (currentCount > newCount) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => TvChoiceDialog(
+          title: l10n.confirmChange,
+          message: l10n.historyDeleteWarning(
+            currentCount,
+            newCount,
+            currentCount - newCount,
+          ),
+          primaryLabel: l10n.cancel,
+          secondaryLabel: l10n.confirmChange,
+          onPrimary: () => Navigator.of(dialogContext).pop(false),
+          onSecondary: () => Navigator.of(dialogContext).pop(true),
+        ),
+      );
+      if (confirmed != true) return false;
+    }
+    final result = await _transfer.saveMaxHistoryItems(newCount);
+    return result.success;
   }
 
   Future<void> _editInt({
@@ -463,10 +476,7 @@ class _PairedDialogState extends State<_PairedDialog> {
               ),
               const SizedBox(height: 4),
               ExcludeFocus(
-                child: Text(
-                  _localId,
-                  style: const TextStyle(fontSize: 18),
-                ),
+                child: Text(_localId, style: const TextStyle(fontSize: 18)),
               ),
               const SizedBox(height: 12),
               TvButton(

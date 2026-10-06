@@ -52,10 +52,8 @@ class RelayConfig {
   bool get isValid => baseUri != null && token.isNotEmpty;
 
   /// WebSocket URL of the signaling plane.
-  Uri? get signalUri => _endpoint(
-    AppConstants.relaySignalPath,
-    webSocket: true,
-  );
+  Uri? get signalUri =>
+      _endpoint(AppConstants.relaySignalPath, webSocket: true);
 
   /// HTTP URL of one data stream.
   Uri? streamUri(String streamId) =>

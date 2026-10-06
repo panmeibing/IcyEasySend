@@ -192,10 +192,7 @@ class _WebShareQrDialogState extends State<WebShareQrDialog> {
               const SizedBox(height: 12),
               SelectableText(
                 _shareUrl,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue.shade800,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
                 textAlign: TextAlign.center,
               ),
             ],

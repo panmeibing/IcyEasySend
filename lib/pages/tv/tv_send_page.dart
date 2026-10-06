@@ -239,11 +239,13 @@ class _TvSendPageState extends State<TvSendPage> {
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final peer = _peers[index];
-                          final address = peer.lan?.address ?? peer.channelLabel ?? '';
+                          final address =
+                              peer.lan?.address ?? peer.channelLabel ?? '';
                           return TvRow(
                             title: peer.deviceName ?? address,
                             subtitle: address,
-                            selected: selected != null && peer.isSameRoute(selected),
+                            selected:
+                                selected != null && peer.isSameRoute(selected),
                             onPressed: () => setState(() => _selected = peer),
                           );
                         },
@@ -277,15 +279,15 @@ class _TvSendPageState extends State<TvSendPage> {
               ),
               if (_files.isNotEmpty)
                 Text(
-                FormatUtil.formatBytes(
-                  _files.fold<int>(0, (sum, item) {
-                    try {
-                      return sum + item.file.lengthSync();
-                    } catch (_) {
-                      return sum;
-                    }
-                  }),
-                ),
+                  FormatUtil.formatBytes(
+                    _files.fold<int>(0, (sum, item) {
+                      try {
+                        return sum + item.file.lengthSync();
+                      } catch (_) {
+                        return sum;
+                      }
+                    }),
+                  ),
                   style: const TextStyle(fontSize: 16, color: HomeUi.inkMuted),
                 ),
               if (_status.isNotEmpty) ...[
@@ -294,7 +296,9 @@ class _TvSendPageState extends State<TvSendPage> {
               ],
               if (_sending) ...[
                 const SizedBox(height: 8),
-                LinearProgressIndicator(value: _progress == 0 ? null : _progress),
+                LinearProgressIndicator(
+                  value: _progress == 0 ? null : _progress,
+                ),
               ],
               const SizedBox(height: 16),
               TvButton(
@@ -315,7 +319,8 @@ class _TvSendPageState extends State<TvSendPage> {
               const SizedBox(height: 10),
               TvButton(
                 label: l10n.shareViaQr,
-                onPressed: _webShare.canShareViaQr(
+                onPressed:
+                    _webShare.canShareViaQr(
                       isServerRunning: widget.serverManager.isRunning(),
                       isSending: _sending,
                       isCreatingWebShare: _sharing,

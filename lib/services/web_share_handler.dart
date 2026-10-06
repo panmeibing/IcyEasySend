@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:shelf/shelf.dart';
 
 import '../utils/log_util.dart';
+import '../utils/server_http_util.dart';
 import '../utils/web_share_http_util.dart';
 import 'web_share_page_builder.dart';
 import 'web_share_service.dart';
@@ -42,21 +43,13 @@ class WebShareHandler {
 
   /// GET `/s/{token}/meta` — JSON file list.
   Future<Response> handleShareMeta(Request request, String token) async {
-    if (!WebShareHttpUtil.isValidToken(token)) {
-      return Response(
-        410,
-        body: jsonEncode({'error': 'Share link expired or not found'}),
-        headers: {'Content-Type': 'application/json'},
-      );
-    }
-
-    final session = _shareService.getSession(token);
+    final session = WebShareHttpUtil.isValidToken(token)
+        ? _shareService.getSession(token)
+        : null;
     if (session == null) {
-      return Response(
-        410,
-        body: jsonEncode({'error': 'Share link expired or not found'}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({
+        'error': 'Share link expired or not found',
+      }, status: 410);
     }
 
     return Response.ok(
@@ -112,8 +105,9 @@ class WebShareHandler {
 
       // Live size keeps Content-Length aligned with the stream body.
       final fileSize = await file.length();
-      final contentDisposition =
-          WebShareHttpUtil.buildContentDisposition(fileName);
+      final contentDisposition = WebShareHttpUtil.buildContentDisposition(
+        fileName,
+      );
 
       LogUtil.iTag(
         logTag,

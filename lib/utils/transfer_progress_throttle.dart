@@ -64,8 +64,5 @@ class _ThrottleEntry {
   final double progress;
   final DateTime emittedAt;
 
-  const _ThrottleEntry({
-    required this.progress,
-    required this.emittedAt,
-  });
+  const _ThrottleEntry({required this.progress, required this.emittedAt});
 }

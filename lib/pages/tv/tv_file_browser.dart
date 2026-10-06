@@ -183,15 +183,17 @@ class _TvFileBrowserState extends State<_TvFileBrowser> {
         _isUnderRoot(parent.path);
 
     final rows = <_Entry>[
-      if (canGoUp)
-        _Entry(name: '..', fullPath: parent.path, isDirectory: true),
+      if (canGoUp) _Entry(name: '..', fullPath: parent.path, isDirectory: true),
       ..._entries,
     ];
 
     // Nearly the full screen, so a long file name stays readable beside the actions.
     const sideInset = 48.0;
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: sideInset, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: sideInset,
+        vertical: 24,
+      ),
       child: SizedBox(
         width: size.width - sideInset * 2,
         height: size.height * 0.8,
@@ -300,7 +302,9 @@ class _TvFileBrowserState extends State<_TvFileBrowser> {
           title: entry.isDirectory ? '${entry.name}/' : entry.name,
           subtitle: entry.isDirectory
               ? null
-              : (entry.size == null ? null : FormatUtil.formatBytes(entry.size!)),
+              : (entry.size == null
+                    ? null
+                    : FormatUtil.formatBytes(entry.size!)),
           selected: checked,
           autofocus: index == 0,
           onPressed: () => _activate(entry),

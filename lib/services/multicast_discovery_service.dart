@@ -77,10 +77,7 @@ class MulticastDiscoveryService {
 
     if (_socket == null) {
       await _releaseMulticastLock();
-      LogUtil.wTag(
-        logTag,
-        'UDP 发现监听启动失败：请检查防火墙是否允许 UDP $_httpPort',
-      );
+      LogUtil.wTag(logTag, 'UDP 发现监听启动失败：请检查防火墙是否允许 UDP $_httpPort');
       return;
     }
 
@@ -175,14 +172,13 @@ class MulticastDiscoveryService {
 
     unawaited(sendAnnouncement(burst: false));
 
-    _announceTimer = Timer.periodic(
-      AppConstants.multicastBackgroundInterval,
-      (_) {
-        if (_serverRunning) {
-          unawaited(sendAnnouncement(burst: false));
-        }
-      },
-    );
+    _announceTimer = Timer.periodic(AppConstants.multicastBackgroundInterval, (
+      _,
+    ) {
+      if (_serverRunning) {
+        unawaited(sendAnnouncement(burst: false));
+      }
+    });
   }
 
   void _stopPeriodicAnnouncements() {
@@ -255,10 +251,7 @@ class MulticastDiscoveryService {
     _socket = socket;
     _listenerInterfaceIps = interfaceIps;
 
-    LogUtil.dTag(
-      logTag,
-      'UDP 监听: 0.0.0.0:$port (${interfaceIps.join(", ")})',
-    );
+    LogUtil.dTag(logTag, 'UDP 监听: 0.0.0.0:$port (${interfaceIps.join(", ")})');
 
     socket.listen((event) {
       if (event != RawSocketEvent.read) {
@@ -405,10 +398,7 @@ class MulticastDiscoveryService {
       socket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
       socket.send(payload, target, port);
     } catch (e) {
-      LogUtil.wTag(
-        logTag,
-        '单播回复失败 -> ${target.address}:$port: $e',
-      );
+      LogUtil.wTag(logTag, '单播回复失败 -> ${target.address}:$port: $e');
     } finally {
       socket?.close();
     }
@@ -449,11 +439,7 @@ class MulticastDiscoveryService {
         }
       }
 
-      socket.send(
-        payload,
-        InternetAddress('255.255.255.255'),
-        port,
-      );
+      socket.send(payload, InternetAddress('255.255.255.255'), port);
       sentCount++;
     } catch (e) {
       LogUtil.wTag(logTag, '发送 UDP 发现包失败: $e');

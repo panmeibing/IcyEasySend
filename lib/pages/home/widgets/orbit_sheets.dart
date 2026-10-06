@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transfer_file_item.dart';
 import '../../../utils/constants.dart';
+import '../controllers/target_endpoint_controller.dart';
 import '../home_ui.dart';
 import 'quick_ip_chips.dart';
 
-const BorderRadius _sheetRadius = BorderRadius.vertical(top: Radius.circular(24));
+const BorderRadius _sheetRadius = BorderRadius.vertical(
+  top: Radius.circular(24),
+);
 
 /// Bottom sheet: pick files or folder.
 Future<void> showOrbitPickSheet({
@@ -41,7 +44,10 @@ Future<void> showOrbitPickSheet({
               const SizedBox(height: 8),
               Text(
                 l10n.dragDropHint,
-                style: HomeUi.captionStyle.copyWith(fontSize: 13.5, height: 1.4),
+                style: HomeUi.captionStyle.copyWith(
+                  fontSize: 13.5,
+                  height: 1.4,
+                ),
               ),
               const SizedBox(height: 20),
               Row(
@@ -151,21 +157,9 @@ Future<void> showOrbitMoreSheet({
   required bool canRequestClipboard,
   required VoidCallback onClipboard,
   required VoidCallback onDiagnostics,
-  required TextEditingController ipController,
-  required TextEditingController portController,
-  required TextEditingController secretKeyController,
-  FocusNode? ipFocusNode,
-  FocusNode? portFocusNode,
-  FocusNode? secretKeyFocusNode,
-  required ValueNotifier<int> endpointUiTick,
-  required String? Function() ipErrorReader,
-  required String? Function() portErrorReader,
-  required List<String> ipHistory,
-  required String? serverAddress,
+  required TargetEndpointController endpoint,
   required bool isEnabled,
-  required ValueChanged<String> onIPSelected,
   required ValueChanged<String> onIPDeleted,
-  required VoidCallback onPortReset,
   required VoidCallback onSecretHelp,
 }) {
   final l10n = AppLocalizations.of(context);
@@ -238,24 +232,25 @@ Future<void> showOrbitMoreSheet({
                   style: HomeUi.sectionTitleStyle.copyWith(fontSize: 13),
                 ),
                 const SizedBox(height: 12),
-                ValueListenableBuilder<int>(
-                  valueListenable: endpointUiTick,
-                  builder: (context, _, child) {
+                ListenableBuilder(
+                  listenable: endpoint,
+                  builder: (context, child) {
                     return _OrbitManualEndpointForm(
-                      ipController: ipController,
-                      portController: portController,
-                      secretKeyController: secretKeyController,
-                      ipFocusNode: ipFocusNode,
-                      portFocusNode: portFocusNode,
-                      secretKeyFocusNode: secretKeyFocusNode,
-                      ipErrorMessage: ipErrorReader(),
-                      portErrorMessage: portErrorReader(),
-                      ipHistory: ipHistory,
-                      serverAddress: serverAddress,
+                      ipController: endpoint.ipController,
+                      portController: endpoint.portController,
+                      secretKeyController: endpoint.secretKeyController,
+                      ipFocusNode: endpoint.ipFocusNode,
+                      portFocusNode: endpoint.portFocusNode,
+                      secretKeyFocusNode: endpoint.secretKeyFocusNode,
+                      ipErrorMessage: endpoint.ipErrorMessage,
+                      ipMessageIsWarning: endpoint.ipMessageIsWarning,
+                      portErrorMessage: endpoint.portErrorMessage,
+                      ipHistory: endpoint.ipHistory,
+                      serverAddress: endpoint.serverAddress,
                       isEnabled: isEnabled,
-                      onIPSelected: onIPSelected,
+                      onIPSelected: endpoint.useHistoryIP,
                       onIPDeleted: onIPDeleted,
-                      onPortReset: onPortReset,
+                      onPortReset: endpoint.resetPort,
                       onSecretHelp: onSecretHelp,
                     );
                   },
@@ -287,6 +282,7 @@ class _OrbitManualEndpointForm extends StatelessWidget {
   final FocusNode? portFocusNode;
   final FocusNode? secretKeyFocusNode;
   final String? ipErrorMessage;
+  final bool ipMessageIsWarning;
   final String? portErrorMessage;
   final List<String> ipHistory;
   final String? serverAddress;
@@ -304,6 +300,7 @@ class _OrbitManualEndpointForm extends StatelessWidget {
     this.portFocusNode,
     this.secretKeyFocusNode,
     required this.ipErrorMessage,
+    required this.ipMessageIsWarning,
     required this.portErrorMessage,
     required this.ipHistory,
     required this.serverAddress,
@@ -317,11 +314,13 @@ class _OrbitManualEndpointForm extends StatelessWidget {
   InputDecoration _decoration({
     required String hintText,
     String? errorText,
+    String? warningText,
     Widget? suffix,
   }) {
     return HomeUi.fieldDecoration(
       hintText: hintText,
       errorText: errorText,
+      warningText: warningText,
       suffix: suffix,
     );
   }
@@ -339,7 +338,8 @@ class _OrbitManualEndpointForm extends StatelessWidget {
           keyboardType: TextInputType.number,
           decoration: _decoration(
             hintText: l10n.ipHint,
-            errorText: ipErrorMessage,
+            errorText: ipMessageIsWarning ? null : ipErrorMessage,
+            warningText: ipMessageIsWarning ? ipErrorMessage : null,
             suffix: ipHistory.isEmpty
                 ? null
                 : PopupMenuButton<String>(
@@ -412,13 +412,13 @@ class _OrbitManualEndpointForm extends StatelessWidget {
           enabled: isEnabled,
           obscureText: true,
           maxLength: 20,
-          buildCounter: (
-            context, {
-            required currentLength,
-            required isFocused,
-            maxLength,
-          }) =>
-              null,
+          buildCounter:
+              (
+                context, {
+                required currentLength,
+                required isFocused,
+                maxLength,
+              }) => null,
           decoration: _decoration(
             hintText: l10n.targetDeviceSecretKey,
             suffix: IconButton(

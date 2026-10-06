@@ -10,10 +10,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:super_clipboard/super_clipboard.dart';
 
 import '../models/clipboard_data_model.dart';
+import '../l10n/current_localizations.dart';
 import '../utils/http_helper.dart';
+import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import '../utils/operation_result.dart';
+import '../utils/peer_error.dart';
 import 'native_clipboard_service.dart';
 
 /// 增强的剪切板服务类
@@ -84,7 +87,10 @@ class ClipboardService {
       final accepted = responseData['accepted'] as bool? ?? false;
 
       if (!accepted) {
-        final message = responseData['message'] as String? ?? '用户拒绝了请求';
+        final message = PeerError.describeBody(
+          responseData,
+          PeerError.clipboardDeclined.describe(),
+        );
         LogUtil.wTag(logTag, '请求被拒绝: $message');
         return OperationResult.failure(message);
       }
@@ -94,7 +100,7 @@ class ClipboardService {
 
       if (clipboardDataJson == null) {
         LogUtil.wTag(logTag, '目标设备剪切板为空');
-        return OperationResult.failure('目标设备剪切板为空');
+        return OperationResult.failure(PeerError.clipboardEmpty.describe());
       }
 
       final clipboardData = ClipboardDataModel.fromJson(clipboardDataJson);
@@ -106,7 +112,7 @@ class ClipboardService {
       return OperationResult.success(data: clipboardData);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '解析响应失败: $e', e, stackTrace);
-      return OperationResult.failure('解析响应失败: $e');
+      return OperationResult.failure(ErrorMessages.responseParseError);
     }
   }
 
@@ -190,10 +196,7 @@ class ClipboardService {
         : 'png';
     final fileName = image.fileName ?? 'clipboard_image.$extension';
 
-    LogUtil.iTag(
-      logTag,
-      '成功通过原生 API 读取图片剪切板，大小: ${image.bytes.length} bytes',
-    );
+    LogUtil.iTag(logTag, '成功通过原生 API 读取图片剪切板，大小: ${image.bytes.length} bytes');
 
     return ClipboardDataModel(
       type: ClipboardDataType.file,
@@ -217,10 +220,7 @@ class ClipboardService {
     }
 
     LogUtil.iTag(logTag, '成功通过原生 API 读取剪切板，长度: ${text.length}');
-    return ClipboardDataModel(
-      type: ClipboardDataType.text,
-      textContent: text,
-    );
+    return ClipboardDataModel(type: ClipboardDataType.text, textContent: text);
   }
 
   Future<ClipboardDataModel?> _readImageFromSuperClipboard() async {
@@ -281,21 +281,25 @@ class ClipboardService {
     FileFormat format,
   ) async {
     final completer = Completer<Uint8List?>();
-    final progress = reader.getFile(format, (file) async {
-      try {
-        completer.complete(await file.readAll());
-      } catch (e, stackTrace) {
-        LogUtil.wTag(logTag, '读取剪切板文件流失败: $e', e, stackTrace);
+    final progress = reader.getFile(
+      format,
+      (file) async {
+        try {
+          completer.complete(await file.readAll());
+        } catch (e, stackTrace) {
+          LogUtil.wTag(logTag, '读取剪切板文件流失败: $e', e, stackTrace);
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
+        }
+      },
+      onError: (error) {
+        LogUtil.wTag(logTag, 'getFile 失败: $error');
         if (!completer.isCompleted) {
           completer.complete(null);
         }
-      }
-    }, onError: (error) {
-      LogUtil.wTag(logTag, 'getFile 失败: $error');
-      if (!completer.isCompleted) {
-        completer.complete(null);
-      }
-    });
+      },
+    );
 
     if (progress == null) {
       return null;
@@ -359,7 +363,12 @@ class ClipboardService {
           );
         }
       } catch (e, stackTrace) {
-        LogUtil.wTag(logTag, 'super_clipboard 读取 plainText 失败: $e', e, stackTrace);
+        LogUtil.wTag(
+          logTag,
+          'super_clipboard 读取 plainText 失败: $e',
+          e,
+          stackTrace,
+        );
       }
     }
 
@@ -376,7 +385,12 @@ class ClipboardService {
           );
         }
       } catch (e, stackTrace) {
-        LogUtil.wTag(logTag, 'super_clipboard 读取 htmlText 失败: $e', e, stackTrace);
+        LogUtil.wTag(
+          logTag,
+          'super_clipboard 读取 htmlText 失败: $e',
+          e,
+          stackTrace,
+        );
       }
     }
 
@@ -631,7 +645,7 @@ class ClipboardService {
 
     // 构建请求体
     final requestBody = jsonEncode({
-      'requesterDeviceName': deviceName ?? '未知设备',
+      'requesterDeviceName': deviceName ?? '',
       'timestamp': DateTime.now().toIso8601String(),
     });
 
@@ -651,7 +665,9 @@ class ClipboardService {
 
     if (!result.isSuccess) {
       LogUtil.eTag(logTag, '请求剪切板失败: ${result.errorMessage}');
-      return OperationResult.failure(result.errorMessage ?? '请求失败');
+      return OperationResult.failure(
+        result.errorMessage ?? ErrorMessages.networkRequestFailed,
+      );
     }
 
     final response = result.data!;
@@ -663,7 +679,10 @@ class ClipboardService {
 
     // 处理内容过大响应
     if (response.statusCode == 413) {
-      final message = HttpHelper.extractErrorMessage(response, '剪切板内容过大');
+      final message = HttpHelper.extractErrorMessage(
+        response,
+        PeerError.clipboardTooLarge.describe(),
+      );
       LogUtil.wTag(logTag, '剪切板内容过大: $message');
       return OperationResult.failure(message);
     }
@@ -671,7 +690,7 @@ class ClipboardService {
     // 处理其他错误响应
     final errorMessage = HttpHelper.extractErrorMessage(
       response,
-      '请求失败 (${response.statusCode})',
+      ErrorMessages.responseStatusCodeError(response.statusCode),
     );
     LogUtil.eTag(logTag, '请求失败: $errorMessage');
     return OperationResult.failure(errorMessage);
@@ -695,7 +714,9 @@ class ClipboardService {
     );
 
     if (!requestResult.isSuccess) {
-      return OperationResult.failure(requestResult.errorMessage ?? '请求失败');
+      return OperationResult.failure(
+        requestResult.errorMessage ?? ErrorMessages.networkRequestFailed,
+      );
     }
 
     final clipboardData = requestResult.data!;
@@ -708,6 +729,6 @@ class ClipboardService {
       return OperationResult.success(data: clipboardData);
     }
 
-    return OperationResult.failure('写入本地剪切板失败');
+    return OperationResult.failure(appText.clipboardSyncFailed);
   }
 }

@@ -13,8 +13,8 @@ class DialogHelper {
     BuildContext context, {
     required String title,
     required String message,
-    String confirmText = '确认',
-    String cancelText = '取消',
+    required String confirmText,
+    required String cancelText,
     IconData? icon,
     Color? iconColor,
   }) async {

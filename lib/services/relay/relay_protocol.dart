@@ -173,6 +173,7 @@ class RelayPayloadType {
   static const String secure = 'secure';
 
   static const String pairRequest = 'pair.request';
+
   /// Peer's public key, sent before either user has compared the digits so
   /// both screens can show the same code at once.
   static const String pairAnnounce = 'pair.announce';
@@ -636,6 +637,13 @@ class FileDone {
   /// turns a dropped stream into a retry instead of a lost file.
   final int? resumeFromChunk;
 
+  /// Why the file failed, as a `PeerError` code the sender can localize.
+  ///
+  /// Absent from older receivers, which only send [error].
+  final String? code;
+
+  /// Failure detail in the receiver's language, for senders that predate
+  /// [code].
   final String? error;
 
   const FileDone({
@@ -644,6 +652,7 @@ class FileDone {
     required this.ok,
     required this.bytes,
     this.resumeFromChunk,
+    this.code,
     this.error,
   });
 
@@ -654,6 +663,7 @@ class FileDone {
     'ok': ok,
     'bytes': bytes,
     'resumeFromChunk': ?resumeFromChunk,
+    'code': ?code,
     'error': ?error,
   };
 
@@ -665,6 +675,7 @@ class FileDone {
 
     final bytes = json['bytes'];
     final resume = json['resumeFromChunk'];
+    final code = json['code'];
     final error = json['error'];
     return FileDone(
       sessionId: sessionId,
@@ -672,6 +683,7 @@ class FileDone {
       ok: json['ok'] == true,
       bytes: bytes is int ? bytes : 0,
       resumeFromChunk: resume is int && resume > 0 ? resume : null,
+      code: code is String && code.isNotEmpty ? code : null,
       error: error is String && error.isNotEmpty ? error : null,
     );
   }
@@ -1173,4 +1185,3 @@ class ClipboardDone {
     );
   }
 }
-

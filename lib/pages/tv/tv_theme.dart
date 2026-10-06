@@ -71,9 +71,7 @@ ThemeData buildTvTheme(ThemeData phone) {
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: focusStyle(
-        phone.outlinedButtonTheme.style ?? const ButtonStyle(),
-      ),
+      style: focusStyle(phone.outlinedButtonTheme.style ?? const ButtonStyle()),
     ),
     textButtonTheme: TextButtonThemeData(
       style: focusStyle(phone.textButtonTheme.style ?? const ButtonStyle()),

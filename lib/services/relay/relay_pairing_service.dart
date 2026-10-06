@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
@@ -118,7 +118,9 @@ class RelayPairingService {
   ) async {
     final normalized = peerDeviceId.trim().toLowerCase();
     if (!_isDeviceId(normalized)) {
-      return OperationResult.failure(PairingMessages.instance.invalidDeviceCode);
+      return OperationResult.failure(
+        PairingMessages.instance.invalidDeviceCode,
+      );
     }
 
     final localDeviceId = await _identity.getDeviceId();
@@ -228,9 +230,7 @@ class RelayPairingService {
         !await IdentityService.matchesDeviceId(peerDeviceId, decoded)) {
       LogUtil.wTag(logTag, '中转配对公钥与设备码不匹配: $peerDeviceId');
       await _tell(peerDeviceId, accepted: false);
-      return OperationResult.failure(
-        PairingMessages.instance.identityMismatch,
-      );
+      return OperationResult.failure(PairingMessages.instance.identityMismatch);
     }
 
     return OperationResult.success(

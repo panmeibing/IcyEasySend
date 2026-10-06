@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:icy_easy_send/pages/tv/tv_widgets.dart';
 
 void main() {
-  testWidgets('selecting a TvButton keeps focus on that button', (tester) async {
+  testWidgets('selecting a TvButton keeps focus on that button', (
+    tester,
+  ) async {
     var selected = 0;
     await tester.pumpWidget(
       MaterialApp(
@@ -30,9 +32,9 @@ void main() {
     await tester.pump();
     expect(sent.hasPrimaryFocus, isTrue);
 
-    tester.widget<OutlinedButton>(
-      find.widgetWithText(OutlinedButton, 'filter1'),
-    ).onPressed!();
+    tester
+        .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'filter1'))
+        .onPressed!();
     await tester.pump();
 
     expect(sent.hasPrimaryFocus, isTrue);

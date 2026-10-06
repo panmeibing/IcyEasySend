@@ -1,13 +1,13 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Platform;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shelf/shelf.dart';
 
 import '../utils/constants.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
+import '../utils/server_http_util.dart';
 import 'identity_service.dart';
 import 'pairing_prompter.dart';
 import 'pairing_service.dart';
@@ -73,7 +73,7 @@ class PairingHandler {
 
   Future<Response> handlePairRequest(Request request) async {
     try {
-      final body = jsonDecode(await request.readAsString());
+      final body = await ServerHttpUtil.readJson(request);
       if (body is! Map) {
         return _reject('bad_request', status: 400);
       }
@@ -139,7 +139,7 @@ class PairingHandler {
         publicKey: publicKeyRaw,
         deviceName: deviceName ?? '',
         platform: platform,
-        remoteAddress: _remoteAddress(request),
+        remoteAddress: ServerHttpUtil.remoteAddress(request),
       );
 
       return _json({
@@ -149,6 +149,10 @@ class PairingHandler {
         'deviceName': await NetworkUtil.getDeviceName(),
         'platform': Platform.operatingSystem,
       });
+    } on RequestBodyTooLargeException {
+      return _reject('bad_request', status: 413);
+    } on FormatException {
+      return _reject('bad_request', status: 400);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '处理配对请求异常: $e', e, stackTrace);
       return _reject('error', status: 500);
@@ -157,7 +161,7 @@ class PairingHandler {
 
   Future<Response> handlePairConfirm(Request request) async {
     try {
-      final body = jsonDecode(await request.readAsString());
+      final body = await ServerHttpUtil.readJson(request);
       if (body is! Map) {
         return _reject('bad_request', status: 400);
       }
@@ -194,6 +198,10 @@ class PairingHandler {
       }
 
       return _json({'ok': stored, 'paired': stored});
+    } on RequestBodyTooLargeException {
+      return _reject('bad_request', status: 413);
+    } on FormatException {
+      return _reject('bad_request', status: 400);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '处理配对确认异常: $e', e, stackTrace);
       return _reject('error', status: 500);
@@ -239,20 +247,11 @@ class PairingHandler {
     );
   }
 
-  String? _remoteAddress(Request request) {
-    final connectionInfo =
-        request.context['shelf.io.connection_info'] as HttpConnectionInfo?;
-    return connectionInfo?.remoteAddress.address;
-  }
+  Response _json(Map<String, Object?> body) => ServerHttpUtil.json(body);
 
-  Response _json(Map<String, Object?> body) => Response.ok(
-    jsonEncode(body),
-    headers: {'Content-Type': 'application/json'},
-  );
-
-  Response _reject(String reason, {int status = 200}) => Response(
-    status,
-    body: jsonEncode({'accepted': false, 'ok': false, 'reason': reason}),
-    headers: {'Content-Type': 'application/json'},
-  );
+  Response _reject(String reason, {int status = 200}) => ServerHttpUtil.json({
+    'accepted': false,
+    'ok': false,
+    'reason': reason,
+  }, status: status);
 }

@@ -1404,16 +1404,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get ipAddressSpecial2 => 'ブロードキャストアドレス255.255.255.255を使用できません';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ サブネットの不一致\nローカルIP: $localIP（サブネット: $localNetwork.x）\nターゲットIP: $targetIP（サブネット: $targetNetwork.x）\n\nヒント: 2台のデバイスがファイルを転送するには、同じローカルネットワーク（同じサブネット）にある必要があります。\nクラスC IPv4アドレスの場合、2つのIPアドレスの最初の3つの数字が同じである必要があります。例えば、両方とも192.169.2で、最後の数字のみが異なります\n最も簡単な方法は、2台のデバイスを同じWiFiまたはルーターに接続することです。\n';
-  }
-
-  @override
   String get responseParseError => 'サーバーの応答を解析できません';
 
   @override
@@ -1775,4 +1765,199 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get deleteAllRecords => 'すべて削除';
+
+  @override
+  String get peerErrorBadRequest =>
+      '相手のデバイスがリクエストを認識できません。両方のデバイスを同じバージョンに更新してください。';
+
+  @override
+  String get peerErrorNoValidFiles => '受信できるファイルがありません（無効な名前、重複、またはサイズ上限超過）。';
+
+  @override
+  String get peerErrorBusy => '相手のデバイスはビジー状態です。しばらくしてから再試行してください。';
+
+  @override
+  String get peerErrorNoUi => '相手のデバイスは現在確認画面を表示できません。相手のデバイスでアプリを開いてください。';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      '相手のデバイスにこの転送の確認記録がありません。期限切れの可能性があります。もう一度送信してください。';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      '転送の確認後にこのデバイスのネットワークアドレスが変わりました。もう一度送信してください。';
+
+  @override
+  String get peerErrorContentMismatch => 'ファイルが相手の承認した内容と一致しません。もう一度送信してください。';
+
+  @override
+  String get peerErrorDiskFull => '相手のデバイスのストレージ容量が不足しています。';
+
+  @override
+  String get peerErrorSaveFailed => '相手のデバイスでファイルを保存できませんでした。';
+
+  @override
+  String get peerErrorInternal => '相手のデバイスで予期しないエラーが発生しました。';
+
+  @override
+  String get peerErrorClipboardTooLarge => 'クリップボードの内容が相手のデバイスのサイズ上限を超えています。';
+
+  @override
+  String get relayResponseUnreadable => 'リレーからの応答を解析できません';
+
+  @override
+  String get relayServerUrlInvalid => 'リレーサーバーのアドレスが無効です';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'リレーのアップロードに失敗しました: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'リレーのアップロードに失敗しました\nステータスコード: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'リレーのダウンロードに失敗しました: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'リレーのダウンロードに失敗しました\nステータスコード: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached => '相手のデバイスがデータストリームに接続しませんでした';
+
+  @override
+  String get relayPayloadTooLarge => 'ファイルがリレーサーバーの1回あたりの転送上限を超えています';
+
+  @override
+  String get relaySendFailed => 'リレー経由でメッセージを送信できませんでした';
+
+  @override
+  String get relayPeerNoResponse => '相手のデバイスが応答しません';
+
+  @override
+  String get relayNoStreamId => 'リレーサーバーがデータストリームIDを返しませんでした';
+
+  @override
+  String get relayServerTimeout => 'リレーサーバーの応答がタイムアウトしました';
+
+  @override
+  String get relayDisconnected => 'リレー接続が切断されました';
+
+  @override
+  String get relayServerPeerOffline => '相手のデバイスはリレーサーバーに接続していません';
+
+  @override
+  String get relayServerTooManyStreams => 'リレーサーバーの同時転送数の上限を超えています';
+
+  @override
+  String get relayServerRateLimited => 'リクエストが多すぎます。しばらくしてから再試行してください';
+
+  @override
+  String get relayServerTokenRejected => 'リレーサーバーがアクセストークンを拒否しました';
+
+  @override
+  String get relayServerIdentityRejected => 'リレーサーバーがこのデバイスの身元を拒否しました';
+
+  @override
+  String get relayServerUnknownError => 'リレーサーバーが不明なエラーを返しました';
+
+  @override
+  String get relayStreamTampered => 'データが転送中に改ざんまたは切断されたため破棄しました';
+
+  @override
+  String get relaySessionInvalid => 'リレーセッションのデータが無効です';
+
+  @override
+  String get relayPeerNoManifest => '相手のデバイスがファイル一覧を送信しませんでした';
+
+  @override
+  String get relayPeerStalled => '相手のデバイスが長時間ファイルを送信していません';
+
+  @override
+  String get relayPeerCancelled => '相手のデバイスが転送をキャンセルしました';
+
+  @override
+  String get relayResumeFailed => '中断した位置から受信を再開できません';
+
+  @override
+  String get relayConfigIncomplete => 'リレーサーバーのアドレスとアクセストークンを両方入力してください';
+
+  @override
+  String get relayAuthRejected => 'リレーサーバーがアクセストークンまたはデバイスの身元を拒否しました';
+
+  @override
+  String get relayUnreachable => 'リレーサーバーに接続できません。アドレスとネットワークを確認してください';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'リレーサーバーへの接続に失敗しました: $details';
+  }
+
+  @override
+  String get relayTransferTimeout => 'リレー転送がタイムアウトしました';
+
+  @override
+  String get transferCancelled => 'ファイル転送がキャンセルされました';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP はこのデバイス（$localIP）と同じネットワークにない可能性があります。送信に失敗する場合は、両方のデバイスを同じWiFiまたはルーターに接続してください。';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceNameが秘密鍵認証を通過し、$count 個のファイルを自動的に受信します';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'ストレージ権限が永久に拒否されました。設定で手動で有効にしてください。\n\nファイルをダウンロードフォルダに保存するにはこの権限が必要です。';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'ファイルをダウンロードフォルダに保存するにはストレージ権限が必要です。\n\n設定で権限を付与できます。';
+
+  @override
+  String get storagePermissionRequestFailed => 'ストレージ権限のリクエストに失敗しました';
+
+  @override
+  String permissionRequestError(String details) {
+    return '権限リクエストエラー: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\n詳細: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count 件';
+  }
+
+  @override
+  String get devInfoSavePath => '【受信ファイルの保存先】';
+
+  @override
+  String get devInfoLogPath => '【ログファイルのパス】';
+
+  @override
+  String get devInfoHistoryPath => '【履歴ファイルのパス】';
+
+  @override
+  String get logFileNotFound => 'ログファイルが見つかりません';
+
+  @override
+  String logReadFailed(String details) {
+    return 'ログファイルの読み込みに失敗しました: $details';
+  }
+
+  @override
+  String get edit => '編集';
 }

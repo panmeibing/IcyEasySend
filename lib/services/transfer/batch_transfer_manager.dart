@@ -2,14 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../l10n/current_localizations.dart';
 import '../../models/transfer_data.dart';
 import '../../models/transfer_file_item.dart';
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
+import '../../utils/error_messages.dart';
 import '../../utils/http_helper.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
 import '../../utils/operation_result.dart';
+import '../../utils/peer_error.dart';
 import '../../utils/transfer_status_provider.dart';
 import '../preferences_service.dart';
 import '../validation_service.dart';
@@ -201,9 +204,10 @@ class BatchTransferManager {
       final confirmData = parseResult.data!;
 
       if (confirmData['accepted'] != true) {
-        final errorMsg =
-            confirmData['message'] as String? ??
-            _statusProvider.receiverRejected;
+        final errorMsg = PeerError.describeBody(
+          confirmData,
+          _statusProvider.receiverRejected,
+        );
         for (final fileData in fileList) {
           results[fileData['fileName'] as String] = OperationResult.failure(
             errorMsg,
@@ -357,9 +361,7 @@ class BatchTransferManager {
                   logTag,
                   'File transfer timeout for $fileName after ${timeoutDuration.inSeconds} seconds',
                 );
-                return OperationResult.failure(
-                  '文件传输超时 (${timeoutDuration.inSeconds}秒)',
-                );
+                return OperationResult.failure(ErrorMessages.transferTimeout);
               },
             );
 
@@ -367,7 +369,7 @@ class BatchTransferManager {
       } catch (e) {
         // Catch any unexpected errors to prevent Future from hanging
         LogUtil.eTag(logTag, 'Unexpected error sending file $fileName: $e');
-        return OperationResult.failure('文件传输失败: ${e.toString()}');
+        return OperationResult.failure(appText.unexpectedError('$e'));
       }
     }
 
@@ -392,7 +394,7 @@ class BatchTransferManager {
                   'Error in batch transfer for $fileName: $error',
                 );
                 results[fileName] = OperationResult.failure(
-                  '传输失败: ${error.toString()}',
+                  appText.unexpectedError('$error'),
                 );
               }),
         );

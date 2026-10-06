@@ -44,12 +44,14 @@ void main() {
     expect(appText.localeName, 'en');
   });
 
-  test('following the system language still lands on a supported locale',
-      () async {
-    await LanguageService.instance.setLanguage('system');
+  test(
+    'following the system language still lands on a supported locale',
+    () async {
+      await LanguageService.instance.setLanguage('system');
 
-    expect(AppLocalizations.supportedLocales, contains(currentAppLocale()));
-  });
+      expect(AppLocalizations.supportedLocales, contains(currentAppLocale()));
+    },
+  );
 
   test('appText agrees with what a widget would have been handed', () async {
     await LanguageService.instance.setLanguage('fr');

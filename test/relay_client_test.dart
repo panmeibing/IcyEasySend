@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:icy_easy_send/l10n/current_localizations.dart';
 import 'package:icy_easy_send/models/relay_config.dart';
 import 'package:icy_easy_send/services/identity_service.dart';
 import 'package:icy_easy_send/services/relay/relay_client.dart';
@@ -35,8 +36,9 @@ class _MockRelayServer {
 
       if (!WebSocketTransformer.isUpgradeRequest(request)) {
         final auth = request.headers.value(HttpHeaders.authorizationHeader);
-        request.response.statusCode =
-            auth == 'Bearer $token' ? HttpStatus.badRequest : HttpStatus.unauthorized;
+        request.response.statusCode = auth == 'Bearer $token'
+            ? HttpStatus.badRequest
+            : HttpStatus.unauthorized;
         await request.response.close();
         return;
       }
@@ -219,6 +221,26 @@ void main() {
 
     expect(client.sessions.length, 0);
     expect(client.state, RelayConnectionState.disabled);
+  });
+
+  test('a request cut off by a disconnect fails instead of throwing', () async {
+    final identity = IdentityService.forTesting(
+      filePath: '${workspace.path}${Platform.pathSeparator}device.key',
+    );
+    final client = buildClient(identity);
+    addTearDown(client.dispose);
+
+    await client.applyConfig(server.config());
+    expect(await client.connect(), isTrue);
+
+    // The mock never answers stream.create, so the request is still waiting
+    // when the connection goes.
+    final pending = client.createStream(peerDeviceId: 'b' * 32, role: 'send');
+    await client.disconnect();
+
+    final result = await pending.timeout(const Duration(seconds: 3));
+    expect(result.isSuccess, isFalse);
+    expect(result.errorMessage, appText.relayDisconnected);
   });
 
   test('transient disconnect preserves known online peers', () async {

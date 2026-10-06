@@ -30,7 +30,9 @@ class TvQrDialog extends StatefulWidget {
 class _TvQrDialogState extends State<TvQrDialog> {
   late String _shareUrl = widget.shareUrl;
   Timer? _ticker;
-  late Duration _remaining = widget.session.expiresAt.difference(DateTime.now());
+  late Duration _remaining = widget.session.expiresAt.difference(
+    DateTime.now(),
+  );
   bool _stopping = false;
 
   @override

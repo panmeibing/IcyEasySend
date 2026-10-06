@@ -9,10 +9,7 @@ void main() {
         token: 'token',
       );
 
-      expect(
-        config.signalUri.toString(),
-        'wss://relay.example.com/v1/signal',
-      );
+      expect(config.signalUri.toString(), 'wss://relay.example.com/v1/signal');
       expect(
         config.streamUri('abc').toString(),
         'https://relay.example.com/v1/stream/abc',
@@ -38,10 +35,7 @@ void main() {
         token: 'token',
       );
 
-      expect(
-        config.signalUri.toString(),
-        'wss://example.com/relay/v1/signal',
-      );
+      expect(config.signalUri.toString(), 'wss://example.com/relay/v1/signal');
       expect(
         config.streamUri('abc').toString(),
         'https://example.com/relay/v1/stream/abc',
@@ -81,8 +75,10 @@ void main() {
   group('RelayConfig activation', () {
     test('needs both an address and a token before it can be used', () {
       expect(
-        const RelayConfig(serverUrl: 'https://a.example', enabled: true)
-            .isActive,
+        const RelayConfig(
+          serverUrl: 'https://a.example',
+          enabled: true,
+        ).isActive,
         isFalse,
       );
       expect(
@@ -127,7 +123,11 @@ void main() {
 
     test('falls back to empty on a corrupted entry', () {
       expect(
-        RelayConfig.fromJson({'serverUrl': 42, 'token': null, 'enabled': 'yes'}),
+        RelayConfig.fromJson({
+          'serverUrl': 42,
+          'token': null,
+          'enabled': 'yes',
+        }),
         RelayConfig.empty,
       );
     });

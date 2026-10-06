@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import 'settings_section.dart';
 
 /// Device information card widget
 class DeviceInfoCard extends StatelessWidget {
@@ -35,29 +36,9 @@ class DeviceInfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.phone_android,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.deviceNameSetting,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            SettingsCardHeader(
+              icon: Icons.phone_android,
+              title: l10n.deviceNameSetting,
             ),
             const SizedBox(height: 20),
 
@@ -103,33 +84,24 @@ class DeviceInfoCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (isEditingName) ...[
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                    onPressed: onSavePressed,
-                    tooltip: l10n.confirm,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                    onPressed: onCancelPressed,
-                    tooltip: l10n.cancel,
-                  ),
-                ] else ...[
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
-                    onPressed: onEditPressed,
-                    tooltip: l10n.editDeviceName,
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.refresh,
-                      size: 20,
-                      color: Colors.grey[600],
+                SettingEditActions(
+                  isEditing: isEditingName,
+                  onEdit: onEditPressed,
+                  onSave: onSavePressed,
+                  onCancel: onCancelPressed,
+                  editTooltip: l10n.editDeviceName,
+                  extra: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: onResetPressed,
+                      tooltip: l10n.resetDeviceName,
                     ),
-                    onPressed: onResetPressed,
-                    tooltip: l10n.resetDeviceName,
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 20),

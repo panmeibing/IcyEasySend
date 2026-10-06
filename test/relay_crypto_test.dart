@@ -167,27 +167,29 @@ void main() {
       );
     });
 
-    test('the receiver signature cannot be replayed as the sender one',
-        () async {
-      final offer = await RelayCrypto.createOffer('session-1');
-      final answered = await RelayCrypto.answerOffer(
-        offer: offer.payload,
-        senderDeviceId: senderDeviceId,
-        receiverDeviceId: receiverDeviceId,
-        identity: receiverIdentity,
-      );
-      final session = answered.data!.session;
+    test(
+      'the receiver signature cannot be replayed as the sender one',
+      () async {
+        final offer = await RelayCrypto.createOffer('session-1');
+        final answered = await RelayCrypto.answerOffer(
+          offer: offer.payload,
+          senderDeviceId: senderDeviceId,
+          receiverDeviceId: receiverDeviceId,
+          identity: receiverIdentity,
+        );
+        final session = answered.data!.session;
 
-      // Domain separation: "R" ‖ transcript must not verify as "S" ‖ same.
-      expect(
-        await RelayCrypto.verifySenderSignature(
-          transcript: session.transcript,
-          signature: answered.data!.answer.signature,
-          senderPublicKey: await receiverIdentity.getPublicKeyBytes(),
-        ),
-        isFalse,
-      );
-    });
+        // Domain separation: "R" ‖ transcript must not verify as "S" ‖ same.
+        expect(
+          await RelayCrypto.verifySenderSignature(
+            transcript: session.transcript,
+            signature: answered.data!.answer.signature,
+            senderPublicKey: await receiverIdentity.getPublicKeyBytes(),
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('sessions with different ids derive different keys', () async {
       final (senderA, _) = await handshake(sessionId: 'session-a');
@@ -229,31 +231,38 @@ void main() {
       expect(await receiver.open(first), isNull);
     });
 
-    test('a wrapper for an unknown session is rejected by the registry',
-        () async {
-      final (sender, receiver) = await handshake();
-      final registry = RelaySessionRegistry()..add(receiver);
-      final sealed = await sender.seal({'type': 'x'});
+    test(
+      'a wrapper for an unknown session is rejected by the registry',
+      () async {
+        final (sender, receiver) = await handshake();
+        final registry = RelaySessionRegistry()..add(receiver);
+        final sealed = await sender.seal({'type': 'x'});
 
-      expect(await registry.open(senderDeviceId, sealed), isNotNull);
-      expect(
-        await registry.open('another-device-id', await sender.seal({'type': 'x'})),
-        isNull,
-      );
+        expect(await registry.open(senderDeviceId, sealed), isNotNull);
+        expect(
+          await registry.open(
+            'another-device-id',
+            await sender.seal({'type': 'x'}),
+          ),
+          isNull,
+        );
 
-      registry.remove(receiver.sessionId);
-      expect(
-        await registry.open(senderDeviceId, await sender.seal({'type': 'x'})),
-        isNull,
-      );
-    });
+        registry.remove(receiver.sessionId);
+        expect(
+          await registry.open(senderDeviceId, await sender.seal({'type': 'x'})),
+          isNull,
+        );
+      },
+    );
   });
 
   group('file keys', () {
     test('both ends derive the same key and nonce prefix', () async {
       final (sender, receiver) = await handshake();
 
-      final mine = await sender.keys.fileKey('0123456789abcdef0123456789abcdef');
+      final mine = await sender.keys.fileKey(
+        '0123456789abcdef0123456789abcdef',
+      );
       final theirs = await receiver.keys.fileKey(
         '0123456789abcdef0123456789abcdef',
       );
@@ -262,16 +271,18 @@ void main() {
       expect(mine.noncePrefix, theirs.noncePrefix);
     });
 
-    test('each file gets its own key, so chunk counters cannot collide',
-        () async {
-      final (sender, _) = await handshake();
+    test(
+      'each file gets its own key, so chunk counters cannot collide',
+      () async {
+        final (sender, _) = await handshake();
 
-      final first = await sender.keys.fileKey('a' * 32);
-      final second = await sender.keys.fileKey('b' * 32);
+        final first = await sender.keys.fileKey('a' * 32);
+        final second = await sender.keys.fileKey('b' * 32);
 
-      expect(first.key, isNot(second.key));
-      expect(first.noncePrefix, isNot(second.noncePrefix));
-    });
+        expect(first.key, isNot(second.key));
+        expect(first.noncePrefix, isNot(second.noncePrefix));
+      },
+    );
 
     test('each attempt at a file gets its own key', () async {
       final (sender, receiver) = await handshake();
@@ -300,23 +311,22 @@ void main() {
       final nonce = key.nonceFor(258);
       expect(nonce.length, 12);
       expect(nonce.sublist(0, 4), key.noncePrefix);
-      expect(
-        ByteData.view(Uint8List.fromList(nonce).buffer).getUint64(4),
-        258,
-      );
+      expect(ByteData.view(Uint8List.fromList(nonce).buffer).getUint64(4), 258);
     });
 
-    test('the additional data binds the file, the index and the final flag',
-        () async {
-      final (sender, _) = await handshake();
-      final key = await sender.keys.fileKey('0f' * 16);
+    test(
+      'the additional data binds the file, the index and the final flag',
+      () async {
+        final (sender, _) = await handshake();
+        final key = await sender.keys.fileKey('0f' * 16);
 
-      final aad = key.aadFor(7, isFinal: true);
-      expect(aad.length, 25);
-      expect(aad.sublist(0, 16), List.filled(16, 0x0f));
-      expect(ByteData.view(Uint8List.fromList(aad).buffer).getUint64(16), 7);
-      expect(aad[24], 1);
-      expect(key.aadFor(7, isFinal: false)[24], 0);
-    });
+        final aad = key.aadFor(7, isFinal: true);
+        expect(aad.length, 25);
+        expect(aad.sublist(0, 16), List.filled(16, 0x0f));
+        expect(ByteData.view(Uint8List.fromList(aad).buffer).getUint64(16), 7);
+        expect(aad[24], 1);
+        expect(key.aadFor(7, isFinal: false)[24], 0);
+      },
+    );
   });
 }

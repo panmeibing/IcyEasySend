@@ -1,10 +1,10 @@
-import 'dart:convert';
-
-import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:shelf/shelf.dart';
 
 import '../utils/constants.dart';
+import '../utils/log_util.dart';
 import '../utils/network_util.dart';
+import '../utils/peer_error.dart';
+import '../utils/server_http_util.dart';
 import 'identity_service.dart';
 
 /// Handler for health check endpoint
@@ -60,16 +60,13 @@ class HealthCheckHandler {
 
       LogUtil.dTag(logTag, '健康检查响应: 设备名=$deviceName, 端口=$port');
 
-      return Response.ok(
-        jsonEncode(response),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json(response);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '健康检查处理异常: $e', e, stackTrace);
-      return Response.internalServerError(
-        body: jsonEncode({'status': 'error', 'message': '服务器内部错误'}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({
+        'status': 'error',
+        ...PeerError.internalError.toJson(),
+      }, status: 500);
     }
   }
 

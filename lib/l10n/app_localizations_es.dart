@@ -1487,16 +1487,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se puede usar la dirección de difusión 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Segmento de red no coincide\nIP local: $localIP (Segmento: $localNetwork.x)\nIP de destino: $targetIP (Segmento: $targetNetwork.x)\n\nConsejo: Los dos dispositivos deben estar en la misma red local (mismo segmento de red) para transferir archivos.\nPara direcciones IPv4 de clase C, los primeros tres números de las dos direcciones IP deben ser iguales, por ejemplo, ambos son 192.169.2, solo el último número es diferente\nLa forma más sencilla es conectar ambos dispositivos al mismo WiFi o enrutador.\n';
-  }
-
-  @override
   String get responseParseError =>
       'No se puede analizar la respuesta del servidor';
 
@@ -1884,4 +1874,228 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deleteAllRecords => 'Eliminar todo';
+
+  @override
+  String get peerErrorBadRequest =>
+      'El otro dispositivo no entendió la solicitud. Actualiza ambos dispositivos a la misma versión.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'No se puede recibir ninguno de los archivos (nombre no válido, duplicado o demasiado grande).';
+
+  @override
+  String get peerErrorBusy =>
+      'El otro dispositivo está ocupado. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get peerErrorNoUi =>
+      'El otro dispositivo no puede mostrar una confirmación ahora. Abre la aplicación en él.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'El otro dispositivo no tiene confirmación para esta transferencia; puede haber caducado. Vuelve a enviar.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Tu dirección de red cambió después de confirmar la transferencia. Vuelve a enviar.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'El archivo no coincide con lo que aceptó el otro dispositivo. Vuelve a enviar.';
+
+  @override
+  String get peerErrorDiskFull =>
+      'El otro dispositivo no tiene espacio de almacenamiento suficiente.';
+
+  @override
+  String get peerErrorSaveFailed =>
+      'El otro dispositivo no pudo guardar el archivo.';
+
+  @override
+  String get peerErrorInternal =>
+      'El otro dispositivo tuvo un error inesperado.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'El contenido del portapapeles supera el límite de tamaño del otro dispositivo.';
+
+  @override
+  String get relayResponseUnreadable => 'No se pudo leer la respuesta del relé';
+
+  @override
+  String get relayServerUrlInvalid =>
+      'La dirección del servidor de relé no es válida';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Error al subir por el relé: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Error al subir por el relé\nCódigo de estado: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Error al descargar por el relé: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Error al descargar por el relé\nCódigo de estado: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'El otro dispositivo no se unió al flujo de datos';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'El archivo supera el límite por transferencia del servidor de relé';
+
+  @override
+  String get relaySendFailed => 'No se pudo enviar el mensaje por el relé';
+
+  @override
+  String get relayPeerNoResponse => 'El otro dispositivo no responde';
+
+  @override
+  String get relayNoStreamId =>
+      'El servidor de relé no devolvió un identificador de flujo';
+
+  @override
+  String get relayServerTimeout => 'El servidor de relé no respondió a tiempo';
+
+  @override
+  String get relayDisconnected => 'Se perdió la conexión con el relé';
+
+  @override
+  String get relayServerPeerOffline =>
+      'El otro dispositivo no está conectado al servidor de relé';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Demasiadas transferencias simultáneas para el servidor de relé';
+
+  @override
+  String get relayServerRateLimited =>
+      'Demasiadas solicitudes. Inténtalo más tarde';
+
+  @override
+  String get relayServerTokenRejected =>
+      'El servidor de relé rechazó el token de acceso';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'El servidor de relé rechazó la identidad de este dispositivo';
+
+  @override
+  String get relayServerUnknownError =>
+      'El servidor de relé devolvió un error desconocido';
+
+  @override
+  String get relayStreamTampered =>
+      'Los datos se alteraron o se cortaron durante el envío y se descartaron';
+
+  @override
+  String get relaySessionInvalid =>
+      'Los datos de la sesión del relé no son válidos';
+
+  @override
+  String get relayPeerNoManifest =>
+      'El otro dispositivo no envió la lista de archivos';
+
+  @override
+  String get relayPeerStalled =>
+      'El otro dispositivo lleva tiempo sin enviar archivos';
+
+  @override
+  String get relayPeerCancelled =>
+      'El otro dispositivo canceló la transferencia';
+
+  @override
+  String get relayResumeFailed =>
+      'No se puede reanudar desde donde se detuvo la transferencia';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Introduce la dirección del servidor de relé y el token de acceso';
+
+  @override
+  String get relayAuthRejected =>
+      'El servidor de relé rechazó el token de acceso o la identidad del dispositivo';
+
+  @override
+  String get relayUnreachable =>
+      'No se puede conectar con el servidor de relé. Revisa la dirección y la red';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Error al conectar con el servidor de relé: $details';
+  }
+
+  @override
+  String get relayTransferTimeout =>
+      'Se agotó el tiempo de la transferencia por relé';
+
+  @override
+  String get transferCancelled => 'Transferencia de archivos cancelada';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP puede no estar en la misma red que este dispositivo ($localIP). Si el envío falla, conecte ambos dispositivos al mismo WiFi o router.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName verificado con clave secreta, recibiendo $count archivos automáticamente';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'El permiso de almacenamiento se denegó permanentemente. Por favor habilítelo manualmente en la configuración.\n\nEste permiso es necesario para guardar archivos en la carpeta de descargas.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'Se requiere permiso de almacenamiento para guardar archivos en la carpeta de descargas.\n\nPuede concederlo en la configuración.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'La solicitud de permiso de almacenamiento falló';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Error al solicitar el permiso: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nDetalles: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count elementos';
+  }
+
+  @override
+  String get devInfoSavePath => '[Carpeta de archivos recibidos]';
+
+  @override
+  String get devInfoLogPath => '[Ruta del archivo de registro]';
+
+  @override
+  String get devInfoHistoryPath => '[Ruta del archivo de historial]';
+
+  @override
+  String get logFileNotFound => 'No se encontró el archivo de registro';
+
+  @override
+  String logReadFailed(String details) {
+    return 'No se pudo leer el archivo de registro: $details';
+  }
+
+  @override
+  String get edit => 'Editar';
 }

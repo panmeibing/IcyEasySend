@@ -51,65 +51,50 @@ class FileReceiver {
     void Function(double progress, int bytesReceived, int totalBytes)?
     onProgress,
   }) async {
-    IOSink? sink;
     File? file;
-    bool streamDrained = false;
+    IOSink? sink;
+    // A request body can be listened to once. Until then it is drained on
+    // failure so the sender gets a response instead of a stalled upload.
+    var streamListened = false;
+
+    Future<void> abort() async {
+      final openSink = sink;
+      sink = null;
+      if (openSink != null) {
+        try {
+          await openSink.close();
+        } catch (e) {
+          LogUtil.wTag(logTag, 'Error closing sink: $e');
+        }
+      }
+      if (!streamListened) {
+        streamListened = true;
+        try {
+          await fileStream.drain<void>();
+        } catch (e) {
+          LogUtil.wTag(logTag, 'Error draining stream: $e');
+        }
+      }
+      final written = file;
+      if (written != null) {
+        await _deleteQuietly(written);
+      }
+    }
 
     try {
       // There is deliberately no free-space pre-flight check here: the plugin
       // that reports remaining space returns numbers that cannot be trusted.
-      // Running out of room is detected from the write error instead — see the
-      // DiskSpaceError handling further down.
-
-      // Get receive save directory (custom path or system downloads)
-      final downloadsDir = await PlatformUtil.getReceiveSaveDirectory();
-      if (downloadsDir == null) {
-        LogUtil.eTag(logTag, 'Receive save directory unavailable');
-        try {
-          if (!streamDrained) {
-            await fileStream.drain();
-            streamDrained = true;
-          }
-        } catch (e) {
-          LogUtil.eTag(
-            logTag,
-            'Error draining stream after directory check: $e',
-          );
-        }
-
-        return OperationResult.failure(
-          ErrorMessages.downloadsDirectoryUnavailable,
-        );
+      // Running out of room is detected from the write error instead — see
+      // [_failureFor].
+      final destination = await _resolveDestination(fileName);
+      if (destination.isFailure) {
+        await abort();
+        return OperationResult.failure(destination.errorMessage!);
       }
 
-      final safeRelativePath = TransferPathUtil.sanitizeRelativePath(fileName);
-      if (safeRelativePath == null) {
-        LogUtil.wTag(logTag, 'Invalid transfer path rejected: $fileName');
-        try {
-          if (!streamDrained) {
-            await fileStream.drain();
-            streamDrained = true;
-          }
-        } catch (e) {
-          LogUtil.eTag(logTag, 'Error draining stream after path check: $e');
-        }
-        return OperationResult.failure(ErrorMessages.invalidFileName);
-      }
-
-      // Handle file name conflicts (supports nested folder paths)
-      final finalRelativePath = await _resolveFileNameConflict(
-        downloadsDir,
-        safeRelativePath,
-      );
-      final filePath = path.join(downloadsDir.path, finalRelativePath);
-      final parentDir = path.dirname(filePath);
-      if (parentDir.isNotEmpty) {
-        await Directory(parentDir).create(recursive: true);
-      }
-
-      // Save file data
-      file = File(filePath);
-      sink = file.openWrite();
+      file = File(destination.data!);
+      final openSink = file.openWrite();
+      sink = openSink;
 
       // An IOSink buffers, so a failed write surfaces on flush/close rather
       // than on add(). Watching done lets the loop below stop as soon as the
@@ -117,289 +102,65 @@ class FileReceiver {
       // network only to discard them.
       Object? writeFailure;
       unawaited(
-        sink.done.catchError((Object error) {
+        openSink.done.catchError((Object error) {
           writeFailure ??= error;
         }),
       );
 
-      int bytesReceived = 0;
-
-      try {
-        // Handle empty files (0 bytes)
-        if (fileSize == 0) {
-          // For empty files, drain the stream (even if empty) and report 100% progress
-          await fileStream.drain();
-          streamDrained = true;
-          if (onProgress != null) {
-            onProgress(1.0, 0, 0);
-          }
-        } else {
-          // Add timeout protection for receiving file stream
-          // Timeout: base timeout + time based on file size (1 second per MB)
-          final timeoutDuration = Duration(
-            seconds:
-                AppConstants.requestTimeout +
-                (fileSize ~/ AppConstants.bytesPerMB),
-          );
-
-          await for (final chunk in fileStream.timeout(
-            timeoutDuration,
-            onTimeout: (sink) {
-              LogUtil.wTag(
-                logTag,
-                'File receive timeout for $fileName after ${timeoutDuration.inSeconds} seconds',
-              );
-              sink.close();
-            },
-          )) {
-            if (writeFailure != null) {
-              throw writeFailure!;
-            }
-
-            // The declared size is the only budget the sender agreed to, and
-            // the user confirmed the transfer on the strength of it. Anything
-            // past it is refused before it reaches the disk rather than after,
-            // so a sender that simply never stops cannot fill the volume.
-            if (bytesReceived + chunk.length > fileSize) {
-              throw _OversizeTransferException(
-                declared: fileSize,
-                received: bytesReceived + chunk.length,
-              );
-            }
-
-            sink.add(chunk);
-
-            bytesReceived += chunk.length;
-            if (onProgress != null) {
-              final progress = bytesReceived / fileSize;
-              onProgress(progress, bytesReceived, fileSize);
-            }
-          }
-          streamDrained = true;
-        }
-
-        await sink.flush();
-        await sink.close();
-        sink = null;
-      } on TimeoutException catch (e) {
-        LogUtil.eTag(
-          logTag,
-          'Timeout receiving file $fileName: ${e.toString()}',
+      streamListened = true;
+      if (fileSize == 0) {
+        await fileStream.drain<void>();
+        onProgress?.call(1.0, 0, 0);
+      } else {
+        // Idle timeout between chunks, so a stalled sender cannot hold the
+        // file open forever while a slow but live one is never cut off.
+        final idleTimeout = Duration(
+          seconds:
+              AppConstants.requestTimeout +
+              (fileSize ~/ AppConstants.bytesPerMB),
         );
 
-        if (sink != null) {
-          try {
-            await sink.close();
-          } catch (closeError) {
-            LogUtil.wTag(
-              logTag,
-              'Error closing sink after timeout: ${closeError.toString()}',
+        var bytesReceived = 0;
+        await for (final chunk in fileStream.timeout(idleTimeout)) {
+          if (writeFailure != null) {
+            throw writeFailure!;
+          }
+
+          // The declared size is the only budget the sender agreed to, and
+          // the user confirmed the transfer on the strength of it. Anything
+          // past it is refused before it reaches the disk rather than after,
+          // so a sender that simply never stops cannot fill the volume.
+          if (bytesReceived + chunk.length > fileSize) {
+            throw _OversizeTransferException(
+              declared: fileSize,
+              received: bytesReceived + chunk.length,
             );
           }
-          sink = null;
-        }
 
-        try {
-          if (!streamDrained) {
-            await fileStream.drain();
-          }
-        } catch (drainError) {
-          LogUtil.wTag(
-            logTag,
-            'Error draining stream after timeout: ${drainError.toString()}',
-          );
-        }
-
-        try {
-          if (file.existsSync()) {
-            await file.delete();
-          }
-        } catch (deleteError) {
-          LogUtil.eTag(
-            logTag,
-            'Error deleting file after timeout: $deleteError',
-          );
-        }
-
-        return OperationResult.failure('文件接收超时');
-      } on _OversizeTransferException catch (e) {
-        LogUtil.wTag(logTag, '发送方超出声明大小，已中止接收 $fileName: $e');
-
-        // Deliberately not drained: refusing to keep reading is the entire
-        // point, and draining would hand the sender the unbounded read back.
-        if (sink != null) {
-          try {
-            await sink.close();
-          } catch (closeError) {
-            LogUtil.wTag(
-              logTag,
-              'Error closing sink after oversize transfer: $closeError',
-            );
-          }
-          sink = null;
-        }
-
-        try {
-          if (file.existsSync()) {
-            await file.delete();
-          }
-        } catch (deleteError) {
-          LogUtil.eTag(
-            logTag,
-            'Error deleting file after oversize transfer: $deleteError',
-          );
-        }
-
-        return OperationResult.failure(ErrorMessages.fileSizeMismatch);
-      } catch (e) {
-        LogUtil.eTag(logTag, 'Error writing file $fileName: ${e.toString()}');
-
-        if (sink != null) {
-          try {
-            await sink.close();
-          } catch (closeError) {
-            LogUtil.wTag(
-              logTag,
-              'Error closing sink: ${closeError.toString()}',
-            );
-          }
-          sink = null;
-        }
-
-        try {
-          if (!streamDrained) {
-            await fileStream.drain();
-          }
-        } catch (drainError) {
-          LogUtil.wTag(
-            logTag,
-            'Error draining stream: ${drainError.toString()}',
-          );
-        }
-
-        try {
-          if (file.existsSync()) {
-            await file.delete();
-          }
-        } catch (deleteError) {
-          LogUtil.eTag(logTag, 'Error deleting file after error: $deleteError');
-        }
-
-        if (DiskSpaceError.isDiskFull(e)) {
-          LogUtil.eTag(logTag, '磁盘空间不足，已中止接收: $fileName');
-          return OperationResult.failure(
-            ErrorMessages.storageInsufficient,
-            metadata: DiskSpaceError.metadata,
-          );
-        }
-
-        return OperationResult.failure('文件保存失败\n错误: $e');
-      }
-
-      // Verify file was saved correctly
-      final verifyResult = await _validationService.validateSavedFile(
-        file,
-        fileSize,
-      );
-      if (!verifyResult.isSuccess) {
-        try {
-          await file.delete();
-        } catch (deleteError) {
-          LogUtil.eTag(logTag, 'Error deleting invalid file: $deleteError');
-        }
-
-        return OperationResult.failure(verifyResult.errorMessage!);
-      }
-
-      return OperationResult.success(
-        data: TransferData(savedPath: filePath, bytesTransferred: fileSize),
-      );
-    } on TimeoutException catch (e, stackTrace) {
-      LogUtil.eTag(
-        logTag,
-        'Timeout in receiveFileDirectly for $fileName: ${e.toString()}',
-        e,
-        stackTrace,
-      );
-
-      if (sink != null) {
-        try {
-          await sink.close();
-        } catch (closeError) {
-          LogUtil.wTag(logTag, 'Error closing sink: ${closeError.toString()}');
+          openSink.add(chunk);
+          bytesReceived += chunk.length;
+          onProgress?.call(bytesReceived / fileSize, bytesReceived, fileSize);
         }
       }
 
-      try {
-        if (!streamDrained) {
-          await fileStream.drain();
-        }
-      } catch (drainError) {
-        LogUtil.wTag(logTag, 'Error draining stream: ${drainError.toString()}');
-      }
-
-      if (file != null) {
-        try {
-          if (file.existsSync()) {
-            await file.delete();
-          }
-        } catch (deleteError) {
-          LogUtil.eTag(logTag, 'Error deleting file: $deleteError');
-        }
-      }
-
-      return OperationResult.failure('文件接收超时');
+      await openSink.flush();
+      await openSink.close();
+      sink = null;
+    } on TimeoutException catch (e) {
+      LogUtil.eTag(logTag, 'Timeout receiving file $fileName: $e');
+      await abort();
+      return OperationResult.failure(ErrorMessages.transferTimeout);
+    } on _OversizeTransferException catch (e) {
+      LogUtil.wTag(logTag, '发送方超出声明大小，已中止接收 $fileName: $e');
+      await abort();
+      return OperationResult.failure(ErrorMessages.fileSizeMismatch);
     } catch (e, stackTrace) {
-      LogUtil.eTag(
-        logTag,
-        'Unexpected error in receiveFileDirectly for $fileName: ${e.toString()}',
-        e,
-        stackTrace,
-      );
-
-      if (sink != null) {
-        try {
-          await sink.close();
-        } catch (closeError) {
-          LogUtil.wTag(logTag, 'Error closing sink: ${closeError.toString()}');
-        }
-      }
-
-      try {
-        if (!streamDrained) {
-          await fileStream.drain();
-        }
-      } catch (drainError) {
-        LogUtil.wTag(logTag, 'Error draining stream: ${drainError.toString()}');
-      }
-
-      if (file != null) {
-        try {
-          if (file.existsSync()) {
-            await file.delete();
-          }
-        } catch (deleteError) {
-          LogUtil.eTag(logTag, 'Error deleting file: $deleteError');
-        }
-      }
-
-      // Provide more specific error messages for known exception types
-      if (DiskSpaceError.isDiskFull(e)) {
-        LogUtil.eTag(logTag, '磁盘空间不足，已中止接收: $fileName');
-        return OperationResult.failure(
-          ErrorMessages.storageInsufficient,
-          metadata: DiskSpaceError.metadata,
-        );
-      }
-
-      if (e is FileSystemException) {
-        return OperationResult.failure('文件系统错误: ${e.message}');
-      }
-
-      return OperationResult.failure(
-        ErrorMessages.unexpectedError(e.toString()),
-      );
+      LogUtil.eTag(logTag, 'Error receiving file $fileName: $e', e, stackTrace);
+      await abort();
+      return _failureFor(e);
     }
+
+    return _verifySaved(file, fileSize);
   }
 
   /// Moves an already-written file into the save directory under [fileName].
@@ -415,64 +176,95 @@ class FileReceiver {
     required int fileSize,
   }) async {
     try {
-      final downloadsDir = await PlatformUtil.getReceiveSaveDirectory();
-      if (downloadsDir == null) {
-        return OperationResult.failure(
-          ErrorMessages.downloadsDirectoryUnavailable,
-        );
+      final destination = await _resolveDestination(fileName);
+      if (destination.isFailure) {
+        return OperationResult.failure(destination.errorMessage!);
       }
 
-      final safeRelativePath = TransferPathUtil.sanitizeRelativePath(fileName);
-      if (safeRelativePath == null) {
-        LogUtil.wTag(logTag, 'Invalid transfer path rejected: $fileName');
-        return OperationResult.failure(ErrorMessages.invalidFileName);
-      }
-
-      final finalRelativePath = await _resolveFileNameConflict(
-        downloadsDir,
-        safeRelativePath,
-      );
-      final filePath = path.join(downloadsDir.path, finalRelativePath);
-      final parentDir = path.dirname(filePath);
-      if (parentDir.isNotEmpty) {
-        await Directory(parentDir).create(recursive: true);
-      }
-
-      final file = await _move(source, filePath);
-
-      final verifyResult = await _validationService.validateSavedFile(
-        file,
-        fileSize,
-      );
-      if (!verifyResult.isSuccess) {
-        try {
-          await file.delete();
-        } catch (deleteError) {
-          LogUtil.eTag(logTag, 'Error deleting invalid file: $deleteError');
-        }
-        return OperationResult.failure(verifyResult.errorMessage!);
-      }
-
-      return OperationResult.success(
-        data: TransferData(savedPath: filePath, bytesTransferred: fileSize),
-      );
-    } on FileSystemException catch (e) {
-      LogUtil.eTag(logTag, 'Error adopting received file $fileName: $e');
-      if (DiskSpaceError.isDiskFull(e)) {
-        return OperationResult.failure(
-          ErrorMessages.storageInsufficient,
-          metadata: DiskSpaceError.metadata,
-        );
-      }
-      return OperationResult.failure('文件保存失败\n错误: ${e.message}');
+      final file = await _move(source, destination.data!);
+      return _verifySaved(file, fileSize);
     } catch (e, stackTrace) {
       LogUtil.eTag(
         logTag,
-        'Unexpected error adopting received file $fileName: $e',
+        'Error adopting received file $fileName: $e',
         e,
         stackTrace,
       );
-      return OperationResult.failure('文件保存失败\n错误: $e');
+      return _failureFor(e);
+    }
+  }
+
+  /// Absolute path [fileName] should be saved under, with its parent created.
+  ///
+  /// The containment check repeats what [TransferPathUtil.sanitizeRelativePath]
+  /// already guarantees, so a future gap in sanitizing cannot by itself turn
+  /// into a write outside the save directory.
+  Future<OperationResult<String>> _resolveDestination(String fileName) async {
+    final saveDir = await PlatformUtil.getReceiveSaveDirectory();
+    if (saveDir == null) {
+      LogUtil.eTag(logTag, 'Receive save directory unavailable');
+      return OperationResult.failure(
+        ErrorMessages.downloadsDirectoryUnavailable,
+      );
+    }
+
+    final safeRelativePath = TransferPathUtil.sanitizeRelativePath(fileName);
+    if (safeRelativePath == null) {
+      LogUtil.wTag(logTag, 'Invalid transfer path rejected: $fileName');
+      return OperationResult.failure(ErrorMessages.invalidFileName);
+    }
+
+    final finalRelativePath = await _resolveFileNameConflict(
+      saveDir,
+      safeRelativePath,
+    );
+    final filePath = path.join(saveDir.path, finalRelativePath);
+    if (!path.isWithin(saveDir.path, filePath)) {
+      LogUtil.wTag(logTag, 'Transfer path escapes save directory: $fileName');
+      return OperationResult.failure(ErrorMessages.invalidFileName);
+    }
+
+    await Directory(path.dirname(filePath)).create(recursive: true);
+    return OperationResult.success(data: filePath);
+  }
+
+  Future<OperationResult<TransferData>> _verifySaved(
+    File file,
+    int fileSize,
+  ) async {
+    final verifyResult = await _validationService.validateSavedFile(
+      file,
+      fileSize,
+    );
+    if (!verifyResult.isSuccess) {
+      await _deleteQuietly(file);
+      return OperationResult.failure(verifyResult.errorMessage!);
+    }
+
+    return OperationResult.success(
+      data: TransferData(savedPath: file.path, bytesTransferred: fileSize),
+    );
+  }
+
+  OperationResult<TransferData> _failureFor(Object error) {
+    if (DiskSpaceError.isDiskFull(error)) {
+      LogUtil.eTag(logTag, '磁盘空间不足，已中止接收');
+      return OperationResult.failure(
+        ErrorMessages.storageInsufficient,
+        metadata: DiskSpaceError.metadata,
+      );
+    }
+    final detail = error is FileSystemException ? error.message : '$error';
+    return OperationResult.failure('${ErrorMessages.fileSaveFailed}\n$detail');
+  }
+
+  Future<void> _deleteQuietly(File file) async {
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      LogUtil.wTag(logTag, 'Error deleting ${file.path}: $e');
     }
   }
 

@@ -14,13 +14,15 @@ void main() {
       expect(RegExp(r'^\d{6}$').hasMatch(sas), isTrue);
     });
 
-    test('both devices derive the same code despite opposite key order',
-        () async {
-      expect(
-        await PairingService.computeSas(keyA, keyB),
-        await PairingService.computeSas(keyB, keyA),
-      );
-    });
+    test(
+      'both devices derive the same code despite opposite key order',
+      () async {
+        expect(
+          await PairingService.computeSas(keyA, keyB),
+          await PairingService.computeSas(keyB, keyA),
+        );
+      },
+    );
 
     test('is deterministic across calls', () async {
       expect(
@@ -38,21 +40,23 @@ void main() {
       );
     });
 
-    test('keeps leading zeros so the two screens always show six digits',
-        () async {
-      // Search for a key pair whose code is below 100000; without padding it
-      // would render shorter on one device and invite a false mismatch.
-      String? shortCode;
-      for (var i = 0; i < 5000 && shortCode == null; i++) {
-        final candidate = List<int>.generate(32, (j) => (i + j) % 256);
-        final sas = await PairingService.computeSas(keyA, candidate);
-        if (sas.startsWith('0')) {
-          shortCode = sas;
+    test(
+      'keeps leading zeros so the two screens always show six digits',
+      () async {
+        // Search for a key pair whose code is below 100000; without padding it
+        // would render shorter on one device and invite a false mismatch.
+        String? shortCode;
+        for (var i = 0; i < 5000 && shortCode == null; i++) {
+          final candidate = List<int>.generate(32, (j) => (i + j) % 256);
+          final sas = await PairingService.computeSas(keyA, candidate);
+          if (sas.startsWith('0')) {
+            shortCode = sas;
+          }
         }
-      }
 
-      expect(shortCode, isNotNull);
-      expect(shortCode, hasLength(AppConstants.sasDigits));
-    });
+        expect(shortCode, isNotNull);
+        expect(shortCode, hasLength(AppConstants.sasDigits));
+      },
+    );
   });
 }

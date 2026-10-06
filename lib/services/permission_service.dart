@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:icy_easy_send/l10n/current_localizations.dart';
 import 'package:icy_easy_send/utils/log_util.dart';
 import 'package:permission_handler/permission_handler.dart' as ph;
 
@@ -49,7 +50,7 @@ class PermissionService {
           return PermissionRequestResult(
             granted: false,
             permanentlyDenied: true,
-            errorMessage: '存储权限已被永久拒绝，请在设置中手动开启\n\n需要此权限才能将文件保存到下载文件夹',
+            errorMessage: appText.storagePermissionPermanentlyDeniedMessage,
           );
         } else if (status.isDenied) {
           // Try requesting photos permission for Android 13+
@@ -58,20 +59,17 @@ class PermissionService {
           if (status.isGranted || status.isLimited) {
             // On Android 13+, we can still save files even without full storage permission
             // The app will use app-specific directory or SAF
-            return PermissionRequestResult(
-              granted: true,
-              errorMessage: '已授予部分权限，文件将保存到下载文件夹',
-            );
+            return PermissionRequestResult(granted: true);
           }
 
           return PermissionRequestResult(
             granted: false,
-            errorMessage: '需要存储权限才能保存文件到下载文件夹\n\n您可以在设置中授予权限',
+            errorMessage: appText.storagePermissionNeededMessage,
           );
         } else {
           return PermissionRequestResult(
             granted: false,
-            errorMessage: '存储权限请求失败',
+            errorMessage: appText.storagePermissionRequestFailed,
           );
         }
       } else if (Platform.isIOS) {
@@ -87,7 +85,7 @@ class PermissionService {
       LogUtil.eTag(logTag, "requestStoragePermission() error: $e");
       return PermissionRequestResult(
         granted: false,
-        errorMessage: '权限请求出错: ${e.toString()}',
+        errorMessage: appText.permissionRequestError('$e'),
       );
     }
   }
@@ -152,7 +150,7 @@ class PermissionService {
     } catch (e) {
       return PermissionRequestResult(
         granted: false,
-        errorMessage: '网络权限检查出错: ${e.toString()}',
+        errorMessage: appText.permissionRequestError('$e'),
       );
     }
   }

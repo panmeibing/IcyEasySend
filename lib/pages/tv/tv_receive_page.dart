@@ -21,7 +21,9 @@ class TvReceivePage extends StatefulWidget {
 
 class TvReceivePageState extends State<TvReceivePage> {
   final PreferencesService _preferences = PreferencesService();
-  late final DeviceController _deviceController = DeviceController(_preferences);
+  late final DeviceController _deviceController = DeviceController(
+    _preferences,
+  );
   final TransferHistoryService _history = TransferHistoryService();
 
   String _deviceName = '';
@@ -97,7 +99,10 @@ class TvReceivePageState extends State<TvReceivePage> {
                   const SizedBox(height: 8),
                   Text(
                     _deviceName,
-                    style: const TextStyle(fontSize: 20, color: HomeUi.inkMuted),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: HomeUi.inkMuted,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 24),

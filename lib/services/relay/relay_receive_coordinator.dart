@@ -3,13 +3,15 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
+import '../../l10n/current_localizations.dart';
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/disk_space_error.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
+import '../../utils/peer_error.dart';
 import '../../utils/transfer_status_provider.dart';
 import '../batch_receive_manager.dart';
 import '../disk_full_notifier.dart';
@@ -121,7 +123,7 @@ class RelayReceiveCoordinator {
     _subscription = null;
 
     for (final session in _sessions.values.toList()) {
-      await _abandon(session, '中转连接已断开');
+      await _abandon(session, appText.relayDisconnected);
     }
     _sessions.clear();
   }
@@ -181,11 +183,7 @@ class RelayReceiveCoordinator {
         : IdentityService.decodePublicKey(paired.publicKey);
     if (paired == null || peerPublicKey == null) {
       LogUtil.wTag(logTag, '拒绝未配对设备的中转传输: ${_short(peerDeviceId)}');
-      await _reject(
-        peerDeviceId,
-        offer.sessionId,
-        RelayRejectReason.notPaired,
-      );
+      await _reject(peerDeviceId, offer.sessionId, RelayRejectReason.notPaired);
       return;
     }
 
@@ -233,7 +231,7 @@ class RelayReceiveCoordinator {
     // peer's slot until the connection drops.
     session.watchdog = Timer(
       AppConstants.relayManifestTimeout,
-      () => unawaited(_abandon(session, '对方没有发送文件清单')),
+      () => unawaited(_abandon(session, appText.relayPeerNoManifest)),
     );
 
     _sessions[session.sessionId] = session;
@@ -310,9 +308,6 @@ class RelayReceiveCoordinator {
       session.pending[file.fileId] = PendingFileInfo(
         fileName: file.name,
         fileSize: file.size,
-        senderIP: session.senderKey,
-        senderDeviceName: senderName,
-        completer: Completer<bool>(),
         transferId: '${manifest.sessionId}_${file.fileId}',
       );
     }
@@ -321,7 +316,7 @@ class RelayReceiveCoordinator {
     // arrives later must be checked against it rather than the other way
     // round, so the watchdog covers the dialog too.
     session.restartWatchdog(
-      () => unawaited(_abandon(session, '对方长时间没有发送文件')),
+      () => unawaited(_abandon(session, appText.relayPeerStalled)),
     );
 
     final accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
@@ -340,7 +335,7 @@ class RelayReceiveCoordinator {
     // Files that never show up would otherwise leave the progress dialog open
     // forever, which on a flaky public path is a matter of when, not if.
     session.restartWatchdog(
-      () => unawaited(_abandon(session, '对方长时间没有发送文件')),
+      () => unawaited(_abandon(session, appText.relayPeerStalled)),
     );
 
     await _send(
@@ -457,7 +452,8 @@ class RelayReceiveCoordinator {
         session,
         begin.fileId,
         ok: false,
-        error: '该文件不在已确认的清单中',
+        code: PeerError.contentMismatch,
+        error: PeerError.contentMismatch.englishMessage,
       );
       return;
     }
@@ -468,7 +464,8 @@ class RelayReceiveCoordinator {
         session,
         begin.fileId,
         ok: false,
-        error: '文件大小与已确认的清单不一致',
+        code: PeerError.contentMismatch,
+        error: PeerError.contentMismatch.englishMessage,
       );
       return;
     }
@@ -480,7 +477,9 @@ class RelayReceiveCoordinator {
       return;
     }
 
-    session.restartWatchdog(() => unawaited(_abandon(session, '接收超时')));
+    session.restartWatchdog(
+      () => unawaited(_abandon(session, appText.relayTransferTimeout)),
+    );
 
     final _ReceiveOutcome result;
     try {
@@ -511,7 +510,7 @@ class RelayReceiveCoordinator {
     } else if (result.resumeFromChunk == null) {
       _batchReceiveManager.markTransferFailed(
         info.transferId,
-        result.error ?? '接收失败',
+        result.error ?? ErrorMessages.fileSaveFailed,
       );
     }
     // A failure that kept its bytes leaves the progress bar where it stopped:
@@ -524,6 +523,7 @@ class RelayReceiveCoordinator {
       ok: result.ok,
       bytes: result.ok ? info.fileSize : 0,
       resumeFromChunk: result.resumeFromChunk,
+      code: result.code,
       error: result.error,
     );
   }
@@ -547,7 +547,7 @@ class RelayReceiveCoordinator {
   ) async {
     final uri = _client.streamUri(begin.streamId);
     if (uri == null) {
-      return const _ReceiveOutcome.failure('中转服务器地址无效');
+      return _ReceiveOutcome.failure(appText.relayServerUrlInvalid);
     }
 
     final writer = await _resumeStore.openAt(
@@ -560,7 +560,7 @@ class RelayReceiveCoordinator {
       // further along than this device ever got. Both are worth restating
       // from the beginning rather than failing outright, but the sender is
       // the one that decides that, so say what happened and let it choose.
-      return const _ReceiveOutcome.failure('无法从该断点继续接收');
+      return _ReceiveOutcome.failure(appText.relayResumeFailed);
     }
 
     final dio =
@@ -578,7 +578,7 @@ class RelayReceiveCoordinator {
 
       if (response.statusCode != 200 || response.data == null) {
         return _ReceiveOutcome.retryable(
-          '无法读取中转数据流\n状态码: ${response.statusCode}',
+          appText.relayDownloadFailedStatus(response.statusCode ?? 0),
           await writer.abandon(),
         );
       }
@@ -586,10 +586,7 @@ class RelayReceiveCoordinator {
       final codec = await session.codec;
       final plaintext = codec.decrypt(
         response.data!.stream,
-        await session.secure.keys.fileKey(
-          begin.fileId,
-          attempt: begin.attempt,
-        ),
+        await session.secure.keys.fileKey(begin.fileId, attempt: begin.attempt),
         chunkCount: begin.chunkCount,
         startChunk: begin.startChunk,
       );
@@ -602,14 +599,18 @@ class RelayReceiveCoordinator {
           writer.bytesWritten,
           info.fileSize,
         );
-        session.restartWatchdog(() => unawaited(_abandon(session, '接收超时')));
+        session.restartWatchdog(
+          () => unawaited(_abandon(session, appText.relayTransferTimeout)),
+        );
       }
 
       if (writer.bytesWritten != info.fileSize) {
         await writer.discard();
-        return _ReceiveOutcome.failure(
+        LogUtil.wTag(
+          logTag,
           '接收到的字节数与清单不一致: ${writer.bytesWritten}/${info.fileSize}',
         );
+        return _ReceiveOutcome.failure(ErrorMessages.fileSizeMismatch);
       }
 
       final saved = await _fileTransferService.adoptReceivedFile(
@@ -622,7 +623,10 @@ class RelayReceiveCoordinator {
         if (saved.isDiskFull) {
           unawaited(DiskFullNotifier().notify(contextGetter?.call()));
         }
-        return _ReceiveOutcome.failure(saved.errorMessage ?? '接收失败');
+        return _ReceiveOutcome.failure(
+          saved.errorMessage ?? ErrorMessages.fileSaveFailed,
+          code: saved.isDiskFull ? PeerError.diskFull : PeerError.saveFailed,
+        );
       }
 
       await _resumeStore.discard(begin.fileId);
@@ -633,7 +637,7 @@ class RelayReceiveCoordinator {
         TransferHttp.describeFailure(
           e,
           transport: TransferTransport.relay,
-          verb: '下载',
+          direction: TransferDirection.download,
         ),
         await writer.abandon(),
       );
@@ -642,7 +646,7 @@ class RelayReceiveCoordinator {
       // stream this device could not verify, so none of it can be vouched for.
       LogUtil.wTag(logTag, '中转数据流校验失败 ${info.fileName}: $e');
       await writer.discard();
-      return _ReceiveOutcome.failure('文件在传输中被改动或截断，已丢弃: $e');
+      return _ReceiveOutcome.failure(appText.relayStreamTampered);
     } on FileSystemException catch (e) {
       LogUtil.wTag(logTag, '中转接收写入失败 ${info.fileName}: ${e.message}');
       await writer.discard();
@@ -651,13 +655,18 @@ class RelayReceiveCoordinator {
       if (DiskSpaceError.isDiskFull(e)) {
         LogUtil.eTag(logTag, '磁盘空间不足，已中止中转接收: ${info.fileName}');
         unawaited(DiskFullNotifier().notify(contextGetter?.call()));
-        return _ReceiveOutcome.failure(ErrorMessages.storageInsufficient);
+        return _ReceiveOutcome.failure(
+          ErrorMessages.storageInsufficient,
+          code: PeerError.diskFull,
+        );
       }
-      return _ReceiveOutcome.failure('文件保存失败\n错误: ${e.message}');
+      return _ReceiveOutcome.failure(
+        '${ErrorMessages.fileSaveFailed}\n${e.message}',
+      );
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '中转下载异常 ${info.fileName}: $e', e, stackTrace);
       return _ReceiveOutcome.retryable(
-        '中转下载异常: $e',
+        appText.relayDownloadFailed('$e'),
         await writer.abandon(),
       );
     } finally {
@@ -671,6 +680,7 @@ class RelayReceiveCoordinator {
     required bool ok,
     int bytes = 0,
     int? resumeFromChunk,
+    PeerError? code,
     String? error,
   }) async {
     await _send(
@@ -681,6 +691,7 @@ class RelayReceiveCoordinator {
         ok: ok,
         bytes: bytes,
         resumeFromChunk: resumeFromChunk,
+        code: code?.code,
         error: error,
       ).toJson(),
     );
@@ -697,7 +708,7 @@ class RelayReceiveCoordinator {
     if (session == null || session.peerDeviceId != inbound.fromDeviceId) {
       return;
     }
-    await _abandon(session, '对方取消了传输');
+    await _abandon(session, appText.relayPeerCancelled);
   }
 
   /// Called by the dialog once it closes, whichever way the batch ended.
@@ -859,6 +870,9 @@ class _ReceiveOutcome {
   final String? savedPath;
   final String? error;
 
+  /// What the sender is told; [error] is the local detail.
+  final PeerError? code;
+
   /// Set when the attempt failed but what arrived is still worth keeping, and
   /// names the chunk a retry may start from.
   final int? resumeFromChunk;
@@ -866,14 +880,16 @@ class _ReceiveOutcome {
   const _ReceiveOutcome.success(this.savedPath)
     : ok = true,
       error = null,
+      code = null,
       resumeFromChunk = null;
 
-  const _ReceiveOutcome.failure(this.error)
+  const _ReceiveOutcome.failure(this.error, {this.code = PeerError.saveFailed})
     : ok = false,
       savedPath = null,
       resumeFromChunk = null;
 
   const _ReceiveOutcome.retryable(this.error, this.resumeFromChunk)
     : ok = false,
-      savedPath = null;
+      savedPath = null,
+      code = PeerError.saveFailed;
 }

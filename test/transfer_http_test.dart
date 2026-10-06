@@ -1,11 +1,18 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:icy_easy_send/l10n/app_localizations.dart';
+import 'package:icy_easy_send/l10n/current_localizations.dart';
+import 'package:icy_easy_send/services/language_service.dart';
 import 'package:icy_easy_send/services/transfer/transfer_http.dart';
 import 'package:icy_easy_send/utils/constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('TransferHttp', () {
     test('transferTimeout budgets one second per megabyte plus base', () {
       expect(
@@ -26,7 +33,10 @@ void main() {
       final dio = TransferHttp.createForUpload(AppConstants.bytesPerMB);
       final timeout = TransferHttp.transferTimeout(AppConstants.bytesPerMB);
 
-      expect(dio.options.connectTimeout?.inSeconds, AppConstants.requestTimeout);
+      expect(
+        dio.options.connectTimeout?.inSeconds,
+        AppConstants.requestTimeout,
+      );
       expect(dio.options.sendTimeout, timeout);
       expect(dio.options.receiveTimeout, timeout);
       dio.close();
@@ -36,7 +46,10 @@ void main() {
       final dio = TransferHttp.createForDownload(AppConstants.bytesPerMB);
       final timeout = TransferHttp.transferTimeout(AppConstants.bytesPerMB);
 
-      expect(dio.options.connectTimeout?.inSeconds, AppConstants.requestTimeout);
+      expect(
+        dio.options.connectTimeout?.inSeconds,
+        AppConstants.requestTimeout,
+      );
       expect(dio.options.sendTimeout, isNull);
       expect(dio.options.receiveTimeout, timeout);
       dio.close();
@@ -51,7 +64,7 @@ void main() {
           ),
           transport: TransferTransport.relay,
         ),
-        '中转传输超时',
+        appText.relayTransferTimeout,
       );
       expect(
         TransferHttp.describeFailure(
@@ -61,9 +74,26 @@ void main() {
             message: 'boom',
           ),
           transport: TransferTransport.relay,
-          verb: '下载',
+          direction: TransferDirection.download,
         ),
-        '中转下载失败: boom',
+        appText.relayDownloadFailed('boom'),
+      );
+    });
+
+    test('describeFailure follows the chosen app language', () async {
+      SharedPreferences.setMockInitialValues({});
+      addTearDown(() => LanguageService.instance.setLanguage('system'));
+      await LanguageService.instance.setLanguage('ja');
+
+      expect(
+        TransferHttp.describeFailure(
+          DioException(
+            requestOptions: RequestOptions(),
+            type: DioExceptionType.connectionTimeout,
+          ),
+          transport: TransferTransport.relay,
+        ),
+        lookupAppLocalizations(const Locale('ja')).relayTransferTimeout,
       );
     });
 
@@ -77,7 +107,7 @@ void main() {
           ),
           transport: TransferTransport.lan,
         ),
-        '网络连接失败\n错误: refused',
+        '${appText.networkConnectionFailed}\nrefused',
       );
       expect(
         TransferHttp.describeFailure(
@@ -87,7 +117,7 @@ void main() {
           ),
           transport: TransferTransport.lan,
         ),
-        '文件传输超时',
+        appText.transferTimeout,
       );
     });
   });

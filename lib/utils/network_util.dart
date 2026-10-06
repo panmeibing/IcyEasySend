@@ -21,6 +21,14 @@ class LocalNetworkSnapshot {
 class NetworkUtil {
   static final String logTag = LogTags.network;
 
+  static bool isValidPort(int port) => port >= 1 && port <= 65535;
+
+  /// The port in [text], or null if it is not a usable TCP port.
+  static int? parsePort(String text) {
+    final port = int.tryParse(text.trim());
+    return port != null && isValidPort(port) ? port : null;
+  }
+
   /// Get the local IP address of the device
   ///
   /// Priority order:

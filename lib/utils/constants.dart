@@ -66,8 +66,9 @@ class AppConstants {
   static const Duration deviceScanMulticastWait = Duration(milliseconds: 2600);
 
   /// Extra wait after burst announcements for TCP/UDP responses to arrive.
-  static const Duration deviceScanMulticastTailWait =
-      Duration(milliseconds: 500);
+  static const Duration deviceScanMulticastTailWait = Duration(
+    milliseconds: 500,
+  );
 
   /// Delays between repeated multicast announcements (like LocalSend)
   static const List<int> multicastAnnouncementDelaysMs = [100, 500, 2000];
@@ -99,6 +100,21 @@ class AppConstants {
 
   /// Maximum file size (20GB)
   static const int maxFileSize = 20 * 1024 * 1024 * 1024;
+
+  /// Byte budget for JSON bodies on the LAN server, which anyone on the
+  /// network can reach.
+  static const int maxJsonBodyBytes = 64 * 1024;
+
+  /// `/batch-confirm-receive` lists every file of a folder in one body.
+  static const int maxBatchConfirmBodyBytes = 16 * 1024 * 1024;
+
+  /// Receive confirmations allowed on screen at once, so a peer cannot bury
+  /// the user under dialogs.
+  static const int maxPendingReceivePrompts = 3;
+
+  /// How long an accepted batch may sit with no `/transfer` activity before
+  /// its remaining tickets are dropped.
+  static const Duration receiveBatchIdleTtl = Duration(minutes: 10);
 
   // History constants
 
@@ -133,10 +149,6 @@ class AppConstants {
 
   /// Countdown update interval (1 second)
   static const Duration countdownInterval = Duration(seconds: 1);
-
-  /// Batch window duration for grouping multiple file requests from same sender
-  /// Files arriving within this window will be grouped together
-  static const Duration batchRequestWindow = Duration(milliseconds: 500);
 
   /// Progress update interval for file transfer UI
   static const Duration progressUpdateInterval = Duration(milliseconds: 500);

@@ -84,10 +84,7 @@ class ChannelSelector {
 
     final relayResult = await relayFuture;
     if (relayResult.ok) {
-      LogUtil.iTag(
-        logTag,
-        '选路: 中转 (peer=${peer.describe()})',
-      );
+      LogUtil.iTag(logTag, '选路: 中转 (peer=${peer.describe()})');
       return ChannelSelection(channel: relay, probe: relayResult);
     }
 

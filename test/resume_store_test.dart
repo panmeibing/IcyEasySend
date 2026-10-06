@@ -239,11 +239,7 @@ void main() {
       await writer.abandon();
 
       expect(
-        await store.openAt(
-          fileId: fileId,
-          size: chunkSize * 4,
-          startChunk: 3,
-        ),
+        await store.openAt(fileId: fileId, size: chunkSize * 4, startChunk: 3),
         isNull,
       );
     });

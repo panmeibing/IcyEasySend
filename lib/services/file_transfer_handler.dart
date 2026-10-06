@@ -1,22 +1,26 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io' show HttpConnectionInfo;
-import 'dart:math';
 
-import 'package:flutter/material.dart';
-import 'package:icy_easy_send/utils/constants.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shelf/shelf.dart';
 
+import '../l10n/current_localizations.dart';
+import '../models/transfer_data.dart';
 import '../models/transfer_history.dart';
-import '../services/preferences_service.dart';
+import '../utils/constants.dart';
 import '../utils/disk_space_error.dart';
 import '../utils/error_messages.dart';
+import '../utils/hex_util.dart';
 import '../utils/log_util.dart';
-import '../utils/toast_helper.dart';
+import '../utils/operation_result.dart';
+import '../utils/peer_error.dart';
+import '../utils/server_http_util.dart';
+import '../utils/transfer_path_util.dart';
 import 'batch_receive_manager.dart';
 import 'disk_full_notifier.dart';
 import 'file_transfer_service.dart';
+import 'secret_key_verifier.dart';
 import 'transfer/transfer_history_manager.dart';
+import 'user_notifier.dart';
 
 /// Handler for file transfer endpoint
 ///
@@ -27,25 +31,21 @@ class FileTransferHandler {
   final FileTransferService _fileTransferService;
   final BatchReceiveManager _batchReceiveManager;
   final TransferHistoryManager _historyManager;
+  final SecretKeyVerifier _secretKeyVerifier;
   final VoidCallback? Function()? historyRefreshCallbackGetter;
   final String logTag = LogTags.server;
 
-  // Store pending transfer confirmations with transfer ID as key. The value is
-  // the address the confirmation came from, so /transfer can refuse a ticket
-  // presented by anyone else. Null means the address could not be determined.
-  final Map<String, String?> _pendingConfirmations = {};
+  /// Accepted files waiting for their `/transfer`, keyed by transfer ID.
+  ///
+  /// Each ticket is good once, for the file the user agreed to, from the
+  /// address that asked.
+  final Map<String, _Ticket> _tickets = {};
 
-  static final Random _random = Random.secure();
+  /// Confirmation dialogs currently waiting on the local user.
+  int _promptsOnScreen = 0;
 
   // Store progress callbacks for active transfers: transferId -> callback
   final Map<String, void Function(double, int, int)> _progressCallbacks = {};
-
-  // Store transfer metadata for batch history saving: transferId -> metadata
-  final Map<String, _TransferMetadata> _transferMetadata = {};
-
-  // Track expected file counts per sender for auto-save history when using secret key
-  final Map<String, int> _expectedFileCounts = {};
-  final Map<String, int> _completedFileCounts = {};
 
   FileTransferHandler({
     this.contextGetter,
@@ -54,66 +54,18 @@ class FileTransferHandler {
     FileTransferService? fileTransferService,
     BatchReceiveManager? batchReceiveManager,
     TransferHistoryManager? historyManager,
+    SecretKeyVerifier? secretKeyVerifier,
   }) : _fileTransferService = fileTransferService ?? FileTransferService(),
        _batchReceiveManager = batchReceiveManager ?? BatchReceiveManager(),
-       _historyManager = historyManager ?? TransferHistoryManager();
+       _historyManager = historyManager ?? TransferHistoryManager(),
+       _secretKeyVerifier = secretKeyVerifier ?? SecretKeyVerifier.instance;
 
   bool get _isInBackground => isInBackgroundGetter?.call() ?? false;
-
-  /// Register a progress callback for a transfer
-  void registerProgressCallback(
-    String transferId,
-    void Function(double progress, int bytesReceived, int totalBytes) callback,
-  ) {
-    _progressCallbacks[transferId] = callback;
-  }
-
-  /// Unregister a progress callback
-  /// Address the request actually arrived from, as opposed to the `senderIP`
-  /// parameter, which is whatever the caller chose to put in it.
-  String? _remoteAddress(Request request) {
-    final connectionInfo =
-        request.context['shelf.io.connection_info'] as HttpConnectionInfo?;
-    return connectionInfo?.remoteAddress.address;
-  }
 
   /// Transfer IDs double as one-time tickets for `/transfer`, so they are
   /// random rather than built out of the sender IP, file name and clock, all
   /// of which are known to anyone who can see the traffic.
-  static String _newTransferId() {
-    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
-    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-  }
-
-  void unregisterProgressCallback(String transferId) {
-    _progressCallbacks.remove(transferId);
-  }
-
-  /// Save batch transfer histories for a specific sender
-  /// This should be called after all files from a sender have been received
-  Future<void> saveBatchHistories(String senderIP) async {
-    final histories = <TransferHistory>[];
-
-    // Collect all histories for this sender
-    final transferIds = _transferMetadata.keys
-        .where((id) => _transferMetadata[id]!.senderIP == senderIP)
-        .toList();
-
-    for (final transferId in transferIds) {
-      final metadata = _transferMetadata.remove(transferId);
-      if (metadata != null) {
-        histories.add(metadata.toTransferHistory());
-      }
-    }
-
-    if (histories.isNotEmpty) {
-      await _historyManager.saveTransferHistoryBatch(histories);
-      LogUtil.dTag(logTag, '批量保存了 ${histories.length} 条接收历史记录 (来自 $senderIP)');
-
-      // Trigger history refresh after saving
-      historyRefreshCallbackGetter?.call()?.call();
-    }
-  }
+  static String _newTransferId() => HexUtil.random(16);
 
   /// Handle POST /batch-confirm-receive requests
   ///
@@ -129,257 +81,201 @@ class FileTransferHandler {
   /// - message: error or success message
   Future<Response> handleBatchConfirmReceive(Request request) async {
     LogUtil.iTag(logTag, '收到批量确认请求: /batch-confirm-receive');
+    _dropIdleBatches();
 
     try {
-      // Parse JSON body
-      final bodyString = await request.readAsString();
-      final Map<String, dynamic> body;
-
+      final Object? decoded;
       try {
-        body = jsonDecode(bodyString) as Map<String, dynamic>;
-      } catch (e) {
-        LogUtil.wTag(logTag, '无效的JSON格式: $bodyString');
-        return Response(
-          400,
-          body: jsonEncode({'accepted': false, 'message': '无效的JSON格式'}),
-          headers: {'Content-Type': 'application/json'},
+        decoded = await ServerHttpUtil.readJson(
+          request,
+          maxBytes: AppConstants.maxBatchConfirmBodyBytes,
         );
+      } on RequestBodyTooLargeException catch (e) {
+        LogUtil.wTag(logTag, '批量确认请求体过大: $e');
+        return _confirmError(413, PeerError.badRequest);
+      } on FormatException {
+        LogUtil.wTag(logTag, '无效的JSON格式');
+        return _confirmError(400, PeerError.badRequest);
+      }
+      if (decoded is! Map<String, dynamic>) {
+        return _confirmError(400, PeerError.badRequest);
+      }
+      final body = decoded;
+
+      final files = body['files'];
+      final declaredSenderIP = body['senderIP'];
+      final senderDeviceName = body['senderDeviceName'] as String?;
+      final secretKey = request.headers['x-secret-key'];
+      final remoteAddress = ServerHttpUtil.remoteAddress(request);
+
+      if (files is! List || files.isEmpty) {
+        LogUtil.wTag(logTag, '缺少文件列表参数');
+        return _confirmError(400, PeerError.badRequest);
       }
 
-      // Extract parameters
-      final files = body['files'] as List<dynamic>?;
-      final senderIP = body['senderIP'] as String?;
-      final senderDeviceName = body['senderDeviceName'] as String?;
+      if (declaredSenderIP is! String || declaredSenderIP.isEmpty) {
+        LogUtil.wTag(logTag, '缺少发送者IP参数');
+        return _confirmError(400, PeerError.badRequest);
+      }
 
-      // Extract secret key from headers
-      final secretKey = request.headers['x-secret-key'];
+      // Grouping, dialogs and history all key on where the request really
+      // came from; the declared address is only a fallback for when the
+      // connection does not say.
+      final peer = remoteAddress ?? declaredSenderIP;
 
       LogUtil.dTag(
         logTag,
-        '批量确认参数: 文件数=${files?.length ?? 0}, 发送方=$senderIP, 设备名=$senderDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}, 后台=$_isInBackground',
+        '批量确认参数: 文件数=${files.length}, 发送方=$peer, 设备名=$senderDeviceName, '
+        '秘钥=${secretKey != null ? "已提供" : "未提供"}, 后台=$_isInBackground',
       );
 
-      // Validate required parameters
-      if (files == null || files.isEmpty) {
-        LogUtil.wTag(logTag, '缺少文件列表参数');
-        return Response(
-          400,
-          body: jsonEncode({'accepted': false, 'message': '缺少文件列表参数'}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-
-      if (senderIP == null || senderIP.isEmpty) {
-        LogUtil.wTag(logTag, '缺少发送者IP参数');
-        return Response(
-          400,
-          body: jsonEncode({'accepted': false, 'message': '缺少发送者 IP 参数'}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-
-      // Check secret key before requiring UI context
-      bool skipConfirmation = false;
-      if (secretKey != null && secretKey.isNotEmpty) {
-        final preferencesService = PreferencesService();
-        final savedSecretKey = await preferencesService.getDeviceSecretKey();
-
-        if (savedSecretKey != null &&
-            savedSecretKey.isNotEmpty &&
-            savedSecretKey == secretKey) {
-          skipConfirmation = true;
-          LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
-
-          final currentCtx = contextGetter?.call();
-          if (!_isInBackground &&
-              currentCtx != null &&
-              currentCtx.mounted) {
-            ToastHelper.showSuccess(
-              currentCtx,
-              '${senderDeviceName ?? senderIP} 使用秘钥验证通过，自动接收 ${files.length} 个文件',
-            );
-          }
-        } else {
-          LogUtil.wTag(logTag, '秘钥验证失败或未设置本机秘钥');
+      final skipConfirmation = await _secretKeyVerifier.verify(
+        secretKey,
+        remoteAddress: remoteAddress,
+      );
+      if (skipConfirmation) {
+        LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
+        final currentCtx = contextGetter?.call();
+        if (!_isInBackground && currentCtx != null && currentCtx.mounted) {
+          UserNotifier.instance.showSuccess(
+            currentCtx,
+            appText.filesReceivedWithSecretKey(
+              senderDeviceName ?? peer,
+              files.length,
+            ),
+          );
         }
       }
 
-      // Create PendingFileInfo for each file
       final pendingFiles = <PendingFileInfo>[];
       final transferIds = <String, String>{};
 
       for (final fileData in files) {
-        final fileMap = fileData as Map<String, dynamic>;
-        final fileName = fileMap['fileName'] as String?;
+        if (fileData is! Map) {
+          continue;
+        }
+        final fileName = fileData['fileName'];
         // A JSON number is not guaranteed to decode as an int, so go through
         // num rather than letting a double blow up the whole batch.
-        final fileSize = (fileMap['fileSize'] as num?)?.toInt();
+        final fileSize = (fileData['fileSize'] as num?)?.toInt();
 
-        if (fileName == null || fileSize == null) {
-          LogUtil.wTag(logTag, '跳过无效的文件条目: $fileMap');
-          continue; // Skip invalid file entries
+        if (fileName is! String || fileName.isEmpty || fileSize == null) {
+          LogUtil.wTag(logTag, '跳过无效的文件条目: $fileData');
+          continue;
         }
 
         // Rejected here as well as on /transfer so an oversized file never
         // reaches the confirmation dialog in the first place.
         if (fileSize < 0 || fileSize > AppConstants.maxFileSize) {
-          LogUtil.wTag(
-            logTag,
-            '跳过大小超出允许范围的文件: $fileName, 大小=$fileSize',
-          );
+          LogUtil.wTag(logTag, '跳过大小超出允许范围的文件: $fileName, 大小=$fileSize');
+          continue;
+        }
+
+        // The response maps names to tickets, so a repeated name would
+        // silently take over the earlier entry's ticket.
+        if (transferIds.containsKey(fileName)) {
+          LogUtil.wTag(logTag, '跳过重复的文件条目: $fileName');
           continue;
         }
 
         final transferId = _newTransferId();
         transferIds[fileName] = transferId;
-
-        // Create file info
-        final fileInfo = PendingFileInfo(
-          fileName: fileName,
-          fileSize: fileSize,
-          senderIP: senderIP,
-          senderDeviceName: senderDeviceName,
-          completer: Completer<bool>(),
-          transferId: transferId,
+        pendingFiles.add(
+          PendingFileInfo(
+            fileName: fileName,
+            fileSize: fileSize,
+            transferId: transferId,
+          ),
         );
-
-        pendingFiles.add(fileInfo);
       }
 
       if (pendingFiles.isEmpty) {
         LogUtil.wTag(logTag, '没有有效的文件');
-        return Response(
-          400,
-          body: jsonEncode({'accepted': false, 'message': '没有有效的文件'}),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _confirmError(400, PeerError.noValidFiles);
       }
 
       LogUtil.iTag(logTag, '处理批量接收确认: ${pendingFiles.length}个文件');
 
+      final batch = _ReceiveBatch(
+        peer: peer,
+        confirmedFrom: remoteAddress,
+        expected: pendingFiles.length,
+      );
+      final ctx = contextGetter?.call();
+      final hasUi = ctx != null && ctx.mounted && !_isInBackground;
+
       bool accepted;
-      if (skipConfirmation && _isInBackground) {
-        // Background + secret key: accept without any UI
-        LogUtil.iTag(logTag, '后台密钥自动接受（无进度对话框）');
-        _expectedFileCounts[senderIP] = pendingFiles.length;
-        _completedFileCounts[senderIP] = 0;
+      if (skipConfirmation && !hasUi) {
+        LogUtil.iTag(logTag, '密钥自动接受（无界面）');
+        batch.flushOnFinish = true;
+        batch.headless = true;
         accepted = await _batchReceiveManager.acceptBatchHeadless(
           files: pendingFiles,
-          senderIP: senderIP,
+          senderIP: peer,
         );
-      } else if (skipConfirmation) {
-        final ctx = contextGetter?.call();
-        if (ctx == null || !ctx.mounted) {
-          LogUtil.wTag(logTag, 'Context不可用，使用无UI自动接受');
-          _expectedFileCounts[senderIP] = pendingFiles.length;
-          _completedFileCounts[senderIP] = 0;
-          accepted = await _batchReceiveManager.acceptBatchHeadless(
-            files: pendingFiles,
-            senderIP: senderIP,
-          );
-        } else {
-          LogUtil.iTag(logTag, '使用密钥自动接受，显示进度对话框');
-          _expectedFileCounts[senderIP] = pendingFiles.length;
-          _completedFileCounts[senderIP] = 0;
+      } else if (!skipConfirmation && _isInBackground) {
+        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
+        return _confirmError(403, PeerError.backgroundNeedsSecretKey);
+      } else if (ctx == null || !ctx.mounted) {
+        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
+        return _confirmError(500, PeerError.noUi);
+      } else if (!skipConfirmation &&
+          _promptsOnScreen >= AppConstants.maxPendingReceivePrompts) {
+        LogUtil.wTag(logTag, '待确认的接收请求过多，拒绝来自 $peer 的请求');
+        return _confirmError(429, PeerError.busy);
+      } else {
+        if (!skipConfirmation) _promptsOnScreen++;
+        try {
           accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
             context: ctx,
             files: pendingFiles,
-            senderIP: senderIP,
+            senderIP: peer,
             senderDeviceName: senderDeviceName,
-            autoAccept: true,
+            autoAccept: skipConfirmation,
             onComplete: () async {
-              await saveBatchHistories(senderIP);
+              await _flushHistories(batch);
+              // Files still in flight when the dialog closed are saved once
+              // the last of them lands.
+              batch.flushOnFinish = true;
             },
           );
+        } finally {
+          if (!skipConfirmation) _promptsOnScreen--;
         }
-      } else if (_isInBackground) {
-        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
-        return Response(
-          403,
-          body: jsonEncode({
-            'accepted': false,
-            'message': ErrorMessages.backgroundRejectNeedsSecretKey,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
-      } else {
-        final ctx = contextGetter?.call();
-        if (ctx == null || !ctx.mounted) {
-          LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-          return Response(
-            500,
-            body: jsonEncode({
-              'accepted': false,
-              'message': '无法显示确认对话框：缺少上下文',
-            }),
-            headers: {'Content-Type': 'application/json'},
-          );
-        }
-
-        accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
-          context: ctx,
-          files: pendingFiles,
-          senderIP: senderIP,
-          senderDeviceName: senderDeviceName,
-          onComplete: () async {
-            await saveBatchHistories(senderIP);
-          },
-        );
       }
 
       if (!accepted) {
         LogUtil.iTag(logTag, '用户拒绝接收批量文件');
-        return Response(
-          403,
-          body: jsonEncode({
-            'accepted': false,
-            'message': ErrorMessages.userRejected,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _confirmError(403, PeerError.declined);
       }
 
-      // User accepted, store confirmations and register progress callbacks
-      final confirmedFrom = _remoteAddress(request);
       for (final fileInfo in pendingFiles) {
-        _pendingConfirmations[fileInfo.transferId] = confirmedFrom;
-
-        // Register progress callback to update batch dialog
-        registerProgressCallback(fileInfo.transferId, (
-          progress,
-          bytesReceived,
-          totalBytes,
-        ) {
-          _batchReceiveManager.updateProgress(
-            fileInfo.transferId,
-            progress,
-            bytesReceived,
-            totalBytes,
-          );
-        });
+        _tickets[fileInfo.transferId] = _Ticket(
+          batch: batch,
+          fileName: TransferPathUtil.normalizeTransferPath(fileInfo.fileName),
+          fileSize: fileInfo.fileSize,
+        );
+        _progressCallbacks[fileInfo.transferId] =
+            (progress, bytesReceived, totalBytes) {
+              _batchReceiveManager.updateProgress(
+                fileInfo.transferId,
+                progress,
+                bytesReceived,
+                totalBytes,
+              );
+            };
       }
 
       LogUtil.iTag(logTag, '用户确认接收批量文件: ${pendingFiles.length}个文件');
 
-      // Return success response with transfer IDs
-      return Response.ok(
-        jsonEncode({
-          'accepted': true,
-          'transferIds': transferIds,
-          'message': '用户已确认接收所有文件',
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return ServerHttpUtil.json({
+        'accepted': true,
+        'transferIds': transferIds,
+        'message': 'Accepted',
+      });
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '批量确认接收处理异常: $e', e, stackTrace);
-      return Response(
-        500,
-        body: jsonEncode({
-          'accepted': false,
-          'message': ErrorMessages.unexpectedError(e.toString()),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return _confirmError(500, PeerError.internalError);
     }
   }
 
@@ -393,51 +289,30 @@ class FileTransferHandler {
   ///
   /// File data should be sent as raw binary in request body
   ///
-  /// NOTE: User confirmation should be done via /confirm-receive endpoint first
+  /// NOTE: User confirmation should be done via /batch-confirm-receive first
   Future<Response> handleFileTransfer(Request request) async {
     LogUtil.iTag(LogTags.transfer, '收到文件传输请求: /transfer');
+    _dropIdleBatches();
 
     try {
-      // Extract metadata from query parameters
       final queryParams = request.url.queryParameters;
       final fileName = queryParams['fileName'];
       final fileSizeStr = queryParams['fileSize'];
-      final senderIP = queryParams['senderIP'];
       final senderDeviceName = queryParams['senderDeviceName'];
       final transferId = queryParams['transferId'];
 
       LogUtil.dTag(
         LogTags.transfer,
-        '传输参数: 文件=$fileName, 大小=$fileSizeStr, 发送方=$senderIP, transferId=$transferId',
+        '传输参数: 文件=$fileName, 大小=$fileSizeStr, transferId=$transferId',
       );
 
-      // Validate required parameters
       if (fileName == null || fileName.isEmpty) {
-        LogUtil.wTag(LogTags.transfer, '缺少文件名参数');
-        return Response(
-          400,
-          body: jsonEncode({'success': false, 'message': '缺少文件名参数'}),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(400, PeerError.badRequest, '缺少文件名参数');
       }
 
-      if (fileSizeStr == null) {
-        LogUtil.wTag(LogTags.transfer, '缺少文件大小参数');
-        return Response(
-          400,
-          body: jsonEncode({'success': false, 'message': '缺少文件大小参数'}),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-
-      final fileSize = int.tryParse(fileSizeStr);
+      final fileSize = fileSizeStr == null ? null : int.tryParse(fileSizeStr);
       if (fileSize == null) {
-        LogUtil.wTag(LogTags.transfer, '文件大小参数格式错误: $fileSizeStr');
-        return Response(
-          400,
-          body: jsonEncode({'success': false, 'message': '文件大小参数格式错误'}),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(400, PeerError.badRequest, '文件大小参数格式错误');
       }
 
       // The sending side checks this too, but it is the side under the
@@ -448,153 +323,102 @@ class FileTransferHandler {
           '文件大小超出允许范围: $fileName, 大小=$fileSize, '
           '限制=${AppConstants.maxFileSize}',
         );
-        return Response(
-          413,
-          body: jsonEncode({
-            'success': false,
-            'message': ErrorMessages.fileTooLarge,
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
-      }
-
-      if (senderIP == null || senderIP.isEmpty) {
-        LogUtil.wTag(LogTags.transfer, '缺少发送者IP参数');
-        return Response(
-          400,
-          body: jsonEncode({'success': false, 'message': '缺少发送者 IP 参数'}),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(413, PeerError.fileTooLarge, '文件大小超出允许范围');
       }
 
       if (transferId == null || transferId.isEmpty) {
-        LogUtil.wTag(LogTags.transfer, '缺少传输ID参数');
-        return Response(
-          400,
-          body: jsonEncode({
-            'success': false,
-            'message': '缺少传输 ID 参数，请先调用 /confirm-receive 接口',
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(400, PeerError.notConfirmed, '缺少传输 ID 参数');
       }
 
-      // Check if this transfer was confirmed
-      if (!_pendingConfirmations.containsKey(transferId)) {
+      final ticket = _tickets[transferId];
+      if (ticket == null) {
         LogUtil.wTag(LogTags.transfer, '未找到确认记录: $transferId');
-        return Response(
-          403,
-          body: jsonEncode({
-            'success': false,
-            'message': '未找到确认记录，请先调用 /confirm-receive 接口',
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(403, PeerError.notConfirmed, '未找到确认记录');
       }
 
-      // A ticket is only good from the address that obtained it. Without this
-      // the only thing standing between a third party on the same network and
-      // an unattended write into the download folder is knowing a transferId,
-      // and every parameter that used to make one up was public. Deliberately
-      // not consumed on mismatch: dropping the record here would let that same
-      // third party cancel a legitimate transfer just by aiming at it.
-      final confirmedFrom = _pendingConfirmations[transferId];
-      final requestFrom = _remoteAddress(request);
-      if (confirmedFrom != null && confirmedFrom != requestFrom) {
+      // Neither check below consumes the ticket: dropping it on a mismatch
+      // would let a third party cancel a legitimate transfer just by aiming
+      // at it.
+      final batch = ticket.batch;
+      final requestFrom = ServerHttpUtil.remoteAddress(request);
+      if (batch.confirmedFrom != null && batch.confirmedFrom != requestFrom) {
         LogUtil.wTag(
           LogTags.transfer,
-          '传输来源与确认来源不符，已拒绝: 确认自=$confirmedFrom, 实际来自=$requestFrom',
+          '传输来源与确认来源不符，已拒绝: 确认自=${batch.confirmedFrom}, 实际来自=$requestFrom',
         );
-        return Response(
-          403,
-          body: jsonEncode({
-            'success': false,
-            'message': '传输来源与确认来源不符',
-          }),
-          headers: {'Content-Type': 'application/json'},
-        );
+        return _transferError(403, PeerError.sourceMismatch, '传输来源与确认来源不符');
       }
 
-      // Remove the confirmation record (one-time use)
-      _pendingConfirmations.remove(transferId);
+      // The user agreed to a particular name and size; a ticket is not a
+      // licence to write something else.
+      if (TransferPathUtil.normalizeTransferPath(fileName) != ticket.fileName ||
+          fileSize != ticket.fileSize) {
+        LogUtil.wTag(
+          LogTags.transfer,
+          '传输内容与确认内容不符，已拒绝: 确认=${ticket.fileName}/${ticket.fileSize}, '
+          '实际=$fileName/$fileSize',
+        );
+        return _transferError(403, PeerError.contentMismatch, '传输内容与确认内容不符');
+      }
+
+      _tickets.remove(transferId);
+      final progressCallback = _progressCallbacks.remove(transferId);
 
       LogUtil.iTag(
         LogTags.transfer,
         '开始接收文件流: $fileName, 大小=${(fileSize / AppConstants.bytesPerMB).toStringAsFixed(2)}MB',
       );
 
-      // Get the request body stream (file data)
-      final fileStream = request.read();
-
-      // Get progress callback if registered
-      final progressCallback = _progressCallbacks[transferId];
-
-      // Call FileTransferService to save the file directly (no confirmation needed)
-      final receiveResult = await _fileTransferService.receiveFileDirectly(
-        fileStream: fileStream,
-        fileName: fileName,
-        fileSize: fileSize,
-        senderIP: senderIP,
-        senderDeviceName: senderDeviceName,
-        onProgress: progressCallback,
-      );
-
-      // Clean up progress callback
-      unregisterProgressCallback(transferId);
-
-      // Store transfer metadata for batch history saving
-      _transferMetadata[transferId] = _TransferMetadata(
-        fileName: fileName,
-        fileSize: fileSize,
-        senderIP: senderIP,
-        senderDeviceName: senderDeviceName,
-        success: receiveResult.isSuccess,
-        savedPath: receiveResult.isSuccess
-            ? receiveResult.data?.savedPath
-            : null,
-      );
-
-      // Check if this was an auto-accepted transfer (using secret key)
-      // and if all files from this sender have been received
-      if (_expectedFileCounts.containsKey(senderIP)) {
-        _completedFileCounts[senderIP] =
-            (_completedFileCounts[senderIP] ?? 0) + 1;
-        final completed = _completedFileCounts[senderIP]!;
-        final expected = _expectedFileCounts[senderIP]!;
-
-        LogUtil.dTag(
-          LogTags.transfer,
-          '文件传输进度: $completed/$expected 来自 $senderIP',
+      batch.active++;
+      batch.touch();
+      final OperationResult<TransferData> receiveResult;
+      try {
+        receiveResult = await _fileTransferService.receiveFileDirectly(
+          fileStream: request.read(),
+          fileName: fileName,
+          fileSize: fileSize,
+          senderIP: batch.peer,
+          senderDeviceName: senderDeviceName,
+          onProgress: progressCallback,
         );
+      } finally {
+        batch.active--;
+        batch.touch();
+      }
 
-        // If all files from this sender have been received, save histories in batch
-        if (completed >= expected) {
-          LogUtil.iTag(
-            LogTags.transfer,
-            '所有文件已接收完成 ($completed/$expected)，保存批量历史记录',
-          );
-
-          // Save histories in batch
-          await saveBatchHistories(senderIP);
-
-          // Clean up tracking data
-          _expectedFileCounts.remove(senderIP);
-          _completedFileCounts.remove(senderIP);
-          _batchReceiveManager.clearPendingForSender(senderIP);
+      batch.results.add(
+        _TransferMetadata(
+          fileName: fileName,
+          fileSize: fileSize,
+          senderIP: batch.peer,
+          senderDeviceName: senderDeviceName,
+          success: receiveResult.isSuccess,
+          savedPath: receiveResult.isSuccess
+              ? receiveResult.data?.savedPath
+              : null,
+        ),
+      );
+      batch.finished++;
+      LogUtil.dTag(
+        LogTags.transfer,
+        '文件传输进度: ${batch.finished}/${batch.expected} 来自 ${batch.peer}',
+      );
+      if (batch.isDone && batch.flushOnFinish) {
+        LogUtil.iTag(LogTags.transfer, '所有文件已接收完成，保存批量历史记录');
+        await _flushHistories(batch);
+        if (batch.headless) {
+          _batchReceiveManager.clearPendingForSender(batch.peer);
         }
       }
 
-      // Check if file was saved successfully
       if (!receiveResult.isSuccess) {
         LogUtil.wTag(
           LogTags.transfer,
           '文件接收失败: $fileName, 原因=${receiveResult.errorMessage}',
         );
-
-        // Notify batch receive manager about the failure
         _batchReceiveManager.markTransferFailed(
           transferId,
-          receiveResult.errorMessage ?? '未知错误',
+          receiveResult.errorMessage ?? ErrorMessages.fileSaveFailed,
         );
 
         // A full disk fails every remaining file in the batch, so it is worth
@@ -605,45 +429,118 @@ class FileTransferHandler {
           unawaited(DiskFullNotifier().notify(contextGetter?.call()));
         }
 
-        return Response(
+        return _transferError(
           500,
-          body: jsonEncode({
-            'success': false,
-            'message':
-                receiveResult.errorMessage ?? ErrorMessages.fileSaveFailed,
-          }),
-          headers: {'Content-Type': 'application/json'},
+          receiveResult.isDiskFull ? PeerError.diskFull : PeerError.saveFailed,
+          '文件保存失败: ${receiveResult.errorMessage}',
         );
       }
 
-      // Return success response
-      final result = {
+      final savedPath = receiveResult.data?.savedPath;
+      LogUtil.iTag(LogTags.transfer, '文件传输完成: $fileName, 保存路径=$savedPath');
+      return ServerHttpUtil.json({
         'success': true,
-        'message': '文件接收成功',
-        'savedPath': receiveResult.data?.savedPath,
-      };
-
-      LogUtil.iTag(
-        LogTags.transfer,
-        '文件传输完成: $fileName, 保存路径=${receiveResult.data?.savedPath}',
-      );
-
-      return Response.ok(
-        jsonEncode(result),
-        headers: {'Content-Type': 'application/json'},
-      );
+        'message': 'Received',
+        'savedPath': savedPath,
+      });
     } catch (e, stackTrace) {
       LogUtil.eTag(LogTags.transfer, '文件传输处理异常: $e', e, stackTrace);
-      return Response(
-        500,
-        body: jsonEncode({
-          'success': false,
-          'message': ErrorMessages.unexpectedError(e.toString()),
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      return _transferError(500, PeerError.internalError, '文件传输处理异常');
     }
   }
+
+  /// Saves whatever [batch] has received so far as history entries.
+  Future<void> _flushHistories(_ReceiveBatch batch) async {
+    if (batch.results.isEmpty) return;
+    final histories = batch.results.map((m) => m.toTransferHistory()).toList();
+    batch.results.clear();
+
+    await _historyManager.saveTransferHistoryBatch(histories);
+    LogUtil.dTag(
+      logTag,
+      '批量保存了 ${histories.length} 条接收历史记录 (来自 ${batch.peer})',
+    );
+    historyRefreshCallbackGetter?.call()?.call();
+  }
+
+  /// Forgets tickets of batches the sender has abandoned, so a confirmed
+  /// batch cannot be redeemed indefinitely and never outlives its usefulness
+  /// in memory.
+  void _dropIdleBatches() {
+    final now = DateTime.now();
+    final stale = <_ReceiveBatch>{};
+    _tickets.removeWhere((transferId, ticket) {
+      final batch = ticket.batch;
+      final idle =
+          batch.active == 0 &&
+          now.difference(batch.lastActivity) > AppConstants.receiveBatchIdleTtl;
+      if (idle) {
+        stale.add(batch);
+        _progressCallbacks.remove(transferId);
+      }
+      return idle;
+    });
+    for (final batch in stale) {
+      LogUtil.iTag(logTag, '丢弃长时间未使用的接收确认: ${batch.peer}');
+      unawaited(_flushHistories(batch));
+    }
+  }
+
+  Response _confirmError(int status, PeerError error) => ServerHttpUtil.json({
+    'accepted': false,
+    ...error.toJson(),
+  }, status: status);
+
+  /// [logMessage] stays on this device; the sender gets [error].
+  Response _transferError(int status, PeerError error, String logMessage) {
+    LogUtil.wTag(LogTags.transfer, logMessage);
+    return ServerHttpUtil.json({
+      'success': false,
+      ...error.toJson(),
+    }, status: status);
+  }
+}
+
+/// One accepted `/batch-confirm-receive`, tracked until its files arrive.
+class _ReceiveBatch {
+  _ReceiveBatch({
+    required this.peer,
+    required this.confirmedFrom,
+    required this.expected,
+  });
+
+  final String peer;
+
+  /// Address the confirmation came from. Null means it could not be
+  /// determined, in which case tickets are not bound to an address.
+  final String? confirmedFrom;
+  final int expected;
+
+  int finished = 0;
+  int active = 0;
+  bool headless = false;
+
+  /// Whether histories are saved as soon as the last file lands, rather than
+  /// when a progress dialog closes.
+  bool flushOnFinish = false;
+  DateTime lastActivity = DateTime.now();
+  final List<_TransferMetadata> results = [];
+
+  bool get isDone => finished >= expected;
+
+  void touch() => lastActivity = DateTime.now();
+}
+
+class _Ticket {
+  _Ticket({
+    required this.batch,
+    required this.fileName,
+    required this.fileSize,
+  });
+
+  final _ReceiveBatch batch;
+  final String fileName;
+  final int fileSize;
 }
 
 /// Internal class to store transfer metadata for batch history saving

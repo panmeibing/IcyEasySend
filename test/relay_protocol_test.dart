@@ -53,9 +53,7 @@ void main() {
         files: [ManifestFile(fileId: 'f1', name: 'a.txt', size: 12)],
       );
 
-      final decoded = decodeRelayPayload(
-        encodeRelayPayload(manifest.toJson()),
-      );
+      final decoded = decodeRelayPayload(encodeRelayPayload(manifest.toJson()));
 
       expect(decoded, isNotNull);
       expect(decoded!['type'], RelayPayloadType.transferManifest);
@@ -128,7 +126,10 @@ void main() {
         sessionId: 'sid',
         accepted: true,
         receiverDeviceName: 'Phone',
-        files: [AcceptedFile(fileId: 'f1'), AcceptedFile(fileId: 'f2')],
+        files: [
+          AcceptedFile(fileId: 'f1'),
+          AcceptedFile(fileId: 'f2'),
+        ],
       );
 
       final parsed = TransferAccept.tryParse(accept.toJson());
@@ -168,17 +169,20 @@ void main() {
       expect(parsed.files.single.lastChunkHash, isNull);
     });
 
-    test('ignores a negative resume offer rather than rejecting the accept', () {
-      final parsed = TransferAccept.tryParse({
-        'sid': 'sid',
-        'accepted': true,
-        'files': [
-          {'fileId': 'f1', 'resumeFromChunk': -3},
-        ],
-      });
+    test(
+      'ignores a negative resume offer rather than rejecting the accept',
+      () {
+        final parsed = TransferAccept.tryParse({
+          'sid': 'sid',
+          'accepted': true,
+          'files': [
+            {'fileId': 'f1', 'resumeFromChunk': -3},
+          ],
+        });
 
-      expect(parsed!.files.single.resumeFromChunk, 0);
-    });
+        expect(parsed!.files.single.resumeFromChunk, 0);
+      },
+    );
 
     test('round-trips a rejection with its reason', () {
       const accept = TransferAccept(
@@ -291,20 +295,22 @@ void main() {
       );
     });
 
-    test('rejects a file.begin that does not say how many frames to expect',
-        () {
-      // Without the count there is nothing to check a short stream against,
-      // so a file.begin missing it is not usable.
-      expect(
-        FileBegin.tryParse({
-          'sid': 'sid',
-          'fileId': 'f1',
-          'streamId': 'a' * 64,
-          'size': 1,
-        }),
-        isNull,
-      );
-    });
+    test(
+      'rejects a file.begin that does not say how many frames to expect',
+      () {
+        // Without the count there is nothing to check a short stream against,
+        // so a file.begin missing it is not usable.
+        expect(
+          FileBegin.tryParse({
+            'sid': 'sid',
+            'fileId': 'f1',
+            'streamId': 'a' * 64,
+            'size': 1,
+          }),
+          isNull,
+        );
+      },
+    );
 
     test('an empty file is still one frame', () {
       expect(FileBegin.chunkCountFor(0), 1);
@@ -345,11 +351,7 @@ void main() {
 
     test('an answer without a signature is not an answer', () {
       expect(
-        TransferAnswer.tryParse({
-          'sid': 'sid',
-          'epk': 'ZXBr',
-          'n': 'bm9uY2U=',
-        }),
+        TransferAnswer.tryParse({'sid': 'sid', 'epk': 'ZXBr', 'n': 'bm9uY2U='}),
         isNull,
       );
     });
@@ -407,8 +409,9 @@ void main() {
 
     test('a confirmation is only a confirmation when it says so', () {
       expect(
-        PairConfirm.tryParse(const PairConfirm(accepted: true).toJson())!
-            .accepted,
+        PairConfirm.tryParse(
+          const PairConfirm(accepted: true).toJson(),
+        )!.accepted,
         isTrue,
       );
       expect(PairConfirm.tryParse({'type': 'pair.response'}), isNull);

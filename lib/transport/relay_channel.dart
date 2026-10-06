@@ -8,6 +8,7 @@ import 'package:cryptography/cryptography.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
+import '../l10n/current_localizations.dart';
 import '../models/transfer_data.dart';
 import '../models/transfer_file_item.dart';
 import '../models/transfer_history.dart';
@@ -23,8 +24,11 @@ import '../services/relay/relay_receive_coordinator.dart';
 import '../services/transfer/transfer_http.dart';
 import '../services/transfer/transfer_history_manager.dart';
 import '../utils/constants.dart';
+import '../utils/error_messages.dart';
+import '../utils/hex_util.dart';
 import '../utils/log_util.dart';
 import '../utils/operation_result.dart';
+import '../utils/peer_error.dart';
 import '../utils/transfer_status_provider.dart';
 import 'transport_channel.dart';
 
@@ -319,7 +323,7 @@ class RelayChannel implements TransportChannel {
 
     final answer = TransferAnswer.tryParse(reply.data!);
     if (answer == null) {
-      return OperationResult.failure('中转会话应答无法解析');
+      return OperationResult.failure(appText.relayResponseUnreadable);
     }
 
     final session = await RelayCrypto.completeOffer(
@@ -385,7 +389,7 @@ class RelayChannel implements TransportChannel {
 
     final accept = TransferAccept.tryParse(reply.data!);
     if (accept == null) {
-      return OperationResult.failure('中转应答无法解析');
+      return OperationResult.failure(appText.relayResponseUnreadable);
     }
     if (!accept.accepted) {
       return OperationResult.failure(
@@ -429,9 +433,7 @@ class RelayChannel implements TransportChannel {
             AppConstants.relayMaxFileRetries,
           ),
         );
-        await Future<void>.delayed(
-          AppConstants.relayRetryBackoff[attempt - 1],
-        );
+        await Future<void>.delayed(AppConstants.relayRetryBackoff[attempt - 1]);
       }
 
       final attemptResult = await _attempt(
@@ -451,10 +453,7 @@ class RelayChannel implements TransportChannel {
         return attemptResult.result;
       }
 
-      LogUtil.wTag(
-        logTag,
-        '中转传输中断，将从第 $resume 块重试 ${entry.item.transferName}',
-      );
+      LogUtil.wTag(logTag, '中转传输中断，将从第 $resume 块重试 ${entry.item.transferName}');
       startChunk = resume;
     }
   }
@@ -491,10 +490,7 @@ class RelayChannel implements TransportChannel {
 
       final digest = await Sha256().hash(builder.takeBytes());
       if (base64Encode(digest.bytes) != hash) {
-        LogUtil.iTag(
-          logTag,
-          '本地文件已改动，放弃断点续传 ${entry.item.transferName}',
-        );
+        LogUtil.iTag(logTag, '本地文件已改动，放弃断点续传 ${entry.item.transferName}');
         return 0;
       }
       return resume;
@@ -581,7 +577,7 @@ class RelayChannel implements TransportChannel {
     final done = FileDone.tryParse(ack.data!);
     if (done == null || !done.ok) {
       return _SendAttempt.failed(
-        done?.error ?? '对方未能保存文件',
+        _describeFailedDone(done),
         resumeFromChunk: done?.resumeFromChunk,
       );
     }
@@ -599,9 +595,7 @@ class RelayChannel implements TransportChannel {
     Future<OperationResult<Map<String, dynamic>>> acknowledged,
   ) async {
     try {
-      final ack = await acknowledged.timeout(
-        AppConstants.relayFileAckTimeout,
-      );
+      final ack = await acknowledged.timeout(AppConstants.relayFileAckTimeout);
       if (!ack.isSuccess) {
         return null;
       }
@@ -622,7 +616,7 @@ class RelayChannel implements TransportChannel {
   }) async {
     final uri = _client.streamUri(streamId);
     if (uri == null) {
-      return OperationResult.failure('中转服务器地址无效');
+      return OperationResult.failure(appText.relayServerUrlInvalid);
     }
 
     final headers = await _client.streamHeaders(streamId);
@@ -650,10 +644,7 @@ class RelayChannel implements TransportChannel {
           startChunk: startChunk,
         ),
         options: Options(
-          headers: {
-            ...headers,
-            Headers.contentLengthHeader: wireLength,
-          },
+          headers: {...headers, Headers.contentLengthHeader: wireLength},
           contentType: 'application/octet-stream',
           responseType: ResponseType.plain,
           validateStatus: (status) => status != null,
@@ -664,10 +655,7 @@ class RelayChannel implements TransportChannel {
         onSendProgress: entry.size == 0
             ? null
             : (sent, _) => onFileBytes(
-                min(
-                  resumedBytes + sent * remaining ~/ wireLength,
-                  entry.size,
-                ),
+                min(resumedBytes + sent * remaining ~/ wireLength, entry.size),
               ),
       );
 
@@ -683,10 +671,12 @@ class RelayChannel implements TransportChannel {
         TransferHttp.describeFailure(e, transport: TransferTransport.relay),
       );
     } on FileSystemException catch (e) {
-      return OperationResult.failure('文件访问错误: ${e.message}');
+      return OperationResult.failure(
+        '${ErrorMessages.fileAccessError}\n${e.message}',
+      );
     } catch (e) {
       LogUtil.eTag(logTag, '中转上传异常 ${entry.item.transferName}: $e');
-      return OperationResult.failure('中转上传失败: $e');
+      return OperationResult.failure(appText.relayUploadFailed('$e'));
     } finally {
       dio.close();
     }
@@ -719,7 +709,7 @@ class RelayChannel implements TransportChannel {
             item: item,
             size: 0,
             fileId: _randomHex(16),
-            error: '无法读取文件: $e',
+            error: '${ErrorMessages.fileNotReadable}\n$e',
           ),
         );
       }
@@ -745,10 +735,7 @@ class RelayChannel implements TransportChannel {
         '$peerDeviceId|${item.file.path}|${item.transferName}|$size|$modified',
       ),
     );
-    return digest.bytes
-        .take(16)
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    return HexUtil.encode(digest.bytes.take(16));
   }
 
   /// Modification time in seconds, or zero when the filesystem will not say.
@@ -779,36 +766,37 @@ class RelayChannel implements TransportChannel {
     };
   }
 
+  /// Why the receiver could not keep a file, in this device's language when
+  /// the receiver sent a code.
+  static String _describeFailedDone(FileDone? done) {
+    final fallback = PeerError.saveFailed.describe();
+    if (done == null) return fallback;
+    return PeerError.fromCode(done.code)?.describe() ?? done.error ?? fallback;
+  }
+
   String _describeUploadFailure(int statusCode, String? body) {
     try {
       final decoded = jsonDecode(body ?? '');
       if (decoded is Map<String, dynamic>) {
         final code = decoded['code'];
         if (code == RelayErrorCode.peerNotAttached) {
-          return '对方没有接入数据流';
+          return appText.relayPeerNotAttached;
         }
         if (code == RelayErrorCode.payloadTooLarge) {
-          return '文件超过中转服务器的单次传输上限';
+          return appText.relayPayloadTooLarge;
         }
         final message = decoded['message'];
         if (message is String && message.isNotEmpty) {
-          return '中转上传失败: $message';
+          return appText.relayUploadFailed(message);
         }
       }
     } catch (_) {
       // Fall through to the status code, which is always meaningful.
     }
-    return '中转上传失败\n状态码: $statusCode';
+    return appText.relayUploadFailedStatus(statusCode);
   }
 
-  static final Random _random = Random.secure();
-
-  static String _randomHex(int bytes) {
-    return List.generate(
-      bytes,
-      (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
-    ).join();
-  }
+  static String _randomHex(int bytes) => HexUtil.random(bytes);
 }
 
 /// How one pass at a file turned out.

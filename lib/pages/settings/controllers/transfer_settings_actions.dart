@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../services/clipboard_overlay_service.dart';
 import '../../../services/preferences_service.dart';
-import '../../../services/validation_service.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/dialog_helper.dart';
 import '../models/settings_state.dart';
@@ -17,7 +16,6 @@ import 'transfer_controller.dart';
 class TransferSettingsActions {
   final TransferController transferController;
   final PreferencesService preferencesService;
-  final ValidationService validationService;
   final int allowMinHisCount;
   final int allowMaxHisCount;
 
@@ -33,7 +31,6 @@ class TransferSettingsActions {
   TransferSettingsActions({
     required this.transferController,
     required this.preferencesService,
-    required this.validationService,
     required this.allowMinHisCount,
     required this.allowMaxHisCount,
     required this.isMounted,
@@ -159,7 +156,7 @@ class TransferSettingsActions {
     );
 
     if (confirmed) {
-      await _saveMaxHistoryItems(l10n, newCount, currentCount);
+      await _saveMaxHistoryItems(l10n, newCount);
     } else {
       // Revert text outside setState — TextEditingController notifies on its own.
       if (isMounted()) {
@@ -169,25 +166,16 @@ class TransferSettingsActions {
     }
   }
 
-  Future<void> _saveMaxHistoryItems(
-    AppLocalizations l10n,
-    int newCount,
-    int currentCount,
-  ) async {
-    final result = await transferController.saveMaxHistoryItems(
-      newCount,
-      currentCount,
-    );
+  Future<void> _saveMaxHistoryItems(AppLocalizations l10n, int newCount) async {
+    final result = await transferController.saveMaxHistoryItems(newCount);
 
-    if (result['success']) {
+    if (result.success) {
       updateState(
-        (s) => s.copyWith(
-          maxHistoryItems: newCount,
-          isEditingMaxHistory: false,
-        ),
+        (s) =>
+            s.copyWith(maxHistoryItems: newCount, isEditingMaxHistory: false),
       );
 
-      final deletedCount = result['deletedCount'] as int;
+      final deletedCount = result.deletedCount;
       if (deletedCount > 0) {
         onSuccess(l10n.historyDeleted(deletedCount));
         onHistoryRefresh();
@@ -262,17 +250,14 @@ class TransferSettingsActions {
       await _saveMaxClipboardSize(l10n, newSize);
     } else {
       if (isMounted()) {
-        maxClipboardSizeController.text =
-            getState().maxClipboardSizeMB.toString();
+        maxClipboardSizeController.text = getState().maxClipboardSizeMB
+            .toString();
         updateState((s) => s.copyWith(isEditingMaxClipboardSize: false));
       }
     }
   }
 
-  Future<void> _saveMaxClipboardSize(
-    AppLocalizations l10n,
-    int newSize,
-  ) async {
+  Future<void> _saveMaxClipboardSize(AppLocalizations l10n, int newSize) async {
     final success = await transferController.saveMaxClipboardSize(newSize);
     if (success) {
       updateState(
@@ -299,24 +284,15 @@ class TransferSettingsActions {
       return;
     }
 
-    final validationResult = await validationService.validateDirectoryWritable(
-      selectedPath,
-    );
-
-    if (!validationResult.isSuccess) {
-      if (isMounted()) {
-        onError(l10n.savePathNotWritable);
-      }
-      return;
-    }
-
-    final saved = await transferController.saveCustomReceiveSavePath(
+    final change = await transferController.setCustomReceiveSavePath(
       selectedPath,
     );
 
     if (!isMounted()) return;
 
-    if (saved) {
+    if (change == ReceivePathChange.notWritable) {
+      onError(l10n.savePathNotWritable);
+    } else if (change == ReceivePathChange.saved) {
       updateState(
         (s) => s.copyWith(
           receiveSavePathDisplay: selectedPath,
@@ -353,9 +329,7 @@ class TransferSettingsActions {
     final success = await transferController.saveIPValidationEnabled(enabled);
     if (success) {
       updateState((s) => s.copyWith(enableIPValidation: enabled));
-      onSuccess(
-        enabled ? l10n.ipValidationEnabled : l10n.ipValidationDisabled,
-      );
+      onSuccess(enabled ? l10n.ipValidationEnabled : l10n.ipValidationDisabled);
     } else {
       onError(l10n.saveFailed);
     }
@@ -372,10 +346,7 @@ class TransferSettingsActions {
     final success = await preferencesService.saveDeviceSecretKey(newKey);
     if (success) {
       updateState(
-        (s) => s.copyWith(
-          deviceSecretKey: newKey,
-          isEditingSecretKey: false,
-        ),
+        (s) => s.copyWith(deviceSecretKey: newKey, isEditingSecretKey: false),
       );
       if (newKey.isEmpty) {
         onSuccess(l10n.deviceSecretKeyCleared);

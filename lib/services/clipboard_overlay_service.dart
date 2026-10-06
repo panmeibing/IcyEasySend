@@ -33,8 +33,9 @@ class ClipboardOverlayService {
         case 'onNativeClipboardCaptured':
           // Native already read clipboard (overlay focus or transparent Activity).
           final raw = call.arguments;
-          final Map<Object?, Object?>? payload =
-              raw is Map ? Map<Object?, Object?>.from(raw) : null;
+          final Map<Object?, Object?>? payload = raw is Map
+              ? Map<Object?, Object?>.from(raw)
+              : null;
           final ok = await _applyNativePayload(payload);
           return {'success': ok};
         case 'onClipboardChanged':
@@ -50,8 +51,9 @@ class ClipboardOverlayService {
   Future<bool> isOverlayPermissionGranted() async {
     if (!Platform.isAndroid) return false;
     try {
-      final result =
-          await _channel.invokeMethod<bool>('isOverlayPermissionGranted');
+      final result = await _channel.invokeMethod<bool>(
+        'isOverlayPermissionGranted',
+      );
       return result ?? false;
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, '检查悬浮窗权限失败: $e', e, stackTrace);
@@ -63,8 +65,9 @@ class ClipboardOverlayService {
   Future<bool> requestOverlayPermission() async {
     if (!Platform.isAndroid) return false;
     try {
-      final result =
-          await _channel.invokeMethod<bool>('requestOverlayPermission');
+      final result = await _channel.invokeMethod<bool>(
+        'requestOverlayPermission',
+      );
       return result ?? false;
     } catch (e, stackTrace) {
       LogUtil.wTag(logTag, '请求悬浮窗权限失败: $e', e, stackTrace);
@@ -119,12 +122,10 @@ class ClipboardOverlayService {
     if (_refreshInFlight) return ClipboardCacheService.instance.isValid;
     _refreshInFlight = true;
     try {
-      final ok =
-          await ClipboardCacheService.instance.updateFromNativePayload(payload);
-      LogUtil.dTag(
-        logTag,
-        ok ? '原生剪切板载荷已写入缓存' : '原生剪切板载荷写入缓存失败',
+      final ok = await ClipboardCacheService.instance.updateFromNativePayload(
+        payload,
       );
+      LogUtil.dTag(logTag, ok ? '原生剪切板载荷已写入缓存' : '原生剪切板载荷写入缓存失败');
       unawaited(_notifyOverlayRefreshResult(ok));
       return ok;
     } finally {
