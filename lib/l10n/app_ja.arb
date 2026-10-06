@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "相手と暗号化セッションを確立しています…",
   "relayIdentityMismatch": "相手の署名が無効です。ペアリング済みのデバイスではない可能性があります",
   "relayTransferNotice": "中継サーバー経由で転送中です。速度はサーバーの帯域に依存します",
-  "retryingAfterInterruption": "接続が切断されました。再試行中 ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "接続が切断されました。再試行中 ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "アドレスを全画面表示",
+  "tvReceiveHint": "スマートフォンで Icy Easy Send を開き、このアドレスをスキャンするか入力すると、ここにファイルを送れます。",
+  "tvRecentReceives": "最近の受信",
+  "tvNoRecent": "まだ受信していません",
+  "tvChooseFiles": "この端末からファイルを選ぶ",
+  "tvEnterAddress": "アドレスを入力",
+  "tvAddressLabel": "IP アドレス",
+  "tvPickerUnavailable": "このテレビではファイル選択を開けませんでした。受信は引き続き使えます。",
+  "tvNoDevices": "デバイスが見つかりません",
+  "tvScanning": "ローカルネットワークをスキャンしています…",
+  "tvPathUnchanged": "フォルダを変更できませんでした。現在の保存先のままです。",
+  "tvPairByCode": "デバイスコードでペアリング",
+  "tvEnterDeviceCode": "相手のデバイスコード",
+  "tvDownloadsFolder": "ダウンロード",
+  "deleteAllRecords": "すべて削除"
 }

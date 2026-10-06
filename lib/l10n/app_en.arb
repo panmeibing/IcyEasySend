@@ -1059,5 +1059,20 @@
         "type": "int"
       }
     }
-  }
+  },
+  "tvShowAddress": "Show address",
+  "tvReceiveHint": "On a phone, open Icy Easy Send, then scan or enter this address to send files here.",
+  "tvRecentReceives": "Recent",
+  "tvNoRecent": "Nothing received yet",
+  "tvChooseFiles": "Choose files on this device",
+  "tvEnterAddress": "Enter address",
+  "tvAddressLabel": "IP address",
+  "tvPickerUnavailable": "This TV could not open a file picker. Receiving still works.",
+  "tvNoDevices": "No devices found",
+  "tvScanning": "Scanning the local network…",
+  "tvPathUnchanged": "Couldn't change the folder. The current location stays.",
+  "tvPairByCode": "Pair with a device code",
+  "tvEnterDeviceCode": "Other device's code",
+  "tvDownloadsFolder": "Downloads",
+  "deleteAllRecords": "Delete all"
 }

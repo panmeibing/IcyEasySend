@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "正在与对方建立加密会话…",
   "relayIdentityMismatch": "对方设备的身份签名无效，可能不是已配对的设备",
   "relayTransferNotice": "正在通过中转服务器传输，速度受服务器带宽限制",
-  "retryingAfterInterruption": "连接中断，正在重试（{attempt}/{maxAttempts}）…"
+  "retryingAfterInterruption": "连接中断，正在重试（{attempt}/{maxAttempts}）…",
+  "tvShowAddress": "全屏显示地址",
+  "tvReceiveHint": "在手机上打开 Icy Easy Send，扫描或输入这个地址即可把文件发到这里。",
+  "tvRecentReceives": "最近接收",
+  "tvNoRecent": "还没有收到文件",
+  "tvChooseFiles": "从本机选择文件",
+  "tvEnterAddress": "输入地址",
+  "tvAddressLabel": "IP 地址",
+  "tvPickerUnavailable": "这台电视无法打开文件选择器。接收文件不受影响。",
+  "tvNoDevices": "没有发现设备",
+  "tvScanning": "正在扫描局域网…",
+  "tvPathUnchanged": "无法更改文件夹，仍使用当前保存位置。",
+  "tvPairByCode": "用设备码配对",
+  "tvEnterDeviceCode": "对方设备码",
+  "tvDownloadsFolder": "下载目录",
+  "deleteAllRecords": "删除全部"
 }

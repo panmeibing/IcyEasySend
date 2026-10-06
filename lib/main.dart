@@ -8,6 +8,9 @@ import 'package:icy_easy_send/utils/constants.dart';
 import 'l10n/app_localizations.dart';
 import 'pages/main_container.dart';
 import 'pages/pairing/pairing_confirm_dialog.dart';
+import 'pages/tv/tv_pairing_dialog.dart';
+import 'pages/tv/tv_shell.dart';
+import 'pages/tv/tv_theme.dart';
 import 'services/android_foreground_service.dart';
 import 'services/cache_cleanup_service.dart';
 import 'services/clipboard_overlay_service.dart';
@@ -18,9 +21,11 @@ import 'services/pairing_prompter.dart';
 import 'services/sharing_intent_service.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/log_util.dart';
+import 'ui/form_factor.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppFormFactor.resolve();
 
   // Android: port for foreground-task <-> UI communication
   AndroidForegroundService.initCommunicationPort();
@@ -28,7 +33,9 @@ void main() async {
   // Hand the service layer a way to ask the user about inbound pairing without
   // it having to reach into lib/pages itself. Installed before the HTTP server
   // starts, so the first request cannot arrive to a prompter that refuses.
-  PairingPrompter.instance = const DialogPairingPrompter();
+  PairingPrompter.instance = AppFormFactor.isTv
+      ? const TvPairingPrompter()
+      : const DialogPairingPrompter();
 
   // Console logging already works; attach the file sink in the background so
   // cold start is not waiting on path_provider + creating a log file.
@@ -168,7 +175,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       });
     }
 
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid && !AppFormFactor.isTv) {
       // Clipboard overlay is optional UX; keep it off the first-paint path.
       await Future<void>.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
@@ -180,7 +187,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _onAppResumed() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid || AppFormFactor.isTv) return;
     ClipboardOverlayService.instance.ensureInitialized();
     await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
     await ClipboardOverlayService.instance.startClipboardChangeListening();
@@ -188,7 +195,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _onAppGoingBackground() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid || AppFormFactor.isTv) return;
     // Best-effort refresh while we may still have focus briefly.
     await ClipboardOverlayService.instance.refreshCache();
     await ClipboardOverlayService.instance.stopClipboardChangeListening();
@@ -211,7 +218,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       builder: (context, child) {
         return MaterialApp(
           title: AppConstants.projectName,
-          theme: _theme,
+          theme: AppFormFactor.isTv ? buildTvTheme(_theme) : _theme,
           locale: _languageService.locale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -235,11 +242,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
             return const Locale('en', 'US');
           },
-          home: MainContainer(
-            serverManager: _serverManager,
-            sharingIntentService: _sharingIntentService,
-            languageService: _languageService,
-          ),
+          home: AppFormFactor.isTv
+              ? TvShell(
+                  serverManager: _serverManager,
+                  languageService: _languageService,
+                )
+              : MainContainer(
+                  serverManager: _serverManager,
+                  sharingIntentService: _sharingIntentService,
+                  languageService: _languageService,
+                ),
         );
       },
     );

@@ -1796,4 +1796,52 @@ class AppLocalizationsRu extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Соединение прервано, повтор ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Показать адрес';
+
+  @override
+  String get tvReceiveHint =>
+      'На телефоне откройте Icy Easy Send и отсканируйте или введите этот адрес, чтобы отправить файлы сюда.';
+
+  @override
+  String get tvRecentReceives => 'Недавние';
+
+  @override
+  String get tvNoRecent => 'Пока ничего не получено';
+
+  @override
+  String get tvChooseFiles => 'Выбрать файлы на этом устройстве';
+
+  @override
+  String get tvEnterAddress => 'Ввести адрес';
+
+  @override
+  String get tvAddressLabel => 'IP-адрес';
+
+  @override
+  String get tvPickerUnavailable =>
+      'На этом телевизоре не удалось открыть выбор файлов. Приём по-прежнему работает.';
+
+  @override
+  String get tvNoDevices => 'Устройства не найдены';
+
+  @override
+  String get tvScanning => 'Поиск в локальной сети…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Не удалось сменить папку. Текущее расположение сохранено.';
+
+  @override
+  String get tvPairByCode => 'Сопряжение по коду';
+
+  @override
+  String get tvEnterDeviceCode => 'Код другого устройства';
+
+  @override
+  String get tvDownloadsFolder => 'Загрузки';
+
+  @override
+  String get deleteAllRecords => 'Удалить все';
 }

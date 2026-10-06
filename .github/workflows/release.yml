@@ -303,8 +303,12 @@ jobs:
           flutter build apk --release --split-per-abi
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             "release/IcyEasySend-android-arm64-v8a-v${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+            "release/IcyEasySend-android-tv-arm64-v8a-v${VERSION}.apk"
           cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
             "release/IcyEasySend-android-armeabi-v7a-v${VERSION}.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+            "release/IcyEasySend-android-tv-armeabi-v7a-v${VERSION}.apk"
           cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
             "release/IcyEasySend-android-x86_64-v${VERSION}.apk"
           flutter build appbundle --release
@@ -385,6 +389,8 @@ jobs:
             - macOS: 未签名 `.dmg`
             - Android 手机（arm64）: `IcyEasySend-android-arm64-v8a-*.apk`
             - Android 旧 32 位手机: `IcyEasySend-android-armeabi-v7a-*.apk`
+            - Android 电视（arm64）: `IcyEasySend-android-tv-arm64-v8a-*.apk`
+            - Android 电视（旧 32 位）: `IcyEasySend-android-tv-armeabi-v7a-*.apk`
             - Android 模拟器 / x86_64: `IcyEasySend-android-x86_64-*.apk`
             - Android 全架构（不确定 CPU 架构时下载）: `IcyEasySend-android-v*.apk`
             - Android 上架 Google Play: `.aab`

@@ -1729,4 +1729,50 @@ class AppLocalizationsJa extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '接続が切断されました。再試行中 ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'アドレスを全画面表示';
+
+  @override
+  String get tvReceiveHint =>
+      'スマートフォンで Icy Easy Send を開き、このアドレスをスキャンするか入力すると、ここにファイルを送れます。';
+
+  @override
+  String get tvRecentReceives => '最近の受信';
+
+  @override
+  String get tvNoRecent => 'まだ受信していません';
+
+  @override
+  String get tvChooseFiles => 'この端末からファイルを選ぶ';
+
+  @override
+  String get tvEnterAddress => 'アドレスを入力';
+
+  @override
+  String get tvAddressLabel => 'IP アドレス';
+
+  @override
+  String get tvPickerUnavailable => 'このテレビではファイル選択を開けませんでした。受信は引き続き使えます。';
+
+  @override
+  String get tvNoDevices => 'デバイスが見つかりません';
+
+  @override
+  String get tvScanning => 'ローカルネットワークをスキャンしています…';
+
+  @override
+  String get tvPathUnchanged => 'フォルダを変更できませんでした。現在の保存先のままです。';
+
+  @override
+  String get tvPairByCode => 'デバイスコードでペアリング';
+
+  @override
+  String get tvEnterDeviceCode => '相手のデバイスコード';
+
+  @override
+  String get tvDownloadsFolder => 'ダウンロード';
+
+  @override
+  String get deleteAllRecords => 'すべて削除';
 }

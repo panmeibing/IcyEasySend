@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "正在與對方建立加密工作階段…",
   "relayIdentityMismatch": "對方裝置的身分簽章無效，可能不是已配對的裝置",
   "relayTransferNotice": "正在透過中轉伺服器傳輸，速度受伺服器頻寬限制",
-  "retryingAfterInterruption": "連線中斷，正在重試（{attempt}/{maxAttempts}）…"
+  "retryingAfterInterruption": "連線中斷，正在重試（{attempt}/{maxAttempts}）…",
+  "tvShowAddress": "全螢幕顯示地址",
+  "tvReceiveHint": "在手機上打開 Icy Easy Send，掃描或輸入這個地址即可把檔案發到這裡。",
+  "tvRecentReceives": "最近接收",
+  "tvNoRecent": "還沒有收到檔案",
+  "tvChooseFiles": "從本機選擇檔案",
+  "tvEnterAddress": "輸入地址",
+  "tvAddressLabel": "IP 位址",
+  "tvPickerUnavailable": "這台電視無法開啟檔案選擇器。接收檔案不受影響。",
+  "tvNoDevices": "沒有發現裝置",
+  "tvScanning": "正在掃描區域網路…",
+  "tvPathUnchanged": "無法更改資料夾，仍使用目前的儲存位置。",
+  "tvPairByCode": "用裝置碼配對",
+  "tvEnterDeviceCode": "對方裝置碼",
+  "tvDownloadsFolder": "下載目錄",
+  "deleteAllRecords": "刪除全部"
 }

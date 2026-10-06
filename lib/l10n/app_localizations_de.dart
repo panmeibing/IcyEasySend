@@ -1844,4 +1844,52 @@ class AppLocalizationsDe extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Verbindung unterbrochen, neuer Versuch ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Adresse anzeigen';
+
+  @override
+  String get tvReceiveHint =>
+      'Öffne Icy Easy Send auf einem Telefon und scanne oder gib diese Adresse ein, um Dateien hierher zu senden.';
+
+  @override
+  String get tvRecentReceives => 'Zuletzt empfangen';
+
+  @override
+  String get tvNoRecent => 'Noch nichts empfangen';
+
+  @override
+  String get tvChooseFiles => 'Dateien auf diesem Gerät wählen';
+
+  @override
+  String get tvEnterAddress => 'Adresse eingeben';
+
+  @override
+  String get tvAddressLabel => 'IP-Adresse';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Auf diesem Fernseher ließ sich kein Dateiauswahlfenster öffnen. Empfangen funktioniert weiter.';
+
+  @override
+  String get tvNoDevices => 'Keine Geräte gefunden';
+
+  @override
+  String get tvScanning => 'Lokales Netzwerk wird durchsucht…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Ordner konnte nicht geändert werden. Der aktuelle Speicherort bleibt.';
+
+  @override
+  String get tvPairByCode => 'Mit Gerätecode koppeln';
+
+  @override
+  String get tvEnterDeviceCode => 'Code des anderen Geräts';
+
+  @override
+  String get tvDownloadsFolder => 'Downloads';
+
+  @override
+  String get deleteAllRecords => 'Alle löschen';
 }

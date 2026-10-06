@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "Versleutelde sessie opzetten…",
   "relayIdentityMismatch": "Ongeldige handtekening; mogelijk niet het gekoppelde apparaat",
   "relayTransferNotice": "Overdracht via de relayserver; de snelheid hangt af van de bandbreedte",
-  "retryingAfterInterruption": "Verbinding verbroken, opnieuw proberen ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "Verbinding verbroken, opnieuw proberen ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "Adres tonen",
+  "tvReceiveHint": "Open Icy Easy Send op een telefoon en scan of voer dit adres in om bestanden hierheen te sturen.",
+  "tvRecentReceives": "Recent",
+  "tvNoRecent": "Nog niets ontvangen",
+  "tvChooseFiles": "Bestanden op dit apparaat kiezen",
+  "tvEnterAddress": "Adres invoeren",
+  "tvAddressLabel": "IP-adres",
+  "tvPickerUnavailable": "Deze tv kon geen bestandskeuze openen. Ontvangen blijft werken.",
+  "tvNoDevices": "Geen apparaten gevonden",
+  "tvScanning": "Lokaal netwerk doorzoeken…",
+  "tvPathUnchanged": "De map kon niet worden gewijzigd. De huidige locatie blijft.",
+  "tvPairByCode": "Koppelen met een code",
+  "tvEnterDeviceCode": "Code van het andere apparaat",
+  "tvDownloadsFolder": "Downloads",
+  "deleteAllRecords": "Alles verwijderen"
 }

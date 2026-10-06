@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../pages/tv/tv_incoming_dialog.dart';
+import '../ui/form_factor.dart';
 import '../utils/constants.dart';
 import '../utils/format_util.dart';
 import '../utils/transfer_progress_throttle.dart';
@@ -183,8 +185,10 @@ class BatchReceiveManager {
                 fileInfo.completer.complete(false);
               }
             }
-            // Close dialog immediately on reject
-            Navigator.of(dialogContext).pop();
+            // Phone closes here. TV closes after PopScope allows the route to pop.
+            if (!AppFormFactor.isTv) {
+              Navigator.of(dialogContext).pop();
+            }
           },
         ),
       );
@@ -350,6 +354,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   /// the same second. The first pop closes this dialog; a second pop during the
   /// exit animation would remove the route underneath and leave a black screen.
   bool _closeScheduled = false;
+  bool _allowSystemPop = false;
+  bool _rejecting = false;
   Timer? _countdownTimer;
   Timer? _updateTimer;
   final TransferRateTracker _rateTracker = TransferRateTracker();
@@ -510,6 +516,8 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
   }
 
   void _handleReject() {
+    if (_rejecting || _disposed) return;
+    _rejecting = true;
     final l10n = AppLocalizations.of(context);
 
     // Cancel all timers
@@ -529,6 +537,21 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     }
 
     widget.onReject();
+    if (AppFormFactor.isTv) {
+      _popTvDialog();
+    }
+  }
+
+  void _popTvDialog() {
+    if (!mounted || _allowSystemPop) return;
+    setState(() => _allowSystemPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      }
+    });
   }
 
   int _getTotalSize() {
@@ -551,6 +574,71 @@ class _BatchReceiveDialogState extends State<_BatchReceiveDialog> {
     final l10n = AppLocalizations.of(context);
     final totalSize = _getTotalSize();
     final fileCount = _displayedFiles.length;
+
+    if (AppFormFactor.isTv) {
+      final files = _displayedFiles
+          .map(
+            (file) => TvIncomingFile(
+              name: file.fileName,
+              sizeLabel: FormatUtil.formatBytes(file.fileSize),
+              progress: file.progress,
+              status: file.status,
+              showProgress: file.isAccepted,
+              completed: file.isCompleted,
+              failed: file.isCompleted && file.progress < 1,
+            ),
+          )
+          .toList();
+      String? speedLine;
+      String? etaLine;
+      if (_isAccepted &&
+          !_allCompleted &&
+          (_rateTracker.speed > 0 ||
+              _rateTracker.estimatedTimeRemaining != null)) {
+        if (_rateTracker.speed > 0) {
+          speedLine = FormatUtil.formatTransferSpeedLabel(
+            l10n.transferSpeed,
+            _rateTracker.speed,
+          );
+        }
+        final eta = _rateTracker.estimatedTimeRemaining;
+        if (eta != null) {
+          etaLine = FormatUtil.formatRemainingTimeLabel(l10n.remainingTime, eta);
+        }
+      }
+      final senderName = widget.senderDeviceName;
+      return PopScope(
+        canPop: _allowSystemPop || (_isAccepted && _allCompleted),
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop || _isAccepted) return;
+          _handleReject();
+        },
+        child: TvIncomingDialog(
+          title: _isAccepted
+              ? l10n.receivingFiles(fileCount)
+              : l10n.receiveFilesCount(fileCount),
+          senderLine: senderName == null
+              ? '${l10n.sender} IP: ${widget.senderIP}'
+              : '${l10n.sender}: $senderName',
+          totalLine: '${l10n.totalSizeBatch}: ${FormatUtil.formatBytes(totalSize)}',
+          speedLine: speedLine,
+          etaLine: etaLine,
+          countdown: _isAccepted ? null : l10n.autoRejectCountdown(_remainingSeconds),
+          statusLine: !_isAccepted
+              ? null
+              : _allCompleted
+              ? l10n.allFilesReceiveComplete
+              : l10n.receivingFiles2,
+          files: files,
+          showActions: !_isAccepted,
+          acceptLabel: l10n.acceptAll,
+          rejectLabel: l10n.rejectAll,
+          onAccept: _handleAccept,
+          onReject: _handleReject,
+        ),
+      );
+    }
+
     final screenWidth = MediaQuery.of(context).size.width;
 
     return PopScope(

@@ -1733,4 +1733,51 @@ class AppLocalizationsKo extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '연결이 끊겨 다시 시도하는 중입니다 ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => '주소 크게 보기';
+
+  @override
+  String get tvReceiveHint =>
+      '휴대폰에서 Icy Easy Send를 열고 이 주소를 스캔하거나 입력하면 여기로 파일을 보낼 수 있습니다.';
+
+  @override
+  String get tvRecentReceives => '최근 수신';
+
+  @override
+  String get tvNoRecent => '아직 받은 파일이 없습니다';
+
+  @override
+  String get tvChooseFiles => '이 기기에서 파일 선택';
+
+  @override
+  String get tvEnterAddress => '주소 입력';
+
+  @override
+  String get tvAddressLabel => 'IP 주소';
+
+  @override
+  String get tvPickerUnavailable =>
+      '이 TV에서 파일 선택기를 열 수 없습니다. 받기는 계속 사용할 수 있습니다.';
+
+  @override
+  String get tvNoDevices => '기기를 찾지 못했습니다';
+
+  @override
+  String get tvScanning => '로컬 네트워크를 검색하는 중…';
+
+  @override
+  String get tvPathUnchanged => '폴더를 바꿀 수 없습니다. 현재 저장 위치가 유지됩니다.';
+
+  @override
+  String get tvPairByCode => '기기 코드로 페어링';
+
+  @override
+  String get tvEnterDeviceCode => '상대 기기 코드';
+
+  @override
+  String get tvDownloadsFolder => '다운로드';
+
+  @override
+  String get deleteAllRecords => '모두 삭제';
 }

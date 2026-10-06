@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "Creazione di una sessione cifrata…",
   "relayIdentityMismatch": "Firma non valida: potrebbe non essere il dispositivo associato",
   "relayTransferNotice": "Trasferimento tramite server relay, la velocità dipende dalla sua banda",
-  "retryingAfterInterruption": "Connessione interrotta, nuovo tentativo ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "Connessione interrotta, nuovo tentativo ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "Mostra indirizzo",
+  "tvReceiveHint": "Su un telefono, apri Icy Easy Send e scansiona o inserisci questo indirizzo per inviare file qui.",
+  "tvRecentReceives": "Recenti",
+  "tvNoRecent": "Nessun file ricevuto",
+  "tvChooseFiles": "Scegli file su questo dispositivo",
+  "tvEnterAddress": "Inserisci indirizzo",
+  "tvAddressLabel": "Indirizzo IP",
+  "tvPickerUnavailable": "Questa TV non ha potuto aprire un selettore di file. La ricezione funziona comunque.",
+  "tvNoDevices": "Nessun dispositivo trovato",
+  "tvScanning": "Scansione della rete locale…",
+  "tvPathUnchanged": "Impossibile cambiare cartella. La posizione attuale resta.",
+  "tvPairByCode": "Associa con un codice",
+  "tvEnterDeviceCode": "Codice dell'altro dispositivo",
+  "tvDownloadsFolder": "Download",
+  "deleteAllRecords": "Elimina tutto"
 }

@@ -3179,6 +3179,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connection interrupted, retrying ({attempt}/{maxAttempts})…'**
   String retryingAfterInterruption(int attempt, int maxAttempts);
+
+  /// No description provided for @tvShowAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Show address'**
+  String get tvShowAddress;
+
+  /// No description provided for @tvReceiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On a phone, open Icy Easy Send, then scan or enter this address to send files here.'**
+  String get tvReceiveHint;
+
+  /// No description provided for @tvRecentReceives.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get tvRecentReceives;
+
+  /// No description provided for @tvNoRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing received yet'**
+  String get tvNoRecent;
+
+  /// No description provided for @tvChooseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose files on this device'**
+  String get tvChooseFiles;
+
+  /// No description provided for @tvEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter address'**
+  String get tvEnterAddress;
+
+  /// No description provided for @tvAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get tvAddressLabel;
+
+  /// No description provided for @tvPickerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This TV could not open a file picker. Receiving still works.'**
+  String get tvPickerUnavailable;
+
+  /// No description provided for @tvNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices found'**
+  String get tvNoDevices;
+
+  /// No description provided for @tvScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning the local network…'**
+  String get tvScanning;
+
+  /// No description provided for @tvPathUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the folder. The current location stays.'**
+  String get tvPathUnchanged;
+
+  /// No description provided for @tvPairByCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with a device code'**
+  String get tvPairByCode;
+
+  /// No description provided for @tvEnterDeviceCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Other device\'s code'**
+  String get tvEnterDeviceCode;
+
+  /// No description provided for @tvDownloadsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get tvDownloadsFolder;
+
+  /// No description provided for @deleteAllRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all'**
+  String get deleteAllRecords;
 }
 
 class _AppLocalizationsDelegate

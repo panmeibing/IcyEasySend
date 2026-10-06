@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "Estabelecendo uma sessão criptografada…",
   "relayIdentityMismatch": "Assinatura inválida; pode não ser o dispositivo emparelhado",
   "relayTransferNotice": "Transferindo pelo servidor de retransmissão; a velocidade depende da banda dele",
-  "retryingAfterInterruption": "Conexão interrompida, tentando novamente ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "Conexão interrompida, tentando novamente ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "Mostrar endereço",
+  "tvReceiveHint": "Num telemóvel, abra o Icy Easy Send e leia ou introduza este endereço para enviar ficheiros para aqui.",
+  "tvRecentReceives": "Recentes",
+  "tvNoRecent": "Ainda nada recebido",
+  "tvChooseFiles": "Escolher ficheiros neste dispositivo",
+  "tvEnterAddress": "Introduzir endereço",
+  "tvAddressLabel": "Endereço IP",
+  "tvPickerUnavailable": "Esta TV não conseguiu abrir um seletor de ficheiros. Receber continua a funcionar.",
+  "tvNoDevices": "Nenhum dispositivo encontrado",
+  "tvScanning": "A procurar na rede local…",
+  "tvPathUnchanged": "Não foi possível mudar a pasta. A localização atual mantém-se.",
+  "tvPairByCode": "Emparelhar com um código",
+  "tvEnterDeviceCode": "Código do outro dispositivo",
+  "tvDownloadsFolder": "Transferências",
+  "deleteAllRecords": "Excluir tudo"
 }

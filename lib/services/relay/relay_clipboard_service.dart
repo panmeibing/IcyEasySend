@@ -8,6 +8,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../pages/tv/tv_widgets.dart';
+import '../../ui/form_factor.dart';
 import '../../models/clipboard_data_model.dart';
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
@@ -814,6 +816,16 @@ class RelayClipboardService {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
+        if (AppFormFactor.isTv) {
+          return TvChoiceDialog(
+            title: l10n.clipboardRequest,
+            message: l10n.clipboardRequestFrom(requesterDeviceName),
+            primaryLabel: l10n.reject,
+            secondaryLabel: l10n.allowClipboardRequest,
+            onPrimary: () => Navigator.of(dialogContext).pop(false),
+            onSecondary: () => Navigator.of(dialogContext).pop(true),
+          );
+        }
         return AlertDialog(
           title: Text(l10n.clipboardRequest),
           content: Text(l10n.clipboardRequestFrom(requesterDeviceName)),

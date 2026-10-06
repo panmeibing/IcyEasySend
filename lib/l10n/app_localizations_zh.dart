@@ -1704,6 +1704,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '连接中断，正在重试（$attempt/$maxAttempts）…';
   }
+
+  @override
+  String get tvShowAddress => '全屏显示地址';
+
+  @override
+  String get tvReceiveHint => '在手机上打开 Icy Easy Send，扫描或输入这个地址即可把文件发到这里。';
+
+  @override
+  String get tvRecentReceives => '最近接收';
+
+  @override
+  String get tvNoRecent => '还没有收到文件';
+
+  @override
+  String get tvChooseFiles => '从本机选择文件';
+
+  @override
+  String get tvEnterAddress => '输入地址';
+
+  @override
+  String get tvAddressLabel => 'IP 地址';
+
+  @override
+  String get tvPickerUnavailable => '这台电视无法打开文件选择器。接收文件不受影响。';
+
+  @override
+  String get tvNoDevices => '没有发现设备';
+
+  @override
+  String get tvScanning => '正在扫描局域网…';
+
+  @override
+  String get tvPathUnchanged => '无法更改文件夹，仍使用当前保存位置。';
+
+  @override
+  String get tvPairByCode => '用设备码配对';
+
+  @override
+  String get tvEnterDeviceCode => '对方设备码';
+
+  @override
+  String get tvDownloadsFolder => '下载目录';
+
+  @override
+  String get deleteAllRecords => '删除全部';
 }
 
 /// The translations for Chinese, as used in Hong Kong (`zh_HK`).
@@ -3413,4 +3458,49 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '連線中斷，正在重試（$attempt/$maxAttempts）…';
   }
+
+  @override
+  String get tvShowAddress => '全螢幕顯示地址';
+
+  @override
+  String get tvReceiveHint => '在手機上打開 Icy Easy Send，掃描或輸入這個地址即可把檔案發到這裡。';
+
+  @override
+  String get tvRecentReceives => '最近接收';
+
+  @override
+  String get tvNoRecent => '還沒有收到檔案';
+
+  @override
+  String get tvChooseFiles => '從本機選擇檔案';
+
+  @override
+  String get tvEnterAddress => '輸入地址';
+
+  @override
+  String get tvAddressLabel => 'IP 位址';
+
+  @override
+  String get tvPickerUnavailable => '這台電視無法開啟檔案選擇器。接收檔案不受影響。';
+
+  @override
+  String get tvNoDevices => '沒有發現裝置';
+
+  @override
+  String get tvScanning => '正在掃描區域網路…';
+
+  @override
+  String get tvPathUnchanged => '無法更改資料夾，仍使用目前的儲存位置。';
+
+  @override
+  String get tvPairByCode => '用裝置碼配對';
+
+  @override
+  String get tvEnterDeviceCode => '對方裝置碼';
+
+  @override
+  String get tvDownloadsFolder => '下載目錄';
+
+  @override
+  String get deleteAllRecords => '刪除全部';
 }

@@ -1811,4 +1811,52 @@ class AppLocalizationsNl extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Verbinding verbroken, opnieuw proberen ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Adres tonen';
+
+  @override
+  String get tvReceiveHint =>
+      'Open Icy Easy Send op een telefoon en scan of voer dit adres in om bestanden hierheen te sturen.';
+
+  @override
+  String get tvRecentReceives => 'Recent';
+
+  @override
+  String get tvNoRecent => 'Nog niets ontvangen';
+
+  @override
+  String get tvChooseFiles => 'Bestanden op dit apparaat kiezen';
+
+  @override
+  String get tvEnterAddress => 'Adres invoeren';
+
+  @override
+  String get tvAddressLabel => 'IP-adres';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Deze tv kon geen bestandskeuze openen. Ontvangen blijft werken.';
+
+  @override
+  String get tvNoDevices => 'Geen apparaten gevonden';
+
+  @override
+  String get tvScanning => 'Lokaal netwerk doorzoeken…';
+
+  @override
+  String get tvPathUnchanged =>
+      'De map kon niet worden gewijzigd. De huidige locatie blijft.';
+
+  @override
+  String get tvPairByCode => 'Koppelen met een code';
+
+  @override
+  String get tvEnterDeviceCode => 'Code van het andere apparaat';
+
+  @override
+  String get tvDownloadsFolder => 'Downloads';
+
+  @override
+  String get deleteAllRecords => 'Alles verwijderen';
 }

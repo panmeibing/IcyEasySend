@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:icy_easy_send/pages/home/home_ui.dart';
+import 'package:icy_easy_send/pages/tv/tv_widgets.dart';
+import 'package:icy_easy_send/ui/form_factor.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
 /// Dialogue box tool class - provides a unified dialog box style and behavior
@@ -62,6 +65,15 @@ class DialogHelper {
     required String title,
     required String confirmText,
   }) async {
+    if (AppFormFactor.isTv) {
+      return _showTvNotice(
+        context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        barrierDismissible: false,
+      );
+    }
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -97,6 +109,15 @@ class DialogHelper {
     required String title,
     required String confirmText,
   }) async {
+    if (AppFormFactor.isTv) {
+      return _showTvNotice(
+        context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        barrierDismissible: false,
+      );
+    }
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -132,6 +153,15 @@ class DialogHelper {
     required String title,
     required String confirmText,
   }) async {
+    if (AppFormFactor.isTv) {
+      return _showTvNotice(
+        context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        barrierDismissible: true,
+      );
+    }
     return showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -154,6 +184,72 @@ class DialogHelper {
               child: Text(confirmText),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  /// One action under the message. The remote lands on it immediately.
+  ///
+  /// [AlertDialog] puts accessibility focus on the title, so the first down
+  /// press is what reaches the button.
+  static Future<void> _showTvNotice(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmText,
+    required bool barrierDismissible,
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: barrierDismissible,
+      builder: (dialogContext) {
+        final maxHeight = MediaQuery.sizeOf(dialogContext).height * 0.5;
+        return Dialog(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 520, maxWidth: 760),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w600,
+                      color: HomeUi.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: HomeUi.inkMuted,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TvButton(
+                      label: confirmText,
+                      primary: true,
+                      autofocus: true,
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );

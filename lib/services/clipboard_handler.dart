@@ -6,6 +6,8 @@ import 'package:icy_easy_send/utils/constants.dart';
 import 'package:shelf/shelf.dart';
 
 import '../l10n/app_localizations.dart';
+import '../pages/tv/tv_widgets.dart';
+import '../ui/form_factor.dart';
 import '../models/clipboard_data_model.dart';
 import '../services/clipboard_cache_service.dart';
 import '../services/preferences_service.dart';
@@ -212,21 +214,47 @@ class ClipboardHandler {
       final result = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => _ClipboardRequestDialog(
-          requesterDeviceName: requesterDeviceName,
-          onAccept: () {
-            if (!dialogClosed) {
-              dialogClosed = true;
-              Navigator.of(dialogContext).pop(true);
-            }
-          },
-          onReject: () {
-            if (!dialogClosed) {
-              dialogClosed = true;
-              Navigator.of(dialogContext).pop(false);
-            }
-          },
-        ),
+        builder: (dialogContext) {
+          if (AppFormFactor.isTv) {
+            return TvChoiceDialog(
+              title: AppLocalizations.of(dialogContext).clipboardRequest,
+              message: AppLocalizations.of(dialogContext).clipboardRequestFrom(
+                requesterDeviceName,
+              ),
+              primaryLabel: AppLocalizations.of(dialogContext).reject,
+              secondaryLabel: AppLocalizations.of(
+                dialogContext,
+              ).allowClipboardRequest,
+              onPrimary: () {
+                if (!dialogClosed) {
+                  dialogClosed = true;
+                  Navigator.of(dialogContext).pop(false);
+                }
+              },
+              onSecondary: () {
+                if (!dialogClosed) {
+                  dialogClosed = true;
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+            );
+          }
+          return _ClipboardRequestDialog(
+            requesterDeviceName: requesterDeviceName,
+            onAccept: () {
+              if (!dialogClosed) {
+                dialogClosed = true;
+                Navigator.of(dialogContext).pop(true);
+              }
+            },
+            onReject: () {
+              if (!dialogClosed) {
+                dialogClosed = true;
+                Navigator.of(dialogContext).pop(false);
+              }
+            },
+          );
+        },
       );
 
       timeoutTimer.cancel();

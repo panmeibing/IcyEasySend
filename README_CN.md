@@ -6,7 +6,7 @@
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Android%20TV%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 一个高效、跨平台的文件传输应用——默认走局域网，也可自建中转实现跨网传输
@@ -28,7 +28,7 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 - 🚀 **高速传输**: 有局域网时直连，速度仅受限于网络带宽
 - 🔒 **安全可靠**: 局域网流量不出本网；中转流量端到端加密，服务器只能看到密文
 - 🌐 **跨网可选**: 自建中转并配对后，可在不同局域网间传文件、同步剪切板
-- 📱 **跨平台支持**: `main` 支持 Android、iOS、Windows、macOS、Linux；鸿蒙 NEXT 在 [`feat/support_harmony_os`](#分支说明-main-与鸿蒙)
+- 📱 **跨平台支持**: `main` 支持 Android 手机、Android 电视、iOS、Windows、macOS、Linux；鸿蒙 NEXT 在 [`feat/support_harmony_os`](#分支说明-main-与鸿蒙)
 - 🎯 **简单易用**: 扫描设备或输入 IP；中转场景用设备码配对即可
 - 📦 **批量传输**: 支持一次性发送多个文件，自动管理传输队列
 - 📋 **剪切板同步**: 跨设备同步文本、文件和图片（局域网或中转）
@@ -109,6 +109,11 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
     - 端口可用性测试
     - 目标设备可达性检查
 
+- **Android 电视**
+    - 手机和电视使用同一个 Android 安装包。装到电视上会进入遥控器界面，装到手机上仍是手机界面。
+    - GitHub Release 里的 `IcyEasySend-android-tv-arm64-v8a-*.apk` 与 `IcyEasySend-android-arm64-v8a-*.apk` 是同一个文件，`IcyEasySend-android-tv-armeabi-v7a-*.apk` 与 `IcyEasySend-android-armeabi-v7a-*.apk` 也是同一个文件。电视文件名是为了方便在发布页找到电视版。
+    - 现在的 Android 电视大多是 64 位 ARM，下载 arm64 那个电视包即可。armeabi-v7a 电视包只给较老的 32 位电视。
+
 ---
 
 ## 🌿 分支说明：`main` 与鸿蒙
@@ -117,7 +122,7 @@ Icy Easy Send 是一款基于 Flutter 的文件传输与剪切板同步工具。
 
 | | **`main`** | **`feat/support_harmony_os`**（鸿蒙分支） |
 |---|---|---|
-| **目标平台** | Android、iOS、Windows、macOS、Linux | 鸿蒙 NEXT，同一套 Dart 业务；OH 插件通过 overrides 注入 |
+| **目标平台** | Android 手机与电视、iOS、Windows、macOS、Linux | 鸿蒙 NEXT，同一套 Dart 业务；OH 插件通过 overrides 注入 |
 | **Flutter SDK** | 官方 Flutter **3.41.2+** | 单独安装的 **Flutter-OH `oh-3.41.9-release`**。与官方 SDK 分开存放，不要在 Flutter-OH 目录里执行 `flutter upgrade` |
 | **`pubspec.yaml`** | 依赖源文件 | **与 `main` 保持一致**。OH 插件不写进这个文件 |
 | **OH 插件** | 不使用 | 由 `installers/HarmonyOS/pubspec_overrides.yaml` 提供，经 `pub-get.ps1` 复制为仓库根目录的 `pubspec_overrides.yaml`（已 gitignore） |

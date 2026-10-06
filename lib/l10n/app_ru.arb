@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "Установка зашифрованного сеанса…",
   "relayIdentityMismatch": "Недействительная подпись: возможно, это не сопряжённое устройство",
   "relayTransferNotice": "Передача через сервер ретрансляции, скорость ограничена его каналом",
-  "retryingAfterInterruption": "Соединение прервано, повтор ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "Соединение прервано, повтор ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "Показать адрес",
+  "tvReceiveHint": "На телефоне откройте Icy Easy Send и отсканируйте или введите этот адрес, чтобы отправить файлы сюда.",
+  "tvRecentReceives": "Недавние",
+  "tvNoRecent": "Пока ничего не получено",
+  "tvChooseFiles": "Выбрать файлы на этом устройстве",
+  "tvEnterAddress": "Ввести адрес",
+  "tvAddressLabel": "IP-адрес",
+  "tvPickerUnavailable": "На этом телевизоре не удалось открыть выбор файлов. Приём по-прежнему работает.",
+  "tvNoDevices": "Устройства не найдены",
+  "tvScanning": "Поиск в локальной сети…",
+  "tvPathUnchanged": "Не удалось сменить папку. Текущее расположение сохранено.",
+  "tvPairByCode": "Сопряжение по коду",
+  "tvEnterDeviceCode": "Код другого устройства",
+  "tvDownloadsFolder": "Загрузки",
+  "deleteAllRecords": "Удалить все"
 }

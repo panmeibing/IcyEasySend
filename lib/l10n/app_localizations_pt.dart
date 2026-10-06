@@ -1832,4 +1832,52 @@ class AppLocalizationsPt extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Conexão interrompida, tentando novamente ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Mostrar endereço';
+
+  @override
+  String get tvReceiveHint =>
+      'Num telemóvel, abra o Icy Easy Send e leia ou introduza este endereço para enviar ficheiros para aqui.';
+
+  @override
+  String get tvRecentReceives => 'Recentes';
+
+  @override
+  String get tvNoRecent => 'Ainda nada recebido';
+
+  @override
+  String get tvChooseFiles => 'Escolher ficheiros neste dispositivo';
+
+  @override
+  String get tvEnterAddress => 'Introduzir endereço';
+
+  @override
+  String get tvAddressLabel => 'Endereço IP';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Esta TV não conseguiu abrir um seletor de ficheiros. Receber continua a funcionar.';
+
+  @override
+  String get tvNoDevices => 'Nenhum dispositivo encontrado';
+
+  @override
+  String get tvScanning => 'A procurar na rede local…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Não foi possível mudar a pasta. A localização atual mantém-se.';
+
+  @override
+  String get tvPairByCode => 'Emparelhar com um código';
+
+  @override
+  String get tvEnterDeviceCode => 'Código do outro dispositivo';
+
+  @override
+  String get tvDownloadsFolder => 'Transferências';
+
+  @override
+  String get deleteAllRecords => 'Excluir tudo';
 }

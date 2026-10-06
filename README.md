@@ -6,7 +6,7 @@
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Android%20TV%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 An efficient, cross-platform file transfer application — LAN by default, optional self-hosted relay for cross-network use
@@ -30,7 +30,7 @@ with no internet and no accounts. Across different networks, you can optionally 
 - 🚀 **High-Speed Transfer**: Direct LAN connection when available; speed limited only by network bandwidth
 - 🔒 **Secure & Reliable**: LAN traffic stays on your network; relay traffic is end-to-end encrypted (server sees ciphertext only)
 - 🌐 **Cross-Network (optional)**: Pair once via your own relay, then send files and sync clipboard across LANs
-- 📱 **Cross-Platform**: Android, iOS, Windows, macOS, and Linux on `main`; HarmonyOS NEXT on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
+- 📱 **Cross-Platform**: Android phones and Android TV, plus iOS, Windows, macOS, and Linux on `main`; HarmonyOS NEXT on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
 - 🎯 **Easy to Use**: Scan for peers or enter an IP; pair by device code when using relay
 - 📦 **Batch Transfer**: Send multiple files at once with automatic queue management
 - 📋 **Clipboard Sync**: Synchronize text, files, and images across devices (LAN or relay)
@@ -111,6 +111,11 @@ with no internet and no accounts. Across different networks, you can optionally 
     - Port availability testing
     - Target device reachability check
 
+- **Android TV**
+    - Phones and TVs share one Android package. A television opens a remote-control layout; a phone keeps the phone layout.
+    - On GitHub Releases, `IcyEasySend-android-tv-arm64-v8a-*.apk` is the same file as `IcyEasySend-android-arm64-v8a-*.apk`, and `IcyEasySend-android-tv-armeabi-v7a-*.apk` is the same file as `IcyEasySend-android-armeabi-v7a-*.apk`. The TV names are there so the television build is easy to find.
+    - Most Android TVs are 64-bit ARM, so download the arm64 TV package. The armeabi-v7a TV package is only for older 32-bit TVs.
+
 ---
 
 ## 🌿 Branches: `main` vs HarmonyOS
@@ -119,7 +124,7 @@ Official Flutter targets and **HarmonyOS NEXT** stay on separate branches so the
 
 | | **`main`** | **`feat/support_harmony_os`** |
 |---|---|---|
-| **Platforms** | Android, iOS, Windows, macOS, Linux | HarmonyOS NEXT, same Dart app; OH plugins injected via overrides |
+| **Platforms** | Android phones and Android TV, iOS, Windows, macOS, Linux | HarmonyOS NEXT, same Dart app; OH plugins injected via overrides |
 | **Flutter SDK** | Official Flutter **3.41.2+** | A separate install of **Flutter-OH `oh-3.41.9-release`**. Keep it beside the official SDK, and leave `flutter upgrade` off that tree |
 | **`pubspec.yaml`** | Dependency source of truth | Kept aligned with `main`. OH plugins stay out of this file |
 | **OH plugins** | Unused | `installers/HarmonyOS/pubspec_overrides.yaml`, copied to a gitignored root `pubspec_overrides.yaml` by `pub-get.ps1` |

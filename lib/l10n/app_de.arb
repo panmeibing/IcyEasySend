@@ -508,5 +508,20 @@
   "relayNegotiatingSession": "Verschlüsselte Sitzung wird aufgebaut…",
   "relayIdentityMismatch": "Ungültige Signatur; möglicherweise nicht das gekoppelte Gerät",
   "relayTransferNotice": "Übertragung über den Relay-Server; die Geschwindigkeit hängt von dessen Bandbreite ab",
-  "retryingAfterInterruption": "Verbindung unterbrochen, neuer Versuch ({attempt}/{maxAttempts})…"
+  "retryingAfterInterruption": "Verbindung unterbrochen, neuer Versuch ({attempt}/{maxAttempts})…",
+  "tvShowAddress": "Adresse anzeigen",
+  "tvReceiveHint": "Öffne Icy Easy Send auf einem Telefon und scanne oder gib diese Adresse ein, um Dateien hierher zu senden.",
+  "tvRecentReceives": "Zuletzt empfangen",
+  "tvNoRecent": "Noch nichts empfangen",
+  "tvChooseFiles": "Dateien auf diesem Gerät wählen",
+  "tvEnterAddress": "Adresse eingeben",
+  "tvAddressLabel": "IP-Adresse",
+  "tvPickerUnavailable": "Auf diesem Fernseher ließ sich kein Dateiauswahlfenster öffnen. Empfangen funktioniert weiter.",
+  "tvNoDevices": "Keine Geräte gefunden",
+  "tvScanning": "Lokales Netzwerk wird durchsucht…",
+  "tvPathUnchanged": "Ordner konnte nicht geändert werden. Der aktuelle Speicherort bleibt.",
+  "tvPairByCode": "Mit Gerätecode koppeln",
+  "tvEnterDeviceCode": "Code des anderen Geräts",
+  "tvDownloadsFolder": "Downloads",
+  "deleteAllRecords": "Alle löschen"
 }
