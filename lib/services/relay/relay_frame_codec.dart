@@ -98,7 +98,9 @@ class RelayFrameCodec {
       // is reading a different file than the one that was announced.
       if (!sawAny) {
         if (startChunk > 0) {
-          throw RelayCryptoException('续传起点已越过文件末尾');
+          throw RelayCryptoException(
+            'resume point is past the end of the file',
+          );
         }
         held = Uint8List(0);
       }
@@ -140,7 +142,7 @@ class RelayFrameCodec {
             break;
           }
           if (finished) {
-            throw RelayCryptoException('中转数据流在结束帧之后仍有数据');
+            throw RelayCryptoException('data after the final frame');
           }
 
           final isFinal = index == chunkCount - 1;
@@ -160,10 +162,10 @@ class RelayFrameCodec {
       }
 
       if (!finished) {
-        throw RelayCryptoException('中转数据流在传完之前被截断');
+        throw RelayCryptoException('stream truncated before completion');
       }
       if (!buffer.isEmpty) {
-        throw RelayCryptoException('中转数据流末尾有不完整的帧');
+        throw RelayCryptoException('incomplete frame at end of stream');
       }
     } finally {
       _abandon(inFlight);
@@ -294,9 +296,8 @@ class _FrameBuffer {
     ).getUint32(0, Endian.big);
 
     if (length < AppConstants.relayAeadTagBytes ||
-        length >
-            AppConstants.relayChunkSize + AppConstants.relayAeadTagBytes) {
-      throw RelayCryptoException('中转数据流的帧长度不合法: $length');
+        length > AppConstants.relayChunkSize + AppConstants.relayAeadTagBytes) {
+      throw RelayCryptoException('invalid frame length: $length');
     }
 
     final total = AppConstants.relayFrameHeaderBytes + length;

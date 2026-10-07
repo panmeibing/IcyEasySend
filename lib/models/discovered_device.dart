@@ -39,8 +39,7 @@ class DiscoveredDevice {
   }
 
   @override
-  int get hashCode =>
-      hasIdentity ? deviceId.hashCode : Object.hash(ip, port);
+  int get hashCode => hasIdentity ? deviceId.hashCode : Object.hash(ip, port);
 
   @override
   String toString() =>

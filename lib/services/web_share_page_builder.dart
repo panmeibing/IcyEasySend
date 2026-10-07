@@ -25,9 +25,7 @@ class WebSharePageBuilder {
           ? rawDeviceName
           : brand,
     );
-    final subtitle = preferChinese
-        ? '来自 $deviceName'
-        : 'From $deviceName';
+    final subtitle = preferChinese ? '来自 $deviceName' : 'From $deviceName';
     final hint = preferChinese
         ? '请保持与分享端同一 Wi‑Fi。点下方文件即可下载。'
         : 'Stay on the same Wi‑Fi as the sender. Tap a file to download.';

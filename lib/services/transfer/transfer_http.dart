@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
+import '../../l10n/current_localizations.dart';
 import '../../utils/constants.dart';
 
 /// Which transport produced a data-plane HTTP request.
-enum TransferTransport {
-  lan,
-  relay,
-}
+enum TransferTransport { lan, relay }
+
+enum TransferDirection { upload, download }
 
 /// Shared Dio setup for LAN and relay file transfers.
 ///
@@ -52,30 +52,31 @@ class TransferHttp {
   static String describeFailure(
     DioException error, {
     required TransferTransport transport,
-    String verb = '上传',
+    TransferDirection direction = TransferDirection.upload,
   }) {
+    final lan = transport == TransferTransport.lan;
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return transport == TransferTransport.lan
-            ? '文件传输超时'
-            : '中转传输超时';
+        return lan ? appText.transferTimeout : appText.relayTransferTimeout;
       case DioExceptionType.connectionError:
-        if (transport == TransferTransport.lan) {
+        if (lan) {
           final socketError = error.error;
-          if (socketError is SocketException) {
-            return '网络连接失败\n错误: ${socketError.message}';
-          }
-          return '网络连接失败\n错误: ${error.message}';
+          final detail = socketError is SocketException
+              ? socketError.message
+              : error.message;
+          return '${appText.networkConnectionFailed}\n$detail';
         }
-        return '无法连接中转服务器\n错误: ${error.message}';
+        return '${appText.relayUnreachable}\n${error.message}';
       case DioExceptionType.cancel:
-        return '文件传输已取消';
+        return appText.transferCancelled;
       default:
-        return transport == TransferTransport.lan
-            ? '网络请求失败: ${error.message}'
-            : '中转$verb失败: ${error.message}';
+        final detail = '${error.message}';
+        if (lan) return '${appText.networkRequestFailed}\n$detail';
+        return direction == TransferDirection.upload
+            ? appText.relayUploadFailed(detail)
+            : appText.relayDownloadFailed(detail);
     }
   }
 }

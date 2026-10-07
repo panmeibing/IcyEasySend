@@ -1390,16 +1390,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ipAddressSpecial2 => '不能使用广播地址 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ 网段不匹配\n本机IP: $localIP (网段: $localNetwork.x)\n目标IP: $targetIP (网段: $targetNetwork.x)\n\n提示：两台设备需要在同一个局域网（相同网段）才能传输文件。\nC类IPv4地址应该保证两个IP地址的前三个数字相同，例如都是192.169.2，只是最后一个数字不同\n最简单的方法就是让两个设备都连接同一个WiFi或路由器。\n';
-  }
-
-  @override
   String get responseParseError => '无法解析服务器响应';
 
   @override
@@ -1704,6 +1694,243 @@ class AppLocalizationsZh extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '连接中断，正在重试（$attempt/$maxAttempts）…';
   }
+
+  @override
+  String get tvShowAddress => '全屏显示地址';
+
+  @override
+  String get tvReceiveHint => '在手机上打开 Icy Easy Send，扫描或输入这个地址即可把文件发到这里。';
+
+  @override
+  String get tvRecentReceives => '最近接收';
+
+  @override
+  String get tvNoRecent => '还没有收到文件';
+
+  @override
+  String get tvChooseFiles => '从本机选择文件';
+
+  @override
+  String get tvEnterAddress => '输入地址';
+
+  @override
+  String get tvAddressLabel => 'IP 地址';
+
+  @override
+  String get tvPickerUnavailable => '这台电视无法打开文件选择器。接收文件不受影响。';
+
+  @override
+  String get tvNoDevices => '没有发现设备';
+
+  @override
+  String get tvScanning => '正在扫描局域网…';
+
+  @override
+  String get tvPathUnchanged => '无法更改文件夹，仍使用当前保存位置。';
+
+  @override
+  String get tvPairByCode => '用设备码配对';
+
+  @override
+  String get tvEnterDeviceCode => '对方设备码';
+
+  @override
+  String get tvDownloadsFolder => '下载目录';
+
+  @override
+  String get deleteAllRecords => '删除全部';
+
+  @override
+  String get peerErrorBadRequest => '对方无法识别此请求，请将两台设备更新到同一版本';
+
+  @override
+  String get peerErrorNoValidFiles => '没有可接收的文件（文件名无效、重复或超过大小上限）';
+
+  @override
+  String get peerErrorBusy => '对方设备正忙，请稍后再试';
+
+  @override
+  String get peerErrorNoUi => '对方设备当前无法显示确认框，请在对方设备上打开应用';
+
+  @override
+  String get peerErrorNotConfirmed => '对方没有这次传输的确认记录，可能已过期，请重新发送';
+
+  @override
+  String get peerErrorSourceMismatch => '确认接收后本机网络地址发生了变化，请重新发送';
+
+  @override
+  String get peerErrorContentMismatch => '文件与对方确认接收的内容不一致，请重新发送';
+
+  @override
+  String get peerErrorDiskFull => '对方设备存储空间不足';
+
+  @override
+  String get peerErrorSaveFailed => '对方设备保存文件失败';
+
+  @override
+  String get peerErrorInternal => '对方设备处理请求时发生意外错误';
+
+  @override
+  String get peerErrorClipboardTooLarge => '剪切板内容超过对方设备的大小限制';
+
+  @override
+  String get relayResponseUnreadable => '无法解析中转应答';
+
+  @override
+  String get relayServerUrlInvalid => '中转服务器地址无效';
+
+  @override
+  String relayUploadFailed(String details) {
+    return '中转上传失败：$details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return '中转上传失败\n状态码：$statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return '中转下载失败：$details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return '中转下载失败\n状态码：$statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached => '对方没有接入数据流';
+
+  @override
+  String get relayPayloadTooLarge => '文件超过中转服务器的单次传输上限';
+
+  @override
+  String get relaySendFailed => '发送中转消息失败';
+
+  @override
+  String get relayPeerNoResponse => '对方设备没有响应';
+
+  @override
+  String get relayNoStreamId => '中转服务器未返回数据流标识';
+
+  @override
+  String get relayServerTimeout => '中转服务器响应超时';
+
+  @override
+  String get relayDisconnected => '中转连接已断开';
+
+  @override
+  String get relayServerPeerOffline => '对方设备不在中转服务器上';
+
+  @override
+  String get relayServerTooManyStreams => '并发传输数超过中转服务器上限';
+
+  @override
+  String get relayServerRateLimited => '请求过于频繁，请稍后再试';
+
+  @override
+  String get relayServerTokenRejected => '中转服务器拒绝了接入令牌';
+
+  @override
+  String get relayServerIdentityRejected => '中转服务器拒绝了设备身份';
+
+  @override
+  String get relayServerUnknownError => '中转服务器返回未知错误';
+
+  @override
+  String get relayStreamTampered => '数据在传输中被改动或截断，已丢弃';
+
+  @override
+  String get relaySessionInvalid => '中转会话数据无效';
+
+  @override
+  String get relayPeerNoManifest => '对方没有发送文件清单';
+
+  @override
+  String get relayPeerStalled => '对方长时间没有发送文件';
+
+  @override
+  String get relayPeerCancelled => '对方取消了传输';
+
+  @override
+  String get relayResumeFailed => '无法从该断点继续接收';
+
+  @override
+  String get relayConfigIncomplete => '请填写完整的中转服务器地址和接入令牌';
+
+  @override
+  String get relayAuthRejected => '中转服务器拒绝了接入令牌或设备身份';
+
+  @override
+  String get relayUnreachable => '无法连接中转服务器，请检查地址与网络';
+
+  @override
+  String relayConnectFailed(String details) {
+    return '连接中转服务器失败：$details';
+  }
+
+  @override
+  String get relayTransferTimeout => '中转传输超时';
+
+  @override
+  String get transferCancelled => '文件传输已取消';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP 可能与本机（$localIP）不在同一网段。如果发送失败，请让两台设备连接同一个 WiFi 或路由器。';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName 使用秘钥验证通过，自动接收 $count 个文件';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      '存储权限已被永久拒绝，请在设置中手动开启\n\n需要此权限才能将文件保存到下载文件夹';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      '需要存储权限才能保存文件到下载文件夹\n\n您可以在设置中授予权限';
+
+  @override
+  String get storagePermissionRequestFailed => '存储权限请求失败';
+
+  @override
+  String permissionRequestError(String details) {
+    return '权限请求出错: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\n详情: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count 条';
+  }
+
+  @override
+  String get devInfoSavePath => '【接收文件保存路径】';
+
+  @override
+  String get devInfoLogPath => '【日志文件路径】';
+
+  @override
+  String get devInfoHistoryPath => '【历史文件路径】';
+
+  @override
+  String get logFileNotFound => '日志文件不存在';
+
+  @override
+  String logReadFailed(String details) {
+    return '读取日志文件失败: $details';
+  }
+
+  @override
+  String get edit => '编辑';
 }
 
 /// The translations for Chinese, as used in Hong Kong (`zh_HK`).
@@ -3092,16 +3319,6 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
   String get ipAddressSpecial2 => '不能使用廣播位址 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ 網段不符\n本機IP: $localIP (網段: $localNetwork.x)\n目標IP: $targetIP (網段: $targetNetwork.x)\n\n提示：兩台裝置需要在同一個區域網路（相同網段）才能傳輸檔案。\nC類IPv4位址應該保證兩個IP位址的前三個數字相同，例如都是192.169.2，只是最後一個數字不同\n最簡單的方法就是讓兩個裝置都連線同一個WiFi或路由器。\n';
-  }
-
-  @override
   String get responseParseError => '無法解析伺服器回應';
 
   @override
@@ -3413,4 +3630,241 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return '連線中斷，正在重試（$attempt/$maxAttempts）…';
   }
+
+  @override
+  String get tvShowAddress => '全螢幕顯示地址';
+
+  @override
+  String get tvReceiveHint => '在手機上打開 Icy Easy Send，掃描或輸入這個地址即可把檔案發到這裡。';
+
+  @override
+  String get tvRecentReceives => '最近接收';
+
+  @override
+  String get tvNoRecent => '還沒有收到檔案';
+
+  @override
+  String get tvChooseFiles => '從本機選擇檔案';
+
+  @override
+  String get tvEnterAddress => '輸入地址';
+
+  @override
+  String get tvAddressLabel => 'IP 位址';
+
+  @override
+  String get tvPickerUnavailable => '這台電視無法開啟檔案選擇器。接收檔案不受影響。';
+
+  @override
+  String get tvNoDevices => '沒有發現裝置';
+
+  @override
+  String get tvScanning => '正在掃描區域網路…';
+
+  @override
+  String get tvPathUnchanged => '無法更改資料夾，仍使用目前的儲存位置。';
+
+  @override
+  String get tvPairByCode => '用裝置碼配對';
+
+  @override
+  String get tvEnterDeviceCode => '對方裝置碼';
+
+  @override
+  String get tvDownloadsFolder => '下載目錄';
+
+  @override
+  String get deleteAllRecords => '刪除全部';
+
+  @override
+  String get peerErrorBadRequest => '對方無法識別此請求，請將兩部裝置更新到同一版本';
+
+  @override
+  String get peerErrorNoValidFiles => '沒有可接收的檔案（檔案名稱無效、重複或超過大小上限）';
+
+  @override
+  String get peerErrorBusy => '對方裝置正忙，請稍後再試';
+
+  @override
+  String get peerErrorNoUi => '對方裝置目前無法顯示確認框，請在對方裝置上開啟應用程式';
+
+  @override
+  String get peerErrorNotConfirmed => '對方沒有這次傳輸的確認記錄，可能已過期，請重新傳送';
+
+  @override
+  String get peerErrorSourceMismatch => '確認接收後本機網絡地址發生了變化，請重新傳送';
+
+  @override
+  String get peerErrorContentMismatch => '檔案與對方確認接收的內容不一致，請重新傳送';
+
+  @override
+  String get peerErrorDiskFull => '對方裝置儲存空間不足';
+
+  @override
+  String get peerErrorSaveFailed => '對方裝置儲存檔案失敗';
+
+  @override
+  String get peerErrorInternal => '對方裝置處理請求時發生意外錯誤';
+
+  @override
+  String get peerErrorClipboardTooLarge => '剪貼簿內容超過對方裝置的大小限制';
+
+  @override
+  String get relayResponseUnreadable => '無法解析中轉回應';
+
+  @override
+  String get relayServerUrlInvalid => '中轉伺服器地址無效';
+
+  @override
+  String relayUploadFailed(String details) {
+    return '中轉上傳失敗：$details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return '中轉上傳失敗\n狀態碼：$statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return '中轉下載失敗：$details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return '中轉下載失敗\n狀態碼：$statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached => '對方沒有接入資料流';
+
+  @override
+  String get relayPayloadTooLarge => '檔案超過中轉伺服器的單次傳輸上限';
+
+  @override
+  String get relaySendFailed => '傳送中轉訊息失敗';
+
+  @override
+  String get relayPeerNoResponse => '對方裝置沒有回應';
+
+  @override
+  String get relayNoStreamId => '中轉伺服器未返回資料流標識';
+
+  @override
+  String get relayServerTimeout => '中轉伺服器回應逾時';
+
+  @override
+  String get relayDisconnected => '中轉連線已中斷';
+
+  @override
+  String get relayServerPeerOffline => '對方裝置不在中轉伺服器上';
+
+  @override
+  String get relayServerTooManyStreams => '並行傳輸數超過中轉伺服器上限';
+
+  @override
+  String get relayServerRateLimited => '請求過於頻繁，請稍後再試';
+
+  @override
+  String get relayServerTokenRejected => '中轉伺服器拒絕了接入權杖';
+
+  @override
+  String get relayServerIdentityRejected => '中轉伺服器拒絕了裝置身份';
+
+  @override
+  String get relayServerUnknownError => '中轉伺服器返回未知錯誤';
+
+  @override
+  String get relayStreamTampered => '資料在傳輸中被改動或截斷，已捨棄';
+
+  @override
+  String get relaySessionInvalid => '中轉工作階段資料無效';
+
+  @override
+  String get relayPeerNoManifest => '對方沒有傳送檔案清單';
+
+  @override
+  String get relayPeerStalled => '對方長時間沒有傳送檔案';
+
+  @override
+  String get relayPeerCancelled => '對方取消了傳輸';
+
+  @override
+  String get relayResumeFailed => '無法從該斷點繼續接收';
+
+  @override
+  String get relayConfigIncomplete => '請填寫完整的中轉伺服器地址和接入權杖';
+
+  @override
+  String get relayAuthRejected => '中轉伺服器拒絕了接入權杖或裝置身份';
+
+  @override
+  String get relayUnreachable => '無法連接中轉伺服器，請檢查地址與網絡';
+
+  @override
+  String relayConnectFailed(String details) {
+    return '連接中轉伺服器失敗：$details';
+  }
+
+  @override
+  String get relayTransferTimeout => '中轉傳輸逾時';
+
+  @override
+  String get transferCancelled => '檔案傳輸已取消';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP 可能與本機（$localIP）不在同一網段。如果傳送失敗，請讓兩台裝置連線同一個 WiFi 或路由器。';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName 使用密鑰驗證通過，自動接收 $count 個檔案';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      '儲存權限已被永久拒絕，請在設定中手動開啟\n\n需要此權限才能將檔案儲存到下載資料夾';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      '需要儲存權限才能將檔案儲存到下載資料夾\n\n您可以在設定中授予權限';
+
+  @override
+  String get storagePermissionRequestFailed => '儲存權限請求失敗';
+
+  @override
+  String permissionRequestError(String details) {
+    return '權限請求出錯: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\n詳情: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count 條';
+  }
+
+  @override
+  String get devInfoSavePath => '【接收檔案儲存路徑】';
+
+  @override
+  String get devInfoLogPath => '【日誌檔案路徑】';
+
+  @override
+  String get devInfoHistoryPath => '【歷史檔案路徑】';
+
+  @override
+  String get logFileNotFound => '日誌檔案不存在';
+
+  @override
+  String logReadFailed(String details) {
+    return '讀取日誌檔案失敗: $details';
+  }
+
+  @override
+  String get edit => '編輯';
 }

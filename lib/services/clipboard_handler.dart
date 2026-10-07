@@ -1,18 +1,18 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter/material.dart';
-import 'package:icy_easy_send/utils/constants.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shelf/shelf.dart';
 
-import '../l10n/app_localizations.dart';
+import '../l10n/current_localizations.dart';
 import '../models/clipboard_data_model.dart';
-import '../services/clipboard_cache_service.dart';
-import '../services/preferences_service.dart';
-import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/ohos_clipboard_share.dart';
-import '../utils/toast_helper.dart';
+import '../utils/ohos_platform.dart';
+import '../utils/peer_error.dart';
+import '../utils/server_http_util.dart';
+import 'clipboard_cache_service.dart';
+import 'clipboard_request_prompter.dart';
+import 'preferences_service.dart';
+import 'secret_key_verifier.dart';
+import 'user_notifier.dart';
 
 /// 剪切板请求处理器
 ///
@@ -21,15 +21,26 @@ class ClipboardHandler {
   final BuildContext? Function()? contextGetter;
   final bool Function()? isInBackgroundGetter;
   final PreferencesService _preferencesService;
+  final SecretKeyVerifier _secretKeyVerifier;
+  final ClipboardRequestPrompter? _prompter;
   final String logTag = LogTags.clipboard;
 
   ClipboardHandler({
     this.contextGetter,
     this.isInBackgroundGetter,
     PreferencesService? preferencesService,
-  }) : _preferencesService = preferencesService ?? PreferencesService();
+    SecretKeyVerifier? secretKeyVerifier,
+    ClipboardRequestPrompter? prompter,
+  }) : _preferencesService = preferencesService ?? PreferencesService(),
+       _secretKeyVerifier = secretKeyVerifier ?? SecretKeyVerifier.instance,
+       _prompter = prompter;
 
   bool get _isInBackground => isInBackgroundGetter?.call() ?? false;
+
+  /// Read at call time, so the UI layer can install itself after this
+  /// handler was built.
+  ClipboardRequestPrompter get _activePrompter =>
+      _prompter ?? ClipboardRequestPrompter.instance;
 
   /// 处理 POST /clipboard-request 请求
   ///
@@ -45,7 +56,6 @@ class ClipboardHandler {
   /// 响应格式:
   /// {
   ///   "accepted": true/false,
-  ///   "content": "剪切板内容" (仅当accepted为true时),
   ///   "message": "消息"
   ///   "clipboardData": 响应成功携带的剪切板数据,
   ///   "actualSizeMB": 文件过大的时候返回文件的实际大小,
@@ -55,26 +65,23 @@ class ClipboardHandler {
     LogUtil.iTag(logTag, '收到剪切板请求: /clipboard-request');
 
     try {
-      // 解析请求体
-      final bodyString = await request.readAsString();
-      final Map<String, dynamic> body;
-
+      final Object? body;
       try {
-        body = jsonDecode(bodyString) as Map<String, dynamic>;
-      } catch (e) {
-        LogUtil.wTag(logTag, '无效的JSON格式: $bodyString');
-        final ctx = contextGetter?.call();
-        final errorMsg = ctx != null && ctx.mounted
-            ? AppLocalizations.of(ctx).invalidJsonFormat
-            : 'Invalid JSON format';
-        return _buildErrorResponse(errorMsg);
+        body = await ServerHttpUtil.readJson(request);
+      } on RequestBodyTooLargeException {
+        return _reject(PeerError.badRequest, status: 413);
+      } on FormatException {
+        LogUtil.wTag(logTag, '无效的JSON格式');
+        return _reject(PeerError.badRequest, status: 400);
+      }
+      if (body is! Map) {
+        return _reject(PeerError.badRequest, status: 400);
       }
 
-      // 提取参数
-      final requesterDeviceName =
-          body['requesterDeviceName'] as String? ?? '未知设备';
-
-      // Extract secret key from headers
+      final rawName = body['requesterDeviceName'];
+      final requesterDeviceName = rawName is String && rawName.isNotEmpty
+          ? rawName
+          : ServerHttpUtil.remoteAddress(request) ?? '?';
       final secretKey = request.headers['x-secret-key'];
 
       LogUtil.dTag(
@@ -82,94 +89,102 @@ class ClipboardHandler {
         '请求设备: $requesterDeviceName, 秘钥=${secretKey != null ? "已提供" : "未提供"}, 后台=$_isInBackground',
       );
 
-      // Check secret key before requiring UI context
-      bool skipConfirmation = false;
-      if (secretKey != null && secretKey.isNotEmpty) {
-        final savedSecretKey = await _preferencesService.getDeviceSecretKey();
-
-        if (savedSecretKey != null &&
-            savedSecretKey.isNotEmpty &&
-            savedSecretKey == secretKey) {
-          skipConfirmation = true;
-          LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
-          // Toast only after content is actually resolved — especially on
-          // HarmonyOS where paste-to-share still runs after key auto-accept.
-        } else {
-          LogUtil.wTag(logTag, '秘钥验证失败或未设置本机秘钥');
-        }
-      }
+      final skipConfirmation = await _secretKeyVerifier.verify(
+        secretKey,
+        remoteAddress: ServerHttpUtil.remoteAddress(request),
+      );
 
       bool userAccepted;
       if (skipConfirmation) {
+        LogUtil.iTag(logTag, '秘钥验证通过，跳过确认对话框');
+        // On HarmonyOS the toast waits until content is actually resolved.
+        // Paste-to-share can still run after a secret-key auto-accept.
+        final ctx = contextGetter?.call();
+        if (!isOhosPlatform && !_isInBackground && ctx != null && ctx.mounted) {
+          UserNotifier.instance.showSuccess(
+            ctx,
+            appText.clipboardSharedWithSecretKey(requesterDeviceName),
+          );
+        }
         userAccepted = true;
       } else if (_isInBackground) {
-        // Prefer showing the dialog whenever a mounted UI context still exists.
-        // HarmonyOS can report "background" while still visible.
+        // HarmonyOS can report "background" while a mounted UI is still visible.
         final ctx = contextGetter?.call();
         if (ctx != null && ctx.mounted) {
-          LogUtil.wTag(
-            logTag,
-            '生命周期标记为后台，但 UI 上下文可用，仍弹出剪切板确认',
-          );
-          userAccepted = await _showClipboardRequestDialog(
+          LogUtil.wTag(logTag, '生命周期标记为后台，但 UI 上下文可用，仍弹出剪切板确认');
+          userAccepted = await _activePrompter.confirm(
             ctx,
-            requesterDeviceName,
+            requesterDeviceName: requesterDeviceName,
           );
         } else {
           LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝剪切板请求');
-          return _buildBackgroundRejectedResponse();
+          return _reject(PeerError.backgroundNeedsSecretKey);
         }
       } else {
         final ctx = contextGetter?.call();
         if (ctx == null || !ctx.mounted) {
           LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-          return _buildErrorResponse('Server internal error');
+          return _reject(PeerError.noUi, status: 500);
         }
-        userAccepted = await _showClipboardRequestDialog(
+        userAccepted = await _activePrompter.confirm(
           ctx,
-          requesterDeviceName,
+          requesterDeviceName: requesterDeviceName,
         );
       }
 
       if (!userAccepted) {
         LogUtil.iTag(logTag, '用户拒绝了剪切板请求');
-        return _buildRejectedResponse();
+        return _reject(PeerError.clipboardDeclined);
       }
 
-      // LAN + OHOS share one resolver (live/cache, or paste dialog on OHOS).
-      final clipboardData = await OhosClipboardShare.resolveForPeerShare(
-        context: contextGetter?.call(),
-        allowCacheFallback: true,
-        preferencesService: _preferencesService,
-        readLive: () => ClipboardCacheService.instance.refreshFromSystem(
+      // 用户同意，获取剪切板内容（后台可回退到单槽缓存）。
+      // HarmonyOS uses one resolver for LAN and relay: silent read, then paste dialog.
+      final ClipboardDataModel? clipboardData;
+      var cacheMissInBackground = false;
+      var fromCache = false;
+      if (isOhosPlatform) {
+        clipboardData = await OhosClipboardShare.resolveForPeerShare(
+          context: contextGetter?.call(),
+          allowCacheFallback: true,
           preferencesService: _preferencesService,
-        ),
-      );
+          readLive: () => ClipboardCacheService.instance.refreshFromSystem(
+            preferencesService: _preferencesService,
+          ),
+        );
+        cacheMissInBackground = _isInBackground && clipboardData == null;
+      } else {
+        final shareResult = await ClipboardCacheService.instance
+            .getContentForSharing(
+              allowCacheFallback: _isInBackground,
+              preferencesService: _preferencesService,
+            );
+        clipboardData = shareResult.data;
+        cacheMissInBackground = shareResult.cacheMissInBackground;
+        fromCache = shareResult.fromCache;
+      }
 
       if (clipboardData == null) {
-        if (_isInBackground) {
+        if (cacheMissInBackground) {
           LogUtil.wTag(logTag, '后台无可用剪切板缓存');
-          return _buildBackgroundCacheMissResponse();
+          return _reject(PeerError.clipboardUnavailableInBackground);
         }
         LogUtil.wTag(logTag, '剪切板为空，无法分享');
-        return _buildEmptyClipboardResponse();
+        return _reject(PeerError.clipboardEmpty);
       }
 
-      if (skipConfirmation) {
+      if (isOhosPlatform && skipConfirmation) {
         final currentCtx = contextGetter?.call();
         if (currentCtx != null && currentCtx.mounted) {
-          final l10n = AppLocalizations.of(currentCtx);
-          ToastHelper.showSuccess(
+          UserNotifier.instance.showSuccess(
             currentCtx,
-            l10n.clipboardSharedWithSecretKey(requesterDeviceName),
+            appText.clipboardSharedWithSecretKey(requesterDeviceName),
           );
         }
+      } else if (fromCache) {
+        LogUtil.iTag(logTag, '使用缓存剪切板内容分享');
       }
 
-      // 检查剪切板大小
       final contentSizeMB = clipboardData.sizeInMB;
-
-      // 获取最大剪切板大小设置
       final maxSizeMB = await _preferencesService.getMaxClipboardSize();
 
       LogUtil.dTag(
@@ -182,7 +197,12 @@ class ClipboardHandler {
           logTag,
           '剪切板内容过大: ${contentSizeMB.toStringAsFixed(2)} MB > $maxSizeMB MB',
         );
-        return _buildContentTooLargeResponse(contentSizeMB, maxSizeMB);
+        return ServerHttpUtil.json({
+          'accepted': false,
+          ...PeerError.clipboardTooLarge.toJson(),
+          'actualSizeMB': contentSizeMB,
+          'maxSizeMB': maxSizeMB,
+        }, status: 413);
       }
 
       LogUtil.iTag(
@@ -190,275 +210,18 @@ class ClipboardHandler {
         '用户同意分享剪切板，类型: ${clipboardData.typeDescription}, 大小: ${contentSizeMB.toStringAsFixed(2)} MB',
       );
 
-      return _buildSuccessResponse(clipboardData);
+      return _success(clipboardData);
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '处理剪切板请求异常: $e', e, stackTrace);
-      return _buildErrorResponse('处理请求时发生错误');
+      return _reject(PeerError.internalError, status: 500);
     }
   }
 
-  /// 显示剪切板请求确认对话框
-  ///
-  /// 返回用户是否同意分享剪切板
-  Future<bool> _showClipboardRequestDialog(
-    BuildContext context,
-    String requesterDeviceName,
-  ) async {
-    var dialogClosed = false;
+  Response _success(ClipboardDataModel data) =>
+      ServerHttpUtil.json({'accepted': true, 'clipboardData': data.toJson()});
 
-    // 设置超时定时器
-    final timeoutTimer = Timer(AppConstants.receiveConfirmationTimeout, () {
-      if (!dialogClosed) {
-        dialogClosed = true;
-        if (context.mounted) {
-          Navigator.of(context, rootNavigator: true).pop(false);
-        }
-        LogUtil.wTag(logTag, '剪切板请求确认超时');
-      }
-    });
-
-    try {
-      if (!context.mounted) {
-        return false;
-      }
-
-      final result = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        useRootNavigator: true,
-        builder: (dialogContext) => _ClipboardRequestDialog(
-          requesterDeviceName: requesterDeviceName,
-          onAccept: () {
-            if (!dialogClosed) {
-              dialogClosed = true;
-              Navigator.of(dialogContext).pop(true);
-            }
-          },
-          onReject: () {
-            if (!dialogClosed) {
-              dialogClosed = true;
-              Navigator.of(dialogContext).pop(false);
-            }
-          },
-        ),
-      );
-
-      timeoutTimer.cancel();
-      return result ?? false;
-    } catch (e) {
-      timeoutTimer.cancel();
-      LogUtil.eTag(logTag, '显示确认对话框失败: $e');
-      return false;
-    }
-  }
-
-  /// 构建成功响应
-  Response _buildSuccessResponse(ClipboardDataModel data) {
-    final ctx = contextGetter?.call();
-    final message = ctx != null && ctx.mounted
-        ? AppLocalizations.of(ctx).clipboardContentSuccess
-        : 'Successfully retrieved clipboard content';
-
-    return Response(
-      200,
-      body: jsonEncode({
-        'accepted': true,
-        'clipboardData': data.toJson(),
-        'message': message,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 构建拒绝响应
-  Response _buildRejectedResponse() {
-    final ctx = contextGetter?.call();
-    final message = ctx != null && ctx.mounted
-        ? AppLocalizations.of(ctx).clipboardRequestRejected
-        : 'User rejected clipboard request';
-
-    return Response(
-      200,
-      body: jsonEncode({'accepted': false, 'message': message}),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 构建后台拒绝响应（无有效密钥）
-  Response _buildBackgroundRejectedResponse() {
-    return Response(
-      200,
-      body: jsonEncode({
-        'accepted': false,
-        'message': ErrorMessages.backgroundRejectNeedsSecretKey,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 构建剪切板为空的响应
-  Response _buildEmptyClipboardResponse() {
-    final ctx = contextGetter?.call();
-    final message = ctx != null && ctx.mounted
-        ? AppLocalizations.of(ctx).clipboardEmpty
-        : 'Clipboard is empty';
-
-    return Response(
-      200,
-      body: jsonEncode({'accepted': false, 'message': message}),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 后台无法读系统剪切板且无可用缓存
-  Response _buildBackgroundCacheMissResponse() {
-    return Response(
-      200,
-      body: jsonEncode({
-        'accepted': false,
-        'message': ErrorMessages.clipboardBackgroundCacheMiss,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 构建内容过大的响应
-  Response _buildContentTooLargeResponse(double actualSizeMB, int maxSizeMB) {
-    final ctx = contextGetter?.call();
-    final message = ctx != null && ctx.mounted
-        ? AppLocalizations.of(
-            ctx,
-          ).clipboardContentTooLarge(actualSizeMB, maxSizeMB)
-        : 'Clipboard content too large (${actualSizeMB.toStringAsFixed(2)} MB), exceeds recipient device limit ($maxSizeMB MB). Please use file transfer instead.';
-
-    return Response(
-      413, // Payload Too Large
-      body: jsonEncode({
-        'accepted': false,
-        'message': message,
-        'actualSizeMB': actualSizeMB,
-        'maxSizeMB': maxSizeMB,
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-
-  /// 构建错误响应
-  Response _buildErrorResponse(String message) {
-    return Response(
-      400,
-      body: jsonEncode({'accepted': false, 'message': message}),
-      headers: {'Content-Type': 'application/json'},
-    );
-  }
-}
-
-/// 剪切板请求确认对话框
-class _ClipboardRequestDialog extends StatefulWidget {
-  final String requesterDeviceName;
-  final VoidCallback onAccept;
-  final VoidCallback onReject;
-
-  const _ClipboardRequestDialog({
-    required this.requesterDeviceName,
-    required this.onAccept,
-    required this.onReject,
-  });
-
-  @override
-  State<_ClipboardRequestDialog> createState() =>
-      _ClipboardRequestDialogState();
-}
-
-class _ClipboardRequestDialogState extends State<_ClipboardRequestDialog> {
-  int _countdown = AppConstants.receiveConfirmationCountdown;
-  Timer? _countdownTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _startCountdown();
-  }
-
-  @override
-  void dispose() {
-    _countdownTimer?.cancel();
-    super.dispose();
-  }
-
-  void _startCountdown() {
-    _countdownTimer = Timer.periodic(AppConstants.countdownInterval, (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-
-      setState(() {
-        _countdown--;
-      });
-
-      if (_countdown <= 0) {
-        timer.cancel();
-        widget.onReject();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final l10n = AppLocalizations.of(context);
-
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.content_paste, color: Colors.blue[700]),
-          const SizedBox(width: 12),
-          Expanded(child: Text(l10n.clipboardRequest)),
-        ],
-      ),
-      content: SizedBox(
-        width: screenWidth * AppConstants.dialogWidthPercent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.clipboardRequestFrom(widget.requesterDeviceName),
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              l10n.allowClipboardRequest,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: _countdown / AppConstants.receiveConfirmationCountdown,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _countdown > 10 ? Colors.blue : Colors.orange,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.autoRejectIn(_countdown),
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: widget.onReject, child: Text(l10n.reject)),
-        ElevatedButton(
-          onPressed: widget.onAccept,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue[700],
-            foregroundColor: Colors.white,
-          ),
-          child: Text(l10n.allow),
-        ),
-      ],
-    );
-  }
+  Response _reject(PeerError error, {int status = 200}) => ServerHttpUtil.json({
+    'accepted': false,
+    ...error.toJson(),
+  }, status: status);
 }

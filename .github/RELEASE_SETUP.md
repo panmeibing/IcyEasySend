@@ -38,6 +38,8 @@ GitHub → Actions → Release → Run workflow
 | macOS | `IcyEasySend-macOS-v1.3.0.dmg`（未签名） |
 | Android 手机（arm64） | `IcyEasySend-android-arm64-v8a-v1.3.0.apk` |
 | Android 旧 32 位手机 | `IcyEasySend-android-armeabi-v7a-v1.3.0.apk` |
+| Android 电视（arm64） | `IcyEasySend-android-tv-arm64-v8a-v1.3.0.apk`（与 arm64 手机包同一文件） |
+| Android 电视（旧 32 位） | `IcyEasySend-android-tv-armeabi-v7a-v1.3.0.apk`（与 32 位手机包同一文件） |
 | Android 模拟器 / x86_64 | `IcyEasySend-android-x86_64-v1.3.0.apk` |
 | Android 全架构 | `IcyEasySend-android-v1.3.0.apk`（不确定 CPU 架构时下载） |
 | Android Play | `IcyEasySend-android-v1.3.0.aab` |

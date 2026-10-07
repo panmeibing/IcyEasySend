@@ -173,9 +173,7 @@ class DiagnosticsReport {
     final t = appText;
     String separator = AppConstants.diagInfoSeparator;
     final buffer = StringBuffer();
-    buffer.writeln(
-      '$separator ${t.networkDiagnosticsReport} $separator',
-    );
+    buffer.writeln('$separator ${t.networkDiagnosticsReport} $separator');
     buffer.writeln();
 
     buffer.writeln('${t.localNetworkInterfaces}:');
@@ -205,18 +203,12 @@ class DiagnosticsReport {
       buffer.writeln('${t.healthCheckTest}:');
       if (healthCheckResult!.success) {
         buffer.writeln('  ✅ ${t.healthCheckSuccess}');
-        buffer.writeln(
-          '  ${t.statusCode}: ${healthCheckResult!.statusCode}',
-        );
-        buffer.writeln(
-          '  ${t.response}: ${healthCheckResult!.responseBody}',
-        );
+        buffer.writeln('  ${t.statusCode}: ${healthCheckResult!.statusCode}');
+        buffer.writeln('  ${t.response}: ${healthCheckResult!.responseBody}');
       } else {
         buffer.writeln('  ❌ ${t.healthCheckFailed}');
         if (healthCheckResult!.statusCode != null) {
-          buffer.writeln(
-            '  ${t.statusCode}: ${healthCheckResult!.statusCode}',
-          );
+          buffer.writeln('  ${t.statusCode}: ${healthCheckResult!.statusCode}');
         }
         if (healthCheckResult!.error != null) {
           buffer.writeln('  ${t.error}: ${healthCheckResult!.error}');

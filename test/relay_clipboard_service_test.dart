@@ -458,9 +458,7 @@ class _FakeRelayClient extends RelayClient {
       if (_inbound.isClosed) {
         return;
       }
-      _inbound.add(
-        RelayInboundPayload(fromDeviceId: from, payload: delivered),
-      );
+      _inbound.add(RelayInboundPayload(fromDeviceId: from, payload: delivered));
     });
     return _delivery;
   }

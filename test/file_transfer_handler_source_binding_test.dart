@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icy_easy_send/services/file_transfer_handler.dart';
+import 'package:icy_easy_send/utils/constants.dart';
+import 'package:icy_easy_send/utils/peer_error.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart';
 
@@ -84,11 +86,10 @@ void main() {
 
     expect(response.statusCode, 403);
     final body = jsonDecode(await response.readAsString()) as Map;
-    expect(body['message'], contains('传输来源与确认来源不符'));
+    expect(body['code'], PeerError.sourceMismatch.code);
   });
 
-  test('refusing an impostor does not burn the real sender\'s ticket',
-      () async {
+  test('refusing an impostor does not burn the real sender\'s ticket', () async {
     final handler = FileTransferHandler(contextGetter: () => null);
     final ticket = await confirmAndTakeTicket(handler, from: senderAddress);
 
@@ -103,25 +104,88 @@ void main() {
     );
 
     final body = jsonDecode(await response.readAsString()) as Map;
-    expect(body['message'], isNot(contains('传输来源与确认来源不符')));
-    expect(body['message'], isNot(contains('未找到确认记录')));
+    expect(body['code'], isNot(PeerError.sourceMismatch.code));
+    expect(body['code'], isNot(PeerError.notConfirmed.code));
   });
 
-  test('tickets are unguessable rather than derived from the request', () async {
+  test('a ticket only covers the file the user agreed to', () async {
     final handler = FileTransferHandler(contextGetter: () => null);
+    final ticket = await confirmAndTakeTicket(handler, from: senderAddress);
 
-    final first = await confirmAndTakeTicket(handler, from: senderAddress);
-    final second = await confirmAndTakeTicket(handler, from: senderAddress);
+    final renamed = await handler.handleFileTransfer(
+      transferRequest(
+        from: senderAddress,
+        transferId: ticket,
+        fileName: 'payload.exe',
+      ),
+    );
+    expect(renamed.statusCode, 403);
 
-    expect(first, isNot(second));
-    // The old scheme was senderIP_fileName_millis, which anyone watching the
-    // network could reconstruct.
-    for (final ticket in [first, second]) {
-      expect(ticket, isNot(contains(senderAddress)));
-      expect(ticket, isNot(contains('report.pdf')));
-      expect(ticket, matches(RegExp(r'^[0-9a-f]{32}$')));
-    }
+    final resized = await handler.handleFileTransfer(
+      transferRequest(from: senderAddress, transferId: ticket, fileSize: 6),
+    );
+    expect(resized.statusCode, 403);
+    final body = jsonDecode(await resized.readAsString()) as Map;
+    expect(body['code'], PeerError.contentMismatch.code);
   });
+
+  test('a repeated file name does not take over the first ticket', () async {
+    final handler = FileTransferHandler(contextGetter: () => null);
+    final response = await handler.handleBatchConfirmReceive(
+      Request(
+        'POST',
+        Uri.parse('http://localhost:9527/batch-confirm-receive'),
+        headers: {'x-secret-key': secret},
+        body: jsonEncode({
+          'senderIP': senderAddress,
+          'files': [
+            {'fileName': 'a.txt', 'fileSize': 1},
+            {'fileName': 'a.txt', 'fileSize': 999},
+          ],
+        }),
+        context: {'shelf.io.connection_info': _Connection(senderAddress)},
+      ),
+    );
+
+    final body = jsonDecode(await response.readAsString()) as Map;
+    expect((body['transferIds'] as Map).length, 1);
+  });
+
+  test(
+    'an oversized confirmation body is refused before it is buffered',
+    () async {
+      final handler = FileTransferHandler(contextGetter: () => null);
+      final response = await handler.handleBatchConfirmReceive(
+        Request(
+          'POST',
+          Uri.parse('http://localhost:9527/batch-confirm-receive'),
+          body: 'x' * (AppConstants.maxBatchConfirmBodyBytes + 1),
+          context: {'shelf.io.connection_info': _Connection(senderAddress)},
+        ),
+      );
+
+      expect(response.statusCode, 413);
+    },
+  );
+
+  test(
+    'tickets are unguessable rather than derived from the request',
+    () async {
+      final handler = FileTransferHandler(contextGetter: () => null);
+
+      final first = await confirmAndTakeTicket(handler, from: senderAddress);
+      final second = await confirmAndTakeTicket(handler, from: senderAddress);
+
+      expect(first, isNot(second));
+      // The old scheme was senderIP_fileName_millis, which anyone watching the
+      // network could reconstruct.
+      for (final ticket in [first, second]) {
+        expect(ticket, isNot(contains(senderAddress)));
+        expect(ticket, isNot(contains('report.pdf')));
+        expect(ticket, matches(RegExp(r'^[0-9a-f]{32}$')));
+      }
+    },
+  );
 }
 
 class _Connection implements HttpConnectionInfo {

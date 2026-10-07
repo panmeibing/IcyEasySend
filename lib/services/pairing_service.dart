@@ -88,7 +88,9 @@ class PairingService {
   /// Looks up [targetAddress] and derives the pairing code.
   ///
   /// [targetAddress] is `ip` or `ip:port`, matching the rest of the app.
-  Future<OperationResult<PairingHandshake>> prepare(String targetAddress) async {
+  Future<OperationResult<PairingHandshake>> prepare(
+    String targetAddress,
+  ) async {
     final health = await _healthChecker.checkHealth(targetAddress);
     if (!health.isSuccess) {
       LogUtil.wTag(logTag, '配对准备失败, 无法访问 $targetAddress');
@@ -225,10 +227,7 @@ class PairingHandshake {
       return false;
     }
     if (!confirmed) {
-      LogUtil.wTag(
-        _service.logTag,
-        '对端未能确认配对，跳过本地信任写入以免单边配对',
-      );
+      LogUtil.wTag(_service.logTag, '对端未能确认配对，跳过本地信任写入以免单边配对');
       return false;
     }
 

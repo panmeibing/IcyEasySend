@@ -36,7 +36,8 @@ class WebShareHttpUtil {
     final base = path.basename(fileName);
     final buffer = StringBuffer();
     for (final unit in base.codeUnits) {
-      final isAllowed = (unit >= 0x30 && unit <= 0x39) || // 0-9
+      final isAllowed =
+          (unit >= 0x30 && unit <= 0x39) || // 0-9
           (unit >= 0x41 && unit <= 0x5A) || // A-Z
           (unit >= 0x61 && unit <= 0x7A) || // a-z
           unit == 0x2E || // .

@@ -1506,16 +1506,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible d\'utiliser l\'adresse de diffusion 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Incompatibilité de sous-réseau\nIP locale : $localIP (sous-réseau : $localNetwork.x)\nIP cible : $targetIP (sous-réseau : $targetNetwork.x)\n\nNote : Les deux appareils doivent être sur le même réseau local (même sous-réseau) pour transférer des fichiers.\nPour les adresses IPv4 de classe C, les trois premiers nombres doivent être identiques, par exemple tous deux 192.168.2, seul le dernier nombre diffère\nLe moyen le plus simple est de connecter les deux appareils au même WiFi ou routeur.\n';
-  }
-
-  @override
   String get responseParseError =>
       'Impossible d\'analyser la réponse du serveur';
 
@@ -1854,4 +1844,275 @@ class AppLocalizationsFr extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Connexion interrompue, nouvelle tentative ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Afficher l\'adresse';
+
+  @override
+  String get tvReceiveHint =>
+      'Sur un téléphone, ouvrez Icy Easy Send puis scannez ou saisissez cette adresse pour envoyer des fichiers ici.';
+
+  @override
+  String get tvRecentReceives => 'Récents';
+
+  @override
+  String get tvNoRecent => 'Rien de reçu pour le moment';
+
+  @override
+  String get tvChooseFiles => 'Choisir des fichiers sur cet appareil';
+
+  @override
+  String get tvEnterAddress => 'Saisir l\'adresse';
+
+  @override
+  String get tvAddressLabel => 'Adresse IP';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Ce téléviseur n\'a pas pu ouvrir un sélecteur de fichiers. La réception fonctionne toujours.';
+
+  @override
+  String get tvNoDevices => 'Aucun appareil trouvé';
+
+  @override
+  String get tvScanning => 'Recherche sur le réseau local…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Impossible de changer de dossier. L\'emplacement actuel est conservé.';
+
+  @override
+  String get tvPairByCode => 'Associer avec un code';
+
+  @override
+  String get tvEnterDeviceCode => 'Code de l\'autre appareil';
+
+  @override
+  String get tvDownloadsFolder => 'Téléchargements';
+
+  @override
+  String get deleteAllRecords => 'Tout supprimer';
+
+  @override
+  String get peerErrorBadRequest =>
+      'L\'autre appareil n\'a pas compris la requête. Mettez les deux appareils à la même version.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'Aucun fichier ne peut être reçu (nom invalide, doublon ou taille maximale dépassée).';
+
+  @override
+  String get peerErrorBusy =>
+      'L\'autre appareil est occupé. Réessayez dans un instant.';
+
+  @override
+  String get peerErrorNoUi =>
+      'L\'autre appareil ne peut pas afficher de confirmation pour le moment. Ouvrez l\'application dessus.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'L\'autre appareil n\'a aucune confirmation pour ce transfert, elle a peut-être expiré. Renvoyez les fichiers.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Votre adresse réseau a changé après la confirmation du transfert. Renvoyez les fichiers.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'Le fichier ne correspond pas à ce que l\'autre appareil a accepté. Renvoyez-le.';
+
+  @override
+  String get peerErrorDiskFull =>
+      'L\'autre appareil manque d\'espace de stockage.';
+
+  @override
+  String get peerErrorSaveFailed =>
+      'L\'autre appareil n\'a pas pu enregistrer le fichier.';
+
+  @override
+  String get peerErrorInternal =>
+      'L\'autre appareil a rencontré une erreur inattendue.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'Le contenu du presse-papiers dépasse la taille maximale de l\'autre appareil.';
+
+  @override
+  String get relayResponseUnreadable =>
+      'Impossible de lire la réponse du relais';
+
+  @override
+  String get relayServerUrlInvalid =>
+      'L\'adresse du serveur relais n\'est pas valide';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Échec de l\'envoi via le relais : $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Échec de l\'envoi via le relais\nCode d\'état : $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Échec du téléchargement via le relais : $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Échec du téléchargement via le relais\nCode d\'état : $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'L\'autre appareil n\'a pas rejoint le flux de données';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'Le fichier dépasse la limite de transfert du serveur relais';
+
+  @override
+  String get relaySendFailed =>
+      'Impossible d\'envoyer le message via le relais';
+
+  @override
+  String get relayPeerNoResponse => 'L\'autre appareil ne répond pas';
+
+  @override
+  String get relayNoStreamId =>
+      'Le serveur relais n\'a pas renvoyé d\'identifiant de flux';
+
+  @override
+  String get relayServerTimeout => 'Le serveur relais n\'a pas répondu à temps';
+
+  @override
+  String get relayDisconnected => 'La connexion au relais a été perdue';
+
+  @override
+  String get relayServerPeerOffline =>
+      'L\'autre appareil n\'est pas connecté au serveur relais';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Trop de transferts simultanés pour le serveur relais';
+
+  @override
+  String get relayServerRateLimited => 'Trop de requêtes. Réessayez plus tard';
+
+  @override
+  String get relayServerTokenRejected =>
+      'Le serveur relais a refusé le jeton d\'accès';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'Le serveur relais a refusé l\'identité de cet appareil';
+
+  @override
+  String get relayServerUnknownError =>
+      'Le serveur relais a renvoyé une erreur inconnue';
+
+  @override
+  String get relayStreamTampered =>
+      'Les données ont été modifiées ou tronquées en transit et ont été supprimées';
+
+  @override
+  String get relaySessionInvalid =>
+      'Les données de session du relais ne sont pas valides';
+
+  @override
+  String get relayPeerNoManifest =>
+      'L\'autre appareil n\'a pas envoyé la liste des fichiers';
+
+  @override
+  String get relayPeerStalled =>
+      'L\'autre appareil n\'envoie plus de fichiers depuis longtemps';
+
+  @override
+  String get relayPeerCancelled => 'L\'autre appareil a annulé le transfert';
+
+  @override
+  String get relayResumeFailed =>
+      'Impossible de reprendre là où le transfert s\'est arrêté';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Saisissez l\'adresse du serveur relais et le jeton d\'accès';
+
+  @override
+  String get relayAuthRejected =>
+      'Le serveur relais a refusé le jeton d\'accès ou l\'identité de l\'appareil';
+
+  @override
+  String get relayUnreachable =>
+      'Serveur relais injoignable. Vérifiez l\'adresse et le réseau';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Échec de la connexion au serveur relais : $details';
+  }
+
+  @override
+  String get relayTransferTimeout => 'Délai du transfert via le relais dépassé';
+
+  @override
+  String get transferCancelled => 'Transfert de fichier annulé';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP n\'est peut-être pas sur le même réseau que cet appareil ($localIP). Si l\'envoi échoue, connectez les deux appareils au même WiFi ou routeur.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName vérifié avec la clé secrète, réception automatique de $count fichiers';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'La permission de stockage a été refusée définitivement. Veuillez l\'activer manuellement dans les paramètres.\n\nCette permission est nécessaire pour enregistrer les fichiers dans le dossier Téléchargements.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'La permission de stockage est nécessaire pour enregistrer les fichiers dans le dossier Téléchargements.\n\nVous pouvez l\'accorder dans les paramètres.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'La demande de permission de stockage a échoué';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Erreur lors de la demande de permission : $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nDétails : $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count éléments';
+  }
+
+  @override
+  String get devInfoSavePath => '[Dossier des fichiers reçus]';
+
+  @override
+  String get devInfoLogPath => '[Chemin du fichier journal]';
+
+  @override
+  String get devInfoHistoryPath => '[Chemin du fichier d\'historique]';
+
+  @override
+  String get logFileNotFound => 'Fichier journal introuvable';
+
+  @override
+  String logReadFailed(String details) {
+    return 'Impossible de lire le fichier journal : $details';
+  }
+
+  @override
+  String get edit => 'Modifier';
 }

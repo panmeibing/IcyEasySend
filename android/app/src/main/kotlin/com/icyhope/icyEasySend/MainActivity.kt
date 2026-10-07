@@ -1,15 +1,24 @@
 package com.icyhope.icyEasySend
 
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.wifi.WifiManager
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 class MainActivity : FlutterActivity() {
     companion object {
         private const val CLIPBOARD_CHANNEL = "com.icyhope.icy_easy_send/clipboard"
         private const val NETWORK_CHANNEL = "com.icyhope.icy_easy_send/network"
+        private const val FORM_FACTOR_CHANNEL = "com.icyhope.icy_easy_send/form_factor"
+        private const val FILES_CHANNEL = "com.icyhope.icy_easy_send/files"
     }
 
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -18,6 +27,29 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FORM_FACTOR_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "isTelevision" -> result.success(isTelevision())
+                    else -> result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FILES_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "openFile" -> {
+                        val path = call.argument<String>("path")
+                        if (path.isNullOrEmpty()) {
+                            result.error("bad-path", "missing path", null)
+                        } else {
+                            result.success(openExternalFile(path))
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NETWORK_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -135,6 +167,44 @@ class MainActivity : FlutterActivity() {
         }
         clipboardChannel = null
         super.onDestroy()
+    }
+
+    /// Opens [path] in another app, in its own task.
+    ///
+    /// A viewer launched into this task takes the app down with it if that
+    /// viewer crashes during startup. The TV image player does that.
+    /// Returns null on success, or a short error token.
+    private fun openExternalFile(path: String): String? {
+        val file = File(path)
+        if (!file.exists()) return "missing"
+        return try {
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileProvider.com.crazecoder.openfile",
+                file,
+            )
+            val mime = MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(file.extension.lowercase()) ?: "*/*"
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mime)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            null
+        } catch (_: ActivityNotFoundException) {
+            "no-app"
+        } catch (e: Exception) {
+            e.message ?: "error"
+        }
+    }
+
+    private fun isTelevision(): Boolean {
+        val uiMode = resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
+        if (uiMode == Configuration.UI_MODE_TYPE_TELEVISION) return true
+        val leanback = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val touch = packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
+        return leanback && !touch
     }
 
     private fun acquireMulticastLock() {

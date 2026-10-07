@@ -62,9 +62,7 @@ class RelayCryptoWorker {
         responses.sendPort,
         debugName: 'relay-crypto',
       );
-      worker._commands = await ready.future.timeout(
-        const Duration(seconds: 5),
-      );
+      worker._commands = await ready.future.timeout(const Duration(seconds: 5));
       return worker;
     } catch (e) {
       LogUtil.wTag(LogTags.transfer, '无法启动加密隔离区，改为在主线程加解密: $e');
@@ -172,7 +170,7 @@ class RelayCryptoWorker {
         // transfer.
         completer.future.ignore();
         completer.completeError(
-          RelayCryptoException('加密任务在完成前被取消'),
+          RelayCryptoException('crypto task cancelled before completion'),
         );
       }
     }
@@ -205,7 +203,11 @@ class RelayCryptoWorker {
               .materialize()
               .asUint8List(),
         );
-        ready.send([id, TransferableTypedData.fromList([result]), null]);
+        ready.send([
+          id,
+          TransferableTypedData.fromList([result]),
+          null,
+        ]);
       } catch (e) {
         ready.send([id, null, e.toString()]);
       }
@@ -237,7 +239,7 @@ class RelayCryptoWorker {
     }
 
     if (data.length < AppConstants.relayAeadTagBytes) {
-      throw RelayCryptoException('密文帧长度异常');
+      throw RelayCryptoException('unexpected ciphertext frame length');
     }
     final split = data.length - AppConstants.relayAeadTagBytes;
     final clear = await algorithm.decrypt(

@@ -53,9 +53,7 @@ void main() {
 
   test('lists a relay-online paired device that was not discovered on LAN', () {
     final peers = PeerDirectory.merge(
-      paired: [
-        paired(id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', name: 'Laptop'),
-      ],
+      paired: [paired(id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', name: 'Laptop')],
       onlinePeers: {'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'},
     );
 
@@ -113,11 +111,7 @@ void main() {
   test('keeps pre-identity discoveries as anonymous LAN peers', () {
     final peers = PeerDirectory.merge(
       discovered: const [
-        DiscoveredDevice(
-          ip: '192.168.1.20',
-          port: 9527,
-          deviceName: 'Legacy',
-        ),
+        DiscoveredDevice(ip: '192.168.1.20', port: 9527, deviceName: 'Legacy'),
       ],
       paired: [paired(id: 'dddddddddddddddddddddddddddddddd')],
       onlinePeers: {'dddddddddddddddddddddddddddddddd'},

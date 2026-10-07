@@ -1,4 +1,5 @@
 import '../../../services/preferences_service.dart';
+import '../../../utils/network_util.dart';
 
 /// Snapshot of connection fields needed to paint Home without N round-trips.
 class HomeConnectionPrefs {
@@ -50,10 +51,6 @@ class ConnectionPrefsController {
     }
   }
 
-  Future<void> clearTargetSecretKey() {
-    return _preferencesService.clearTargetDeviceSecretKey();
-  }
-
   Future<List<String>> loadIPHistory() {
     return _preferencesService.getIPHistory();
   }
@@ -63,8 +60,8 @@ class ConnectionPrefsController {
   }
 
   Future<void> savePort(String portText) async {
-    final port = int.tryParse(portText.trim());
-    if (port != null && port >= 1 && port <= 65535) {
+    final port = NetworkUtil.parsePort(portText);
+    if (port != null) {
       await _preferencesService.saveLastUsedPort(port);
     }
   }

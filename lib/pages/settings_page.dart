@@ -8,7 +8,6 @@ import '../services/http_server_manager.dart';
 import '../services/language_service.dart';
 import '../services/preferences_service.dart';
 import '../services/transfer_history_service.dart';
-import '../services/validation_service.dart';
 import '../utils/constants.dart';
 import '../utils/dialog_helper.dart';
 import '../utils/toast_helper.dart';
@@ -53,7 +52,6 @@ class _SettingsPageState extends State<SettingsPage> {
   late final GeneralController _generalController;
   late final TransferController _transferController;
   late final DeveloperController _developerController;
-  late final ValidationService _validationService;
   late final TransferSettingsActions _transferActions;
 
   // Text controllers
@@ -89,11 +87,9 @@ class _SettingsPageState extends State<SettingsPage> {
       _historyService,
     );
     _developerController = DeveloperController();
-    _validationService = ValidationService();
     _transferActions = TransferSettingsActions(
       transferController: _transferController,
       preferencesService: _preferencesService,
-      validationService: _validationService,
       allowMinHisCount: _allowMinHisCount,
       allowMaxHisCount: _allowMaxHisCount,
       isMounted: () => mounted,
@@ -515,7 +511,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       clipboardOverlayEnabled: _state.clipboardOverlayEnabled,
                       onClipboardOverlayChanged: Platform.isAndroid
                           ? (enabled) => _transferActions
-                              .onClipboardOverlayChanged(context, enabled)
+                                .onClipboardOverlayChanged(context, enabled)
                           : null,
                       enableIPValidation: _state.enableIPValidation,
                       onIPValidationChanged: (enabled) => _transferActions

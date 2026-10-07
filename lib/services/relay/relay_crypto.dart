@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 
+import '../../l10n/current_localizations.dart';
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
@@ -67,7 +68,7 @@ class RelayCrypto {
     final senderEphemeral = _decodeKey(offer.ephemeralPublicKey);
     final senderNonce = _decodeBytes(offer.nonce);
     if (senderEphemeral == null || senderNonce == null) {
-      return OperationResult.failure('中转会话请求无效');
+      return OperationResult.failure(appText.relaySessionInvalid);
     }
 
     final ephemeral = await _keyExchange.newKeyPair();
@@ -132,7 +133,7 @@ class RelayCrypto {
     if (receiverEphemeral == null ||
         receiverNonce == null ||
         signature == null) {
-      return OperationResult.failure('中转会话应答无效');
+      return OperationResult.failure(appText.relaySessionInvalid);
     }
 
     final transcript = await computeTranscript(
@@ -152,7 +153,7 @@ class RelayCrypto {
     );
     if (!verified) {
       LogUtil.wTag(LogTags.transfer, '中转会话应答签名无效，对方可能不是已配对设备');
-      return OperationResult.failure('对方设备的身份签名无效');
+      return OperationResult.failure(appText.relayIdentityMismatch);
     }
 
     final keys = await _deriveKeys(
@@ -236,20 +237,27 @@ class RelayCrypto {
   }) async {
     final shared = await _keyExchange.sharedSecretKey(
       keyPair: keyPair,
-      remotePublicKey: SimplePublicKey(
-        peerPublicKey,
-        type: KeyPairType.x25519,
-      ),
+      remotePublicKey: SimplePublicKey(peerPublicKey, type: KeyPairType.x25519),
     );
 
     return RelaySessionKeys._(
       sharedSecret: shared,
       transcript: transcript,
       senderToReceiver: SecretKey(
-        await _expand(shared, transcript, AppConstants.relayLabelSenderToReceiver, 32),
+        await _expand(
+          shared,
+          transcript,
+          AppConstants.relayLabelSenderToReceiver,
+          32,
+        ),
       ),
       receiverToSender: SecretKey(
-        await _expand(shared, transcript, AppConstants.relayLabelReceiverToSender, 32),
+        await _expand(
+          shared,
+          transcript,
+          AppConstants.relayLabelReceiverToSender,
+          32,
+        ),
       ),
     );
   }
@@ -279,9 +287,7 @@ class RelayCrypto {
   }
 
   static Uint8List _randomBytes(int length) {
-    return Uint8List.fromList(
-      SecretKeyData.random(length: length).bytes,
-    );
+    return Uint8List.fromList(SecretKeyData.random(length: length).bytes);
   }
 
   static Uint8List? _decodeBytes(String? value) {
@@ -378,11 +384,7 @@ class RelaySessionKeys {
       '${AppConstants.relayLabelFileNonce}$scope',
       4,
     );
-    return RelayFileKey(
-      fileId: fileId,
-      key: key,
-      noncePrefix: noncePrefix,
-    );
+    return RelayFileKey(fileId: fileId, key: key, noncePrefix: noncePrefix);
   }
 }
 
@@ -455,13 +457,11 @@ class RelaySecureSession {
     required this.transcript,
   });
 
-  SecretKey get _outbound => role == RelayRole.sender
-      ? keys.senderToReceiver
-      : keys.receiverToSender;
+  SecretKey get _outbound =>
+      role == RelayRole.sender ? keys.senderToReceiver : keys.receiverToSender;
 
-  SecretKey get _inbound => role == RelayRole.sender
-      ? keys.receiverToSender
-      : keys.senderToReceiver;
+  SecretKey get _inbound =>
+      role == RelayRole.sender ? keys.receiverToSender : keys.senderToReceiver;
 
   /// Wraps an application message for the wire.
   Future<Map<String, dynamic>> seal(Map<String, dynamic> payload) async {
@@ -542,11 +542,9 @@ class RelaySecureSession {
     final aad = Uint8List(prefix.length + id.length + 8);
     aad.setRange(0, prefix.length, prefix);
     aad.setRange(prefix.length, prefix.length + id.length, id);
-    ByteData.view(aad.buffer).setUint64(
-      prefix.length + id.length,
-      sequence,
-      Endian.big,
-    );
+    ByteData.view(
+      aad.buffer,
+    ).setUint64(prefix.length + id.length, sequence, Endian.big);
     return aad;
   }
 }

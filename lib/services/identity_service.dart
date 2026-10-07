@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 import '../utils/constants.dart';
+import '../utils/hex_util.dart';
 import '../utils/log_util.dart';
 import '../utils/platform_util.dart';
 
@@ -104,10 +105,7 @@ class IdentityService {
         message,
         signature: Signature(
           signature,
-          publicKey: SimplePublicKey(
-            publicKey,
-            type: KeyPairType.ed25519,
-          ),
+          publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519),
         ),
       );
     } catch (_) {
@@ -118,10 +116,7 @@ class IdentityService {
   /// `deviceId` is the first 16 bytes of SHA-256 over the public key, in hex.
   static Future<String> deviceIdFromPublicKey(List<int> publicKey) async {
     final digest = await _sha256.hash(publicKey);
-    return digest.bytes
-        .take(_deviceIdBytes)
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    return HexUtil.encode(digest.bytes.take(_deviceIdBytes));
   }
 
   /// Decodes a base64 public key, returning null when it is not a valid
@@ -144,7 +139,10 @@ class IdentityService {
   /// Checks that [deviceId] really is the fingerprint of [publicKey].
   ///
   /// This is what stops a peer from announcing somebody else's device id.
-  static Future<bool> matchesDeviceId(String deviceId, List<int> publicKey) async {
+  static Future<bool> matchesDeviceId(
+    String deviceId,
+    List<int> publicKey,
+  ) async {
     final derived = await deviceIdFromPublicKey(publicKey);
     return derived == deviceId;
   }

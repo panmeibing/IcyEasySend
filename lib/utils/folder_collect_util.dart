@@ -37,15 +37,10 @@ class FolderCollectUtil {
       relative = TransferPathUtil.normalizeTransferPath(relative);
       final transferName = path.posix.join(folderName, relative);
 
-      items.add(
-        TransferFileItem(file: entity, transferName: transferName),
-      );
+      items.add(TransferFileItem(file: entity, transferName: transferName));
     }
 
-    LogUtil.iTag(
-      _logTag,
-      '从文件夹收集文件: $folderName, 共 ${items.length} 个文件',
-    );
+    LogUtil.iTag(_logTag, '从文件夹收集文件: $folderName, 共 ${items.length} 个文件');
     return items;
   }
 

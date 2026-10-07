@@ -3,8 +3,5 @@ class TransferData {
   final String? savedPath;
   final int bytesTransferred;
 
-  TransferData({
-    this.savedPath,
-    required this.bytesTransferred,
-  });
+  TransferData({this.savedPath, required this.bytesTransferred});
 }

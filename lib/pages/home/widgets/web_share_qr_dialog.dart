@@ -6,7 +6,9 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../models/web_share_session.dart';
+import '../../../ui/form_factor.dart';
 import '../../../utils/format_util.dart';
+import '../../tv/tv_qr_dialog.dart';
 import '../../../utils/toast_helper.dart';
 
 /// Dialog showing a QR code and link for guest browser downloads.
@@ -34,8 +36,16 @@ class WebShareQrDialog extends StatefulWidget {
   }) {
     return showDialog<bool>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: !AppFormFactor.isTv,
       builder: (dialogContext) {
+        if (AppFormFactor.isTv) {
+          return TvQrDialog(
+            session: session,
+            shareUrl: shareUrl,
+            shareUrlBuilder: shareUrlBuilder,
+            onStopSharing: onStopSharing,
+          );
+        }
         return WebShareQrDialog(
           session: session,
           shareUrl: shareUrl,
@@ -186,10 +196,7 @@ class _WebShareQrDialogState extends State<WebShareQrDialog> {
               const SizedBox(height: 12),
               SelectableText(
                 _shareUrl,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.blue.shade800,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade800),
                 textAlign: TextAlign.center,
               ),
             ],

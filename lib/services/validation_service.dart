@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import '../l10n/current_localizations.dart';
 import '../models/transfer_file_item.dart';
 import '../utils/constants.dart';
 import '../utils/transfer_path_util.dart';
@@ -9,6 +10,7 @@ import '../utils/error_messages.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 import '../utils/operation_result.dart';
+
 /// ValidationService provides input validation functionality
 class ValidationService {
   final String logTag = LogTags.validation;
@@ -133,20 +135,17 @@ class ValidationService {
 
     if (!isConnectedToWiFi && isLocalHotspotIP) {
       LogUtil.iTag(logTag, '检测到热点场景: 未连接WiFi且本地IP为10.x.x.x ($localIP)，跳过子网检查');
-      return ValidationResult(
-        isValid: true,
-        errorMessage: '提示：检测到可能是热点连接场景，已跳过子网检查',
-        isWarning: true,
-      );
+      return ValidationResult(isValid: true);
     }
 
-    // Check if in same subnet (assuming /24 subnet mask: 255.255.255.0)
+    // The /24 comparison is only a guess at the real netmask, so a mismatch
+    // warns but never blocks the send.
     if (!_isInSameSubnet(localIP, ip)) {
-      LogUtil.wTag(logTag, '目标IP不在同一子网: 本地=$localIP, 目标=$ip');
+      LogUtil.wTag(logTag, '目标IP可能不在同一子网: 本地=$localIP, 目标=$ip');
       return ValidationResult(
-        isValid: false,
-        errorMessage: ErrorMessages.ipAddressNotInSameSubnet(localIP, ip),
-        isWarning: false, // This is a hard error, not just a warning
+        isValid: true,
+        errorMessage: ErrorMessages.ipAddressSubnetWarning(localIP, ip),
+        isWarning: true,
       );
     }
 
@@ -174,7 +173,8 @@ class ValidationService {
   }
 
   /// Check if two IP addresses are in the same subnet
-  /// Assumes a /24 subnet mask (255.255.255.0)
+  /// Assumes a /24 subnet mask (255.255.255.0): `dart:io` does not expose the
+  /// interface netmask.
   bool _isInSameSubnet(String ip1, String ip2) {
     final parts1 = ip1.split('.');
     final parts2 = ip2.split('.');
@@ -191,40 +191,6 @@ class ValidationService {
     }
 
     return true;
-  }
-
-  /// Validates if a file exists and is readable
-  ///
-  /// Returns a ValidationResult indicating whether the file is valid
-  /// and an error message if invalid
-  ///
-  /// Note: This is a synchronous method for quick validation.
-  /// For Android content URIs, use validateFileAsync() instead.
-  ValidationResult validateFile(File file) {
-    LogUtil.dTag(logTag, '验证文件: ${file.path}');
-
-    // Check if file exists
-    if (!file.existsSync()) {
-      LogUtil.wTag(logTag, '文件不存在: ${file.path}');
-      return ValidationResult(
-        isValid: false,
-        errorMessage: ErrorMessages.fileNotFound,
-      );
-    }
-
-    // Check if file is readable by attempting to get its length
-    try {
-      // This will throw if the file is not readable
-      final size = file.lengthSync();
-      LogUtil.dTag(logTag, '文件验证通过: ${file.path}, 大小=$size');
-      return ValidationResult(isValid: true);
-    } catch (e, stackTrace) {
-      LogUtil.wTag(logTag, '文件不可读: ${file.path}, 错误=$e', e, stackTrace);
-      return ValidationResult(
-        isValid: false,
-        errorMessage: ErrorMessages.fileNotReadable,
-      );
-    }
   }
 
   /// Validates if a file exists and is readable (async version)
@@ -437,7 +403,7 @@ class ValidationService {
           LogUtil.wTag(logTag, '清理测试文件失败: $cleanupError');
         }
 
-        return OperationResult.failure('无法写入下载目录，请检查权限');
+        return OperationResult.failure(appText.savePathNotWritable);
       }
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '目录可写性检查失败: $e', e, stackTrace);

@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
+import '../../l10n/current_localizations.dart';
 import '../../models/paired_device.dart';
 import '../../models/relay_config.dart';
 import '../../transport/relay_channel.dart';
@@ -198,7 +199,7 @@ class RelayService {
   /// applying the settings and watching what happens.
   Future<OperationResult<void>> testConnection(RelayConfig config) async {
     if (!config.isValid) {
-      return OperationResult.failure('请填写完整的中转服务器地址和接入令牌');
+      return OperationResult.failure(appText.relayConfigIncomplete);
     }
 
     final probe = RelayClient();
@@ -209,11 +210,11 @@ class RelayService {
       }
       return OperationResult.failure(
         probe.state == RelayConnectionState.rejected
-            ? '中转服务器拒绝了接入令牌或设备身份'
-            : '无法连接中转服务器，请检查地址与网络',
+            ? appText.relayAuthRejected
+            : appText.relayUnreachable,
       );
     } catch (e) {
-      return OperationResult.failure('连接中转服务器失败: $e');
+      return OperationResult.failure(appText.relayConnectFailed('$e'));
     } finally {
       await probe.dispose();
     }

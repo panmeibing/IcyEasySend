@@ -9,6 +9,7 @@ import '../../models/transfer_data.dart';
 import '../../utils/error_messages.dart';
 import '../../utils/log_util.dart';
 import '../../utils/operation_result.dart';
+import '../../utils/peer_error.dart';
 import 'transfer_http.dart';
 import 'transfer_request_builder.dart';
 
@@ -57,7 +58,7 @@ class FileSender {
         logTag,
         'Failed to get file size for $fileName: ${e.toString()}',
       );
-      return OperationResult.failure('无法读取文件大小: ${e.toString()}');
+      return OperationResult.failure('${ErrorMessages.fileNotReadable}\n$e');
     }
 
     LogUtil.iTag(
@@ -136,7 +137,9 @@ class FileSender {
       );
     } on FileSystemException catch (e) {
       LogUtil.eTag(logTag, 'File system error for $fileName: ${e.toString()}');
-      return OperationResult.failure('文件访问错误: ${e.message}');
+      return OperationResult.failure(
+        '${ErrorMessages.fileAccessError}\n${e.message}',
+      );
     } catch (e, stackTrace) {
       LogUtil.eTag(
         logTag,
@@ -167,11 +170,17 @@ class FileSender {
   }) async {
     if (statusCode != 200) {
       try {
-        final data = jsonDecode(responseBody) as Map<String, dynamic>;
-        return OperationResult.failure(data['message'] as String? ?? '文件传输失败');
+        return OperationResult.failure(
+          PeerError.describeBody(
+            jsonDecode(responseBody),
+            ErrorMessages.responseStatusCodeError(statusCode),
+          ),
+        );
       } catch (e) {
         LogUtil.eTag(logTag, e.toString());
-        return OperationResult.failure('文件传输失败\n状态码: $statusCode');
+        return OperationResult.failure(
+          ErrorMessages.responseStatusCodeError(statusCode),
+        );
       }
     }
 
@@ -184,7 +193,7 @@ class FileSender {
       );
     } catch (e) {
       LogUtil.eTag(logTag, e.toString());
-      return OperationResult.failure('无法解析响应\n错误: $e');
+      return OperationResult.failure(ErrorMessages.responseParseError);
     }
   }
 }

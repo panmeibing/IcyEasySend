@@ -27,6 +27,7 @@ class MainContainer extends StatefulWidget {
 
 class _MainContainerState extends State<MainContainer> {
   int _currentIndex = 0;
+
   /// Only build History/Settings after the user opens them once so cold start
   /// does not pay for three full tab trees behind an [IndexedStack].
   final Set<int> _visitedTabs = {0};

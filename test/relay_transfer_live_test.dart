@@ -131,8 +131,11 @@ void main() {
 
         final results = await channel.sendFiles(peer: peer(), files: [item]);
 
-        expect(results['payload.bin']!.isSuccess, isTrue,
-            reason: results['payload.bin']!.errorMessage);
+        expect(
+          results['payload.bin']!.isSuccess,
+          isTrue,
+          reason: results['payload.bin']!.errorMessage,
+        );
         expect(receiver.received['payload.bin'], equals(expected));
       });
 
@@ -170,23 +173,36 @@ void main() {
 
         expect(results, hasLength(3));
         for (final entry in results.entries) {
-          expect(entry.value.isSuccess, isTrue, reason: entry.value.errorMessage);
+          expect(
+            entry.value.isSuccess,
+            isTrue,
+            reason: entry.value.errorMessage,
+          );
         }
-        expect(receiver.received.keys, containsAll(['a.bin', 'b.bin', 'c.bin']));
+        expect(
+          receiver.received.keys,
+          containsAll(['a.bin', 'b.bin', 'c.bin']),
+        );
       });
 
-      test('handles an empty file, which has no bytes to rendezvous on', () async {
-        final item = await makeFile('empty.bin', 0);
+      test(
+        'handles an empty file, which has no bytes to rendezvous on',
+        () async {
+          final item = await makeFile('empty.bin', 0);
 
-        final results = await channel.sendFiles(peer: peer(), files: [item]);
+          final results = await channel.sendFiles(peer: peer(), files: [item]);
 
-        expect(results['empty.bin']!.isSuccess, isTrue,
-            reason: results['empty.bin']!.errorMessage);
-        expect(receiver.received['empty.bin'], isEmpty);
-        // Empty on the inside, one frame on the wire: that frame is what says
-        // the file ended where the sender meant it to.
-        expect(receiver.wire['empty.bin'], isNotEmpty);
-      });
+          expect(
+            results['empty.bin']!.isSuccess,
+            isTrue,
+            reason: results['empty.bin']!.errorMessage,
+          );
+          expect(receiver.received['empty.bin'], isEmpty);
+          // Empty on the inside, one frame on the wire: that frame is what says
+          // the file ended where the sender meant it to.
+          expect(receiver.wire['empty.bin'], isNotEmpty);
+        },
+      );
 
       test('reports progress that ends at the full size', () async {
         final item = await makeFile('progress.bin', 256 * 1024);
@@ -220,62 +236,72 @@ void main() {
         expect(receiver.received, isEmpty);
       });
 
-      test('sends only the tail when the receiver already has the head',
-          () async {
-        const chunkSize = AppConstants.relayChunkSize;
-        final item = await makeFile('resumed.bin', chunkSize * 3 + 100);
-        final plaintext = await item.file.readAsBytes();
+      test(
+        'sends only the tail when the receiver already has the head',
+        () async {
+          const chunkSize = AppConstants.relayChunkSize;
+          final item = await makeFile('resumed.bin', chunkSize * 3 + 100);
+          final plaintext = await item.file.readAsBytes();
 
-        // Stand in for a previous attempt that got two chunks onto disk.
-        final head = plaintext.sublist(0, chunkSize * 2);
-        receiver.resumeOffers['resumed.bin'] = (
-          chunks: 2,
-          hash: base64Encode(
-            (await Sha256().hash(
-              plaintext.sublist(chunkSize, chunkSize * 2),
-            )).bytes,
-          ),
-          prefix: head,
-        );
+          // Stand in for a previous attempt that got two chunks onto disk.
+          final head = plaintext.sublist(0, chunkSize * 2);
+          receiver.resumeOffers['resumed.bin'] = (
+            chunks: 2,
+            hash: base64Encode(
+              (await Sha256().hash(
+                plaintext.sublist(chunkSize, chunkSize * 2),
+              )).bytes,
+            ),
+            prefix: head,
+          );
 
-        final results = await channel.sendFiles(peer: peer(), files: [item]);
+          final results = await channel.sendFiles(peer: peer(), files: [item]);
 
-        expect(results['resumed.bin']!.isSuccess, isTrue,
-            reason: results['resumed.bin']!.errorMessage);
-        expect(receiver.startChunks['resumed.bin'], 2);
-        // Only two chunks and change crossed the wire, but what the receiver
-        // ends up holding is the whole file.
-        expect(
-          receiver.wire['resumed.bin']!.length,
-          RelayFrameCodec.encryptedLengthFrom(plaintext.length, 2),
-        );
-        expect(receiver.received['resumed.bin'], equals(plaintext));
-      });
+          expect(
+            results['resumed.bin']!.isSuccess,
+            isTrue,
+            reason: results['resumed.bin']!.errorMessage,
+          );
+          expect(receiver.startChunks['resumed.bin'], 2);
+          // Only two chunks and change crossed the wire, but what the receiver
+          // ends up holding is the whole file.
+          expect(
+            receiver.wire['resumed.bin']!.length,
+            RelayFrameCodec.encryptedLengthFrom(plaintext.length, 2),
+          );
+          expect(receiver.received['resumed.bin'], equals(plaintext));
+        },
+      );
 
-      test('starts over when the local file no longer matches the hash',
-          () async {
-        const chunkSize = AppConstants.relayChunkSize;
-        final item = await makeFile('changed.bin', chunkSize * 3);
-        final plaintext = await item.file.readAsBytes();
+      test(
+        'starts over when the local file no longer matches the hash',
+        () async {
+          const chunkSize = AppConstants.relayChunkSize;
+          final item = await makeFile('changed.bin', chunkSize * 3);
+          final plaintext = await item.file.readAsBytes();
 
-        // The receiver holds two chunks of some other version of this file.
-        receiver.resumeOffers['changed.bin'] = (
-          chunks: 2,
-          hash: base64Encode(
-            (await Sha256().hash(List<int>.filled(chunkSize, 0))).bytes,
-          ),
-          prefix: List<int>.filled(chunkSize * 2, 0),
-        );
+          // The receiver holds two chunks of some other version of this file.
+          receiver.resumeOffers['changed.bin'] = (
+            chunks: 2,
+            hash: base64Encode(
+              (await Sha256().hash(List<int>.filled(chunkSize, 0))).bytes,
+            ),
+            prefix: List<int>.filled(chunkSize * 2, 0),
+          );
 
-        final results = await channel.sendFiles(peer: peer(), files: [item]);
+          final results = await channel.sendFiles(peer: peer(), files: [item]);
 
-        expect(results['changed.bin']!.isSuccess, isTrue,
-            reason: results['changed.bin']!.errorMessage);
-        // The sender checked its own copy of the chunk the hash described,
-        // found something else, and refused the shortcut.
-        expect(receiver.startChunks['changed.bin'], 0);
-        expect(receiver.received['changed.bin'], equals(plaintext));
-      });
+          expect(
+            results['changed.bin']!.isSuccess,
+            isTrue,
+            reason: results['changed.bin']!.errorMessage,
+          );
+          // The sender checked its own copy of the chunk the hash described,
+          // found something else, and refused the shortcut.
+          expect(receiver.startChunks['changed.bin'], 0);
+          expect(receiver.received['changed.bin'], equals(plaintext));
+        },
+      );
 
       test('retries from the break when the stream drops mid-file', () async {
         const chunkSize = AppConstants.relayChunkSize;
@@ -288,8 +314,11 @@ void main() {
 
         final results = await channel.sendFiles(peer: peer(), files: [item]);
 
-        expect(results['flaky.bin']!.isSuccess, isTrue,
-            reason: results['flaky.bin']!.errorMessage);
+        expect(
+          results['flaky.bin']!.isSuccess,
+          isTrue,
+          reason: results['flaky.bin']!.errorMessage,
+        );
         expect(receiver.startChunks['flaky.bin'], 2);
         expect(receiver.received['flaky.bin'], equals(plaintext));
       });
@@ -703,7 +732,13 @@ class _ScriptedReceiver {
       }
 
       if (failWrites) {
-        await _report(inbound, session, begin, ok: false, error: 'disk on fire');
+        await _report(
+          inbound,
+          session,
+          begin,
+          ok: false,
+          error: 'disk on fire',
+        );
         return;
       }
 

@@ -11,6 +11,9 @@ import '../l10n/current_localizations.dart';
 class ErrorMessages {
   ErrorMessages._();
 
+  static String withDetails(String message, String details) =>
+      appText.errorWithDetails(message, details);
+
   static String get networkConnectionFailed => appText.networkConnectionFailed;
   static String get networkTimeout => appText.networkTimeout;
   static String get networkRequestFailed => appText.networkRequestFailed;
@@ -63,16 +66,8 @@ class ErrorMessages {
   static String get ipAddressInvalidRange => appText.ipAddressInvalidRange;
   static String get ipAddressSpecial1 => appText.ipAddressSpecial1;
   static String get ipAddressSpecial2 => appText.ipAddressSpecial2;
-  static String ipAddressNotInSameSubnet(String localIP, String targetIP) {
-    final localNetwork = localIP.split('.').take(3).join('.');
-    final targetNetwork = targetIP.split('.').take(3).join('.');
-    return appText.ipAddressNotInSameSubnet(
-      localIP,
-      targetIP,
-      localNetwork,
-      targetNetwork,
-    );
-  }
+  static String ipAddressSubnetWarning(String localIP, String targetIP) =>
+      appText.ipAddressSubnetWarning(targetIP, localIP);
 
   static String get responseParseError => appText.responseParseError;
   static String get responseInvalidFormat => appText.responseInvalidFormat;
@@ -82,32 +77,6 @@ class ErrorMessages {
   static String get fileSelectionError => appText.fileSelectionError;
   static String get fileSelectionCancelled => appText.fileSelectionCancelled;
 
-  static String genericError(String operation) =>
-      appText.genericError(operation);
   static String unexpectedError(String details) =>
       appText.unexpectedError(details);
-  static String networkError(String context) => appText.networkError(context);
-  static String fileError(String context) => appText.fileError(context);
-  static String permissionError(String permissionType) =>
-      appText.permissionError(permissionType);
-
-  static String fromException(Exception e, {String? context}) {
-    final message = e.toString();
-    if (message.contains('SocketException')) {
-      return networkConnectionFailed;
-    }
-    if (message.contains('TimeoutException')) {
-      return networkTimeout;
-    }
-    if (message.contains('FileSystemException')) {
-      return fileAccessError;
-    }
-    if (message.contains('PermissionDeniedException')) {
-      return permissionDenied;
-    }
-    if (context != null) {
-      return '$context: $message';
-    }
-    return unexpectedError(message);
-  }
 }

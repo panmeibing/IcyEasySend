@@ -39,3 +39,19 @@ flutter build apk --release
 ```
 
 > 等它编译完成之后，它生成`APK`文件的默认路径是`build\app\outputs\flutter-apk\app-release.apk`
+
+同一个 APK 可以装到 Android 电视上。电视主屏使用 Leanback 启动器入口。
+
+在 Android TV 模拟器上直接运行：
+
+```shell
+flutter run
+```
+
+在手机上只预览电视布局，不代表这台手机是电视：
+
+```shell
+flutter run --dart-define=UI=tv
+```
+
+`--dart-define=UI=phone` 会强制使用手机界面。不带参数时，由系统是否处于电视模式决定。

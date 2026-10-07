@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
@@ -244,10 +244,7 @@ class HTTPServerManager {
           _lastNetworkFingerprint != fingerprint;
 
       if (!ipChanged && !interfacesChanged) {
-        LogUtil.dTag(
-          logTag,
-          '网络未变化 ($reason): ip=$currentIP',
-        );
+        LogUtil.dTag(logTag, '网络未变化 ($reason): ip=$currentIP');
         _lastKnownIP = currentIP;
         _lastNetworkFingerprint = fingerprint;
         return;
@@ -350,7 +347,10 @@ class HTTPServerManager {
         router.post('/transfer', _fileTransferHandler.handleFileTransfer);
 
         // Configure clipboard request endpoint
-        router.post('/clipboard-request', _clipboardHandler.handleClipboardRequest);
+        router.post(
+          '/clipboard-request',
+          _clipboardHandler.handleClipboardRequest,
+        );
 
         // Configure device pairing endpoints
         router.post('/pair/request', _pairingHandler.handlePairRequest);
@@ -385,7 +385,9 @@ class HTTPServerManager {
         _healthCheckHandler.serverPortGetter = () => _currentPort;
 
         // Get the local IP address
-        final network = await NetworkUtil.captureLocalNetwork(logSelection: true);
+        final network = await NetworkUtil.captureLocalNetwork(
+          logSelection: true,
+        );
         final localIP = network.preferredIp;
         _serverAddress = '$localIP:$tryPort';
         _lastKnownIP = localIP;

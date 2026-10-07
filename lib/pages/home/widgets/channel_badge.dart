@@ -39,8 +39,7 @@ class ChannelBadge extends StatelessWidget {
     }
 
     final icons = <Widget>[
-      if (hasLan)
-        Icon(Icons.bolt, color: Colors.amber[800], size: iconSize),
+      if (hasLan) Icon(Icons.bolt, color: Colors.amber[800], size: iconSize),
       if (hasRelay)
         Icon(Icons.cloud_outlined, color: Colors.blueGrey[600], size: iconSize),
     ];

@@ -61,7 +61,11 @@ void main() {
 
     test('regenerates when the stored seed has the wrong length', () async {
       File(keyPath).writeAsStringSync(
-        jsonEncode({'v': 1, 'alg': 'ed25519', 'seed': base64Encode([1, 2, 3])}),
+        jsonEncode({
+          'v': 1,
+          'alg': 'ed25519',
+          'seed': base64Encode([1, 2, 3]),
+        }),
       );
 
       final service = IdentityService.forTesting(filePath: keyPath);
@@ -124,10 +128,7 @@ void main() {
       final realId = await IdentityService.deviceIdFromPublicKey(key);
 
       expect(await IdentityService.matchesDeviceId(realId, key), isTrue);
-      expect(
-        await IdentityService.matchesDeviceId('0' * 32, key),
-        isFalse,
-      );
+      expect(await IdentityService.matchesDeviceId('0' * 32, key), isFalse);
     });
 
     test('cached getters stay null until initialization completes', () {
@@ -142,10 +143,7 @@ void main() {
       await service.ensureInitialized();
 
       expect(service.deviceIdOrNull, await service.getDeviceId());
-      expect(
-        service.publicKeyBase64OrNull,
-        await service.getPublicKeyBase64(),
-      );
+      expect(service.publicKeyBase64OrNull, await service.getPublicKeyBase64());
     });
   });
 
@@ -215,18 +213,20 @@ void main() {
       );
     });
 
-    test('malformed signature input returns false instead of throwing',
-        () async {
-      final service = IdentityService.forTesting(filePath: keyPath);
+    test(
+      'malformed signature input returns false instead of throwing',
+      () async {
+        final service = IdentityService.forTesting(filePath: keyPath);
 
-      expect(
-        await IdentityService.verify(
-          utf8.encode('message'),
-          signature: const [1, 2, 3],
-          publicKey: await service.getPublicKeyBytes(),
-        ),
-        isFalse,
-      );
-    });
+        expect(
+          await IdentityService.verify(
+            utf8.encode('message'),
+            signature: const [1, 2, 3],
+            publicKey: await service.getPublicKeyBytes(),
+          ),
+          isFalse,
+        );
+      },
+    );
   });
 }

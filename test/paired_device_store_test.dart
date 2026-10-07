@@ -132,10 +132,7 @@ void main() {
       await store.remove('peer-1');
 
       expect(await store.find('peer-1'), isNull);
-      expect(
-        jsonDecode(File(storePath).readAsStringSync()),
-        isEmpty,
-      );
+      expect(jsonDecode(File(storePath).readAsStringSync()), isEmpty);
     });
 
     test('clears every device', () async {

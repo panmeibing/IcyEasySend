@@ -14,6 +14,7 @@ abstract final class HomeUi {
   static const Color runningAccent = Color(0xFF3CB371);
   static const Color stoppedFill = Color(0xFFFDECEE);
   static const Color stoppedAccent = Color(0xFFE57373);
+  static const Color warningAccent = Color(0xFFD08A1F);
   static const Color chipFill = Color(0xFFF2F7FC);
   static const Color fieldFill = Color(0xFFF5F9FC);
   static const Color borderSoft = Color(0xFFE3ECF4);
@@ -22,23 +23,24 @@ abstract final class HomeUi {
   static const double radiusLg = 20;
 
   static TextStyle get sectionTitleStyle => const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: inkMuted,
-        letterSpacing: 0.3,
-      );
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    color: inkMuted,
+    letterSpacing: 0.3,
+  );
 
   static TextStyle get captionStyle => const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w400,
-        color: inkMuted,
-        height: 1.35,
-      );
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: inkMuted,
+    height: 1.35,
+  );
 
   /// Shared field chrome for orbit sheets / forms.
   static InputDecoration fieldDecoration({
     required String hintText,
     String? errorText,
+    String? warningText,
     Widget? suffix,
   }) {
     const radius = BorderRadius.all(Radius.circular(14));
@@ -46,6 +48,9 @@ abstract final class HomeUi {
       hintText: hintText,
       errorText: errorText,
       errorMaxLines: 4,
+      helperText: errorText == null ? warningText : null,
+      helperMaxLines: 4,
+      helperStyle: const TextStyle(color: warningAccent, fontSize: 12),
       filled: true,
       fillColor: fieldFill,
       suffixIcon: suffix,

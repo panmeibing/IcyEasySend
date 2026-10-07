@@ -143,7 +143,8 @@ class PeerRef {
 
   /// Same selectable route (device + preferred transport).
   bool isSameRoute(PeerRef other) {
-    return isSameDevice(other) && preferredTransport == other.preferredTransport;
+    return isSameDevice(other) &&
+        preferredTransport == other.preferredTransport;
   }
 
   /// Short human-readable form for logs and error messages.

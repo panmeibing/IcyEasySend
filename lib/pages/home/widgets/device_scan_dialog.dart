@@ -19,10 +19,7 @@ class DeviceScanSelection {
   final PeerRef selected;
   final List<PeerRef> allRoutes;
 
-  const DeviceScanSelection({
-    required this.selected,
-    required this.allRoutes,
-  });
+  const DeviceScanSelection({required this.selected, required this.allRoutes});
 }
 
 /// Dialog for picking a peer route: LAN discoveries merged with relay-online
@@ -249,10 +246,7 @@ class _DeviceScanDialogState extends State<DeviceScanDialog> {
           child: Text(l10n.cancel),
         ),
         if (!_isScanning)
-          ElevatedButton(
-            onPressed: _startScan,
-            child: Text(l10n.rescan),
-          ),
+          ElevatedButton(onPressed: _startScan, child: Text(l10n.rescan)),
       ],
     );
   }

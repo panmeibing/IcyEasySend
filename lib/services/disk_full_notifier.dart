@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
-import '../l10n/app_localizations.dart';
-import '../utils/dialog_helper.dart';
 import '../utils/log_util.dart';
+import 'user_notifier.dart';
 
 /// Tells the user the disk is full, once, no matter how many files hit it.
 ///
@@ -42,15 +41,9 @@ class DiskFullNotifier {
     }
 
     _visible = true;
-    final l10n = AppLocalizations.of(context);
 
     try {
-      await DialogHelper.showErrorDialog(
-        context,
-        title: l10n.diskFullTitle,
-        message: l10n.storageInsufficient,
-        confirmText: l10n.gotIt,
-      );
+      await UserNotifier.instance.showDiskFull(context);
     } catch (e) {
       LogUtil.wTag(LogTags.transfer, '磁盘已满提示弹出失败: $e');
     } finally {

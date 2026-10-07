@@ -6,6 +6,8 @@ import '../../services/pairing_prompter.dart';
 import '../../services/pairing_service.dart';
 import '../../utils/constants.dart';
 import '../../l10n/app_localizations.dart';
+import '../../ui/form_factor.dart';
+import '../tv/tv_pairing_view.dart';
 
 export '../../services/pairing_prompter.dart' show IncomingPairingChoice;
 
@@ -186,7 +188,6 @@ class PairingConfirmDialog extends StatefulWidget {
 }
 
 class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
-
   Timer? _countdownTimer;
   int _remainingSeconds = 0;
 
@@ -194,12 +195,10 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
   bool _busy = false;
 
   /// Prevents a second [Navigator.pop] from taking the page under the dialog.
-  ///
-  /// The initiator cancel path pops once, then [finish] tells the peer, who
-  /// may answer with a refusal that also tries to close this dialog. Without
-  /// the guard the second pop removes [MainContainer] and leaves a black
-  /// screen — the same class of bug as the receive-dialog double close.
   bool _closed = false;
+
+  /// TV back is trapped until the choice is recorded, then the route may pop.
+  bool _tvAllowPop = false;
 
   bool get _isInitiator =>
       widget.handshake != null || widget.relayPeerDecision != null;
@@ -271,7 +270,18 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
       return;
     }
     _closed = true;
-    Navigator.of(context).pop(result);
+    if (!AppFormFactor.isTv) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+    setState(() => _tvAllowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop(result);
+      }
+    });
   }
 
   Future<void> _accept() async {
@@ -335,10 +345,40 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
     final failed =
-        _peerDecision != null &&
-        _peerDecision != PairingPeerDecision.accepted;
+        _peerDecision != null && _peerDecision != PairingPeerDecision.accepted;
+    if (AppFormFactor.isTv) {
+      final l10n = AppLocalizations.of(context);
+      return PopScope(
+        canPop: _tvAllowPop,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _reject();
+        },
+        child: TvPairingBody(
+          title: l10n.pairingTitle,
+          headline: _isInitiator
+              ? l10n.outgoingRequest(widget.peerDeviceName)
+              : l10n.incomingRequest(widget.peerDeviceName),
+          sas: widget.sas.split('').join(' '),
+          hint: widget.overRelay ? l10n.compareHintRelay : l10n.compareHint,
+          countdown: widget.countdownSeconds != null && _remainingSeconds > 0
+              ? '$_remainingSeconds s'
+              : null,
+          peerStatus: _isInitiator ? _buildPeerStatus(theme) : null,
+          allowBlock: widget.allowBlock,
+          acceptEnabled: !_busy && !failed,
+          focusReject: !_isInitiator,
+          rejectLabel: l10n.codesDiffer,
+          acceptLabel: l10n.codesMatch,
+          blockLabel: l10n.blockPeer,
+          onReject: _reject,
+          onAccept: () => unawaited(_accept()),
+          onBlock: _block,
+        ),
+      );
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return AlertDialog(
       title: Row(
@@ -356,8 +396,12 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
           children: [
             Text(
               _isInitiator
-                  ? AppLocalizations.of(context).outgoingRequest(widget.peerDeviceName)
-                  : AppLocalizations.of(context).incomingRequest(widget.peerDeviceName),
+                  ? AppLocalizations.of(
+                      context,
+                    ).outgoingRequest(widget.peerDeviceName)
+                  : AppLocalizations.of(
+                      context,
+                    ).incomingRequest(widget.peerDeviceName),
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 20),
@@ -430,11 +474,7 @@ class _PairingConfirmDialogState extends State<PairingConfirmDialog> {
 
   Widget _buildPeerStatus(ThemeData theme) {
     final (icon, color, text) = switch (_peerDecision) {
-      null => (
-        null,
-        theme.hintColor,
-        AppLocalizations.of(context).waitingPeer,
-      ),
+      null => (null, theme.hintColor, AppLocalizations.of(context).waitingPeer),
       PairingPeerDecision.accepted => (
         Icons.check_circle_outline,
         Colors.green,

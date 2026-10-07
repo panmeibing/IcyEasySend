@@ -38,9 +38,4 @@ class TransferStatusProvider {
   String receiverRejectedWithStatus(int statusCode) =>
       appText.receiverRejectedWithStatus(statusCode);
   String get transferIdNotFound => appText.transferIdNotFound;
-  String get receiveComplete => appText.receiveComplete;
-
-  /// [progress] is 0.0–1.0; the ARB message expects a percentage.
-  String receivingProgress(double progress) =>
-      appText.receivingProgress(progress * 100);
 }

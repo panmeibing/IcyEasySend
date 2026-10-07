@@ -1,17 +1,19 @@
-# Icy Easy Send
-
 <div align="center">
+
+<img src="lib/images/icon_256x256.png" width="120" alt="Icy Easy Send">
+
+# Icy Easy Send
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![Flutter](https://img.shields.io/badge/Flutter-3.41.2+-02569B?logo=flutter)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Android%20TV%20%7C%20iOS%20%7C%20Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20HarmonyOS-lightgrey)
 ![License](https://img.shields.io/badge/license-BSD--3--Clause-green.svg)
 
 An efficient, cross-platform file transfer application — LAN by default, optional self-hosted relay for cross-network use
 
 [English](README.md) | [简体中文](README_CN.md)
 
-[Features](#-features) • [Branches](#-branches-main-vs-harmonyos) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
+[Screenshots](#-screenshots) • [Features](#-features) • [Branches](#-branches-main-vs-harmonyos) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Architecture](#%EF%B8%8F-architecture) • [Development](#%EF%B8%8F-development-guide)
 
 </div>
 
@@ -28,39 +30,41 @@ with no internet and no accounts. Across different networks, you can optionally 
 - 🚀 **High-Speed Transfer**: Direct LAN connection when available; speed limited only by network bandwidth
 - 🔒 **Secure & Reliable**: LAN traffic stays on your network; relay traffic is end-to-end encrypted (server sees ciphertext only)
 - 🌐 **Cross-Network (optional)**: Pair once via your own relay, then send files and sync clipboard across LANs
-- 📱 **Cross-Platform**: Android, iOS, Windows, macOS, Linux; HarmonyOS NEXT on the dedicated branch
+- 📱 **Cross-Platform**: Android phones and Android TV, plus iOS, Windows, macOS, and Linux on `main`; HarmonyOS NEXT on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
 - 🎯 **Easy to Use**: Scan for peers or enter an IP; pair by device code when using relay
 - 📦 **Batch Transfer**: Send multiple files at once with automatic queue management
 - 📋 **Clipboard Sync**: Synchronize text, files, and images across devices (LAN or relay)
 
 ---
 
-## 🌿 Branches: `main` vs HarmonyOS
+## 📸 Screenshots
 
-This repository keeps **official Flutter** platforms and **HarmonyOS NEXT** on separate tracks so toolchains do not collide.
+<p align="center">
+  <strong>File Transfer</strong><br>
+  Scan nearby devices, send files in one tap, and confirm receipt on the other side
+</p>
 
-| | **`main`** | **`feat/support_harmony_os`** (HarmonyOS branch) |
-|---|---|---|
-| **Target platforms** | Android, iOS, Windows, macOS, Linux | HarmonyOS NEXT (+ same Dart codebase; OH plugins via overrides) |
-| **Flutter SDK** | Official Flutter **3.41.2+** | Separate **Flutter-OH `oh-3.41.9-release`** (do not overwrite or `flutter upgrade` the official SDK) |
-| **`pubspec.yaml`** | Source of truth | Kept **aligned with `main`** — no HarmonyOS-only deps in this file |
-| **OH plugins** | Not used | Injected by `installers/HarmonyOS/pubspec_overrides.yaml` → copied to repo-root `pubspec_overrides.yaml` (gitignored) via `pub-get.ps1` |
-| **Native project** | `android/`, `ios/`, `windows/`, … | `ohos/` source is tracked like the others; ignore `oh_modules/`, `build/`, HAP, and local `build-profile.json5` (signing) |
-| **Build commands** | System `flutter` / usual CI | `installers/HarmonyOS/flutter-oh.cmd …` only |
-| **What belongs in git** | App + platform folders for official targets | Same Dart app + `ohos/` sources + `installers/HarmonyOS/` scripts |
+<p align="center">
+  <img src="lib/images/screenshot/file-transfer.jpg" alt="File Transfer" width="90%">
+</p>
 
-**Day-to-day rules**
+<p align="center">
+  <strong>Clipboard Sync</strong><br>
+  Sync text and media across devices with an explicit allow / deny prompt
+</p>
 
-- Develop HAP / HarmonyOS device builds on **`feat/support_harmony_os`** using [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md).
-- Develop Android / iOS / desktop on **`main`** (or another non-OH branch). Before switching back, **delete** any root `pubspec_overrides.yaml` and run official `flutter pub get`.
-- Prefer **not** committing `pubspec_overrides.yaml`, HAP / `oh_modules`, or DevEco signing files when merging toward `main`. `ohos/` **source** can merge like `android/`.
-- Branch differences: [`installers/HarmonyOS/readme.md`](installers/HarmonyOS/readme.md). Store release: [`installers/HarmonyOS/release-signing.md`](installers/HarmonyOS/release-signing.md).
+<p align="center">
+  <img src="lib/images/screenshot/clipboard-sync.jpg" alt="Clipboard Sync" width="90%">
+</p>
 
-**HarmonyOS behavior notes (same app features, different OS constraints)**
+<p align="center">
+  <strong>QR Code Share</strong><br>
+  Share via QR code or link — recipients can download in a browser without installing the app
+</p>
 
-- Received files are saved under a **public Downloads** path visible in Files (`Download/<package>/`), not only the app sandbox.
-- With ACL + Profile for `READ_PASTEBOARD`, silent clipboard read is attempted first; otherwise sharing uses a **“Paste to share”** dialog (common on phones). A matching device secret key only skips the allow/deny confirm, not content capture when the paste dialog is needed.
-- Some plugins (e.g. wakelock OH variant, system share intent) are partially wired or deferred — details in the HarmonyOS installer readme.
+<p align="center">
+  <img src="lib/images/screenshot/qr-share.jpg" alt="QR Code Share" width="90%">
+</p>
 
 ---
 
@@ -107,13 +111,53 @@ This repository keeps **official Flutter** platforms and **HarmonyOS NEXT** on s
     - Port availability testing
     - Target device reachability check
 
+- **Android TV**
+    - Phones and TVs share one Android package. A television opens a remote-control layout; a phone keeps the phone layout.
+    - On GitHub Releases, `IcyEasySend-android-tv-arm64-v8a-*.apk` is the same file as `IcyEasySend-android-arm64-v8a-*.apk`, and `IcyEasySend-android-tv-armeabi-v7a-*.apk` is the same file as `IcyEasySend-android-armeabi-v7a-*.apk`. The TV names are there so the television build is easy to find.
+    - Most Android TVs are 64-bit ARM, so download the arm64 TV package. The armeabi-v7a TV package is only for older 32-bit TVs.
+
+---
+
+## 🌿 Branches: `main` vs HarmonyOS
+
+Official Flutter targets and **HarmonyOS NEXT** stay on separate branches so the two toolchains stay independent. `main` contains Android, iOS, Windows, macOS, and Linux. The HarmonyOS project (`ohos/`) and its build scripts live on **`feat/support_harmony_os`**.
+
+| | **`main`** | **`feat/support_harmony_os`** |
+|---|---|---|
+| **Platforms** | Android phones and Android TV, iOS, Windows, macOS, Linux | HarmonyOS NEXT, same Dart app; OH plugins injected via overrides |
+| **Flutter SDK** | Official Flutter **3.41.2+** | A separate install of **Flutter-OH `oh-3.41.9-release`**. Keep it beside the official SDK, and leave `flutter upgrade` off that tree |
+| **`pubspec.yaml`** | Dependency source of truth | Kept aligned with `main`. OH plugins stay out of this file |
+| **OH plugins** | Unused | `installers/HarmonyOS/pubspec_overrides.yaml`, copied to a gitignored root `pubspec_overrides.yaml` by `pub-get.ps1` |
+| **Native project** | `android/`, `ios/`, `windows/`, `macos/`, `linux/` | Tracked `ohos/` sources. `oh_modules/`, `build/`, HAP/APP packages, and the local signing `build-profile.json5` stay out of git |
+| **Build command** | System `flutter` | `installers/HarmonyOS/flutter-oh.cmd` only |
+
+**Day-to-day**
+
+- Build and run HAP on **`feat/support_harmony_os`**. Environment and debug Run: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md).
+- Android, iOS, and desktop work stays on **`main`**. Before switching back, delete any root `pubspec_overrides.yaml`, then run official `flutter pub get`.
+- Keep these out of commits toward `main`: root `pubspec_overrides.yaml`, HAP / `oh_modules`, and DevEco signing files (`.p12`, `.cer`, `.p7b`, local `build-profile.json5`). `ohos/` **source** can merge the same way as `android/`.
+
+Docs on that branch (same paths on [Gitee](https://gitee.com/pan-meibing/icy-easy-send/tree/feat/support_harmony_os/installers/HarmonyOS)):
+
+| Doc | Contents |
+|---|---|
+| [readme.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/readme.md) | What the HarmonyOS branch changes relative to `main` |
+| [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md) | DevEco Studio, Flutter-OH, and debug Run on a device or emulator |
+| [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md) | Release signing, `.app` build, and AppGallery upload |
+
+**On HarmonyOS** the features match the other platforms, with these OS limits:
+
+- Received files are saved under a **public Downloads** path that Files can show (`Download/<package>/`).
+- With ACL and a Profile that includes `READ_PASTEBOARD`, the app tries a silent clipboard read first (more often available on PC / 2-in-1). Otherwise it falls back to a **Paste to share** dialog, which is the usual path on phones. A matching device secret key skips only the allow / deny confirm. When the paste dialog is required, it still appears.
+- A few plugins (the wakelock OH variant, system share intent) are only partly wired. Details are in the HarmonyOS installer readme.
+
 ---
 
 ## 🚀 Quick Start
 
 ### Requirements
 
-- Flutter SDK: 3.41.2 or higher (official) for Android / iOS / desktop
+- Flutter SDK: 3.41.2 or higher (official), for Android / iOS / desktop on `main`
 - Dart SDK: 3.11.0 or higher
 - Platform-specific development environment:
     - Android: Android Studio / Android SDK
@@ -121,7 +165,7 @@ This repository keeps **official Flutter** platforms and **HarmonyOS NEXT** on s
     - Windows: Visual Studio 2022
     - macOS: Xcode
     - Linux: Relevant development toolchain
-    - HarmonyOS NEXT: DevEco Studio + Flutter-OH `oh-3.41.9` (see [Branches](#-branches-main-vs-harmonyos))
+    - HarmonyOS NEXT: DevEco Studio + Flutter-OH `oh-3.41.9-release` on [`feat/support_harmony_os`](#-branches-main-vs-harmonyos)
 
 ### Installation
 
@@ -132,24 +176,27 @@ git clone <repository-url>
 cd icy_easy_send
 ```
 
-2. **Pick the branch for your target**
+2. **Check out the branch for your target**
 
 ```bash
-# Official platforms
+# Android, iOS, Windows, macOS, Linux
 git checkout main
 
-# HarmonyOS NEXT HAP
+# HarmonyOS NEXT
 git checkout feat/support_harmony_os
 ```
 
 3. **Install dependencies**
 
 ```bash
-# main / Android / iOS / desktop — official Flutter
+# main — official Flutter
 flutter pub get
+```
 
-# HarmonyOS branch — use the OH wrapper (copies overrides, then pub get)
-# .\installers\HarmonyOS\pub-get.ps1
+On `feat/support_harmony_os` (Windows), use the OH wrapper. It copies plugin overrides, then runs `pub get`:
+
+```powershell
+.\installers\HarmonyOS\pub-get.ps1
 ```
 
 4. **Run the application**
@@ -169,9 +216,12 @@ flutter run -d macos
 
 # Linux
 flutter run -d linux
+```
 
-# HarmonyOS (on feat/support_harmony_os; Windows host typically)
-# .\installers\HarmonyOS\flutter-oh.cmd run
+HarmonyOS (on `feat/support_harmony_os`, typically a Windows host):
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd run
 ```
 
 ### Build Release Version
@@ -194,12 +244,16 @@ flutter build macos --release
 
 # Linux
 flutter build linux --release
-
-# HarmonyOS HAP (feat/support_harmony_os + Flutter-OH)
-# .\installers\HarmonyOS\flutter-oh.cmd build hap --release
 ```
 
-HarmonyOS debug setup: [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md). Store release: [`installers/HarmonyOS/release-signing.md`](installers/HarmonyOS/release-signing.md).
+HarmonyOS HAP (`feat/support_harmony_os` + Flutter-OH):
+
+```powershell
+.\installers\HarmonyOS\flutter-oh.cmd build hap --release
+```
+
+Debug setup: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md). Store release: [release-signing.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/release-signing.md).
+
 ---
 
 ## 📱 Usage
@@ -221,12 +275,13 @@ HarmonyOS debug setup: [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS
     - A confirmation dialog appears when someone sends you files
     - Review the file list and click "Receive"
     - Files are automatically saved to the downloads folder
+    - On HarmonyOS, that path is the public Downloads directory Files can show (`Download/<package>/`)
 
 4. **Sync Clipboard**
     - Select a peer (IP or scanned/relay peer chip on the home page)
     - Click the "Sync Remote Clipboard" button
     - After the other party confirms, their clipboard content syncs to your device
-    - On **HarmonyOS**, the peer first tries a silent clipboard read when `READ_PASTEBOARD` is granted; otherwise a **paste-to-share** dialog appears. A matching secret key skips only the allow/deny prompt, not the paste step when that dialog is needed.
+    - On **HarmonyOS**, the peer tries a silent clipboard read when `READ_PASTEBOARD` is granted. Otherwise a **Paste to share** dialog appears. A matching secret key skips only the allow / deny prompt; the paste step still runs when that dialog is required
 
 5. **Cross-network via relay (optional)**
     - Deploy `relayd` on your own server (see [`relay/README.md`](relay/README.md))
@@ -503,13 +558,13 @@ the configuration file)
 2. Manually grant storage, photo library, and other permissions
 3. If permissions are permanently denied, manually enable them in system settings
 
-### HarmonyOS: clipboard sync “succeeds” but peer gets nothing
+### HarmonyOS: clipboard sync reports success, but the peer gets nothing
 
-1. If silent read failed, confirm **Paste to share** still appears and the user pasted then confirmed
-2. Matching secret key only auto-accepts the request; it does not replace paste-to-share when ACL/silent read is unavailable
-3. Ensure Release Profile lists `READ_PASTEBOARD` if `module.json5` declares it
+1. If the silent read failed, confirm **Paste to share** still appears and the user pasted, then confirmed
+2. A matching secret key only auto-accepts the request. Paste-to-share still runs when ACL or silent read is unavailable
+3. If `module.json5` declares `READ_PASTEBOARD`, the Release Profile must list that permission as well
 
-More HarmonyOS build / environment issues: [`installers/HarmonyOS/run-ohos.md`](installers/HarmonyOS/run-ohos.md).
+More HarmonyOS build and environment issues: [run-ohos.md](https://github.com/panmeibing/IcyEasySend/blob/feat/support_harmony_os/installers/HarmonyOS/run-ohos.md).
 
 ---
 

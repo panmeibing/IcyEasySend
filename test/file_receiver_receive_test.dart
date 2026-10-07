@@ -115,9 +115,7 @@ void main() {
 
   test('rejects a transfer that stops short of the declared size', () async {
     final result = await receiver.receiveFileDirectly(
-      fileStream: Stream.fromIterable([
-        List<int>.filled(100, 3),
-      ]),
+      fileStream: Stream.fromIterable([List<int>.filled(100, 3)]),
       fileName: 'short.bin',
       fileSize: 9999,
       senderIP: '192.168.1.9',

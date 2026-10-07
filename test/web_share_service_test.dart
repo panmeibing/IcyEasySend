@@ -109,10 +109,7 @@ void main() {
       deviceName: 'TestDevice',
     );
     final expected = before.add(AppConstants.webShareSessionDuration);
-    expect(
-      session.expiresAt.difference(expected).inSeconds.abs(),
-      lessThan(3),
-    );
+    expect(session.expiresAt.difference(expected).inSeconds.abs(), lessThan(3));
   });
 
   test('rejects path traversal style file ids via findFile miss', () async {

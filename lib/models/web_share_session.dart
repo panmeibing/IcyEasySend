@@ -17,11 +17,7 @@ class WebShareFile {
   File get file => File(absolutePath);
 
   Map<String, dynamic> toMetaJson() {
-    return {
-      'id': id,
-      'name': displayName,
-      'size': size,
-    };
+    return {'id': id, 'name': displayName, 'size': size};
   }
 }
 

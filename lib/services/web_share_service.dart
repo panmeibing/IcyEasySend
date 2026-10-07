@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:path/path.dart' as path;
 
 import '../models/transfer_file_item.dart';
 import '../models/web_share_session.dart';
 import '../utils/constants.dart';
+import '../utils/hex_util.dart';
 import '../utils/log_util.dart';
 import '../utils/network_util.dart';
 
@@ -15,7 +14,6 @@ class WebShareService {
   static final WebShareService instance = WebShareService._();
 
   final String logTag = LogTags.server;
-  final Random _random = Random.secure();
 
   WebShareSession? _session;
 
@@ -47,11 +45,11 @@ class WebShareService {
       throw ArgumentError('Share session requires at least one file');
     }
 
-    final resolvedDeviceName =
-        deviceName ?? await NetworkUtil.getDeviceName();
+    final resolvedDeviceName = deviceName ?? await NetworkUtil.getDeviceName();
     final createdAt = DateTime.now();
-    final expiresAt =
-        createdAt.add(ttl ?? AppConstants.webShareSessionDuration);
+    final expiresAt = createdAt.add(
+      ttl ?? AppConstants.webShareSessionDuration,
+    );
     final token = _generateToken();
 
     final files = <WebShareFile>[];
@@ -144,11 +142,8 @@ class WebShareService {
     return '$base/s/$token';
   }
 
-  String _generateToken() {
-    // 128-bit unguessable token encoded as hex.
-    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
-    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-  }
+  /// 128-bit unguessable token.
+  String _generateToken() => HexUtil.random(16);
 
   /// A share token is a bearer credential: whoever has it can download the
   /// shared files for as long as the session lives. Logs keep only enough of
@@ -157,9 +152,6 @@ class WebShareService {
       token.length <= 8 ? '***' : '${token.substring(0, 8)}...';
 
   String _generateFileId(int index) {
-    final suffix = List<int>.generate(4, (_) => _random.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
-    return '${index.toRadixString(16).padLeft(2, '0')}$suffix';
+    return '${index.toRadixString(16).padLeft(2, '0')}${HexUtil.random(4)}';
   }
 }

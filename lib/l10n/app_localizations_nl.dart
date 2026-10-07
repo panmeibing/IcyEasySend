@@ -1467,16 +1467,6 @@ class AppLocalizationsNl extends AppLocalizations {
       'Kan broadcast-adres 255.255.255.255 niet gebruiken';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Subnet komt niet overeen\nLokaal IP: $localIP (subnet: $localNetwork.x)\nDoel-IP: $targetIP (subnet: $targetNetwork.x)\n\nTip: Beide apparaten moeten zich in hetzelfde LAN (zelfde subnet) bevinden om bestanden over te dragen.\nVoor klasse C IPv4-adressen moeten de eerste drie cijfers van beide IP-adressen hetzelfde zijn, bijvoorbeeld beide 192.168.2, alleen het laatste cijfer verschilt\nDe eenvoudigste methode is om beide apparaten met dezelfde WiFi of router te verbinden.\n';
-  }
-
-  @override
   String get responseParseError => 'Kan serverreactie niet parseren';
 
   @override
@@ -1811,4 +1801,275 @@ class AppLocalizationsNl extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Verbinding verbroken, opnieuw proberen ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Adres tonen';
+
+  @override
+  String get tvReceiveHint =>
+      'Open Icy Easy Send op een telefoon en scan of voer dit adres in om bestanden hierheen te sturen.';
+
+  @override
+  String get tvRecentReceives => 'Recent';
+
+  @override
+  String get tvNoRecent => 'Nog niets ontvangen';
+
+  @override
+  String get tvChooseFiles => 'Bestanden op dit apparaat kiezen';
+
+  @override
+  String get tvEnterAddress => 'Adres invoeren';
+
+  @override
+  String get tvAddressLabel => 'IP-adres';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Deze tv kon geen bestandskeuze openen. Ontvangen blijft werken.';
+
+  @override
+  String get tvNoDevices => 'Geen apparaten gevonden';
+
+  @override
+  String get tvScanning => 'Lokaal netwerk doorzoeken…';
+
+  @override
+  String get tvPathUnchanged =>
+      'De map kon niet worden gewijzigd. De huidige locatie blijft.';
+
+  @override
+  String get tvPairByCode => 'Koppelen met een code';
+
+  @override
+  String get tvEnterDeviceCode => 'Code van het andere apparaat';
+
+  @override
+  String get tvDownloadsFolder => 'Downloads';
+
+  @override
+  String get deleteAllRecords => 'Alles verwijderen';
+
+  @override
+  String get peerErrorBadRequest =>
+      'Het andere apparaat begreep het verzoek niet. Werk beide apparaten bij naar dezelfde versie.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'Geen van de bestanden kan worden ontvangen (ongeldige naam, dubbel of te groot).';
+
+  @override
+  String get peerErrorBusy =>
+      'Het andere apparaat is bezet. Probeer het zo opnieuw.';
+
+  @override
+  String get peerErrorNoUi =>
+      'Het andere apparaat kan nu geen bevestiging tonen. Open de app op dat apparaat.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'Het andere apparaat heeft geen bevestiging voor deze overdracht, mogelijk is die verlopen. Verstuur opnieuw.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Je netwerkadres is gewijzigd nadat de overdracht was bevestigd. Verstuur opnieuw.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'Het bestand komt niet overeen met wat het andere apparaat heeft geaccepteerd. Verstuur opnieuw.';
+
+  @override
+  String get peerErrorDiskFull =>
+      'Het andere apparaat heeft onvoldoende opslagruimte.';
+
+  @override
+  String get peerErrorSaveFailed =>
+      'Het andere apparaat kon het bestand niet opslaan.';
+
+  @override
+  String get peerErrorInternal =>
+      'Er is een onverwachte fout opgetreden op het andere apparaat.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'De inhoud van het klembord overschrijdt de groottelimiet van het andere apparaat.';
+
+  @override
+  String get relayResponseUnreadable =>
+      'Het antwoord van de relay kon niet worden gelezen';
+
+  @override
+  String get relayServerUrlInvalid =>
+      'Het adres van de relayserver is ongeldig';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Uploaden via relay mislukt: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Uploaden via relay mislukt\nStatuscode: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Downloaden via relay mislukt: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Downloaden via relay mislukt\nStatuscode: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'Het andere apparaat heeft zich niet bij de datastroom aangesloten';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'Het bestand overschrijdt de overdrachtslimiet van de relayserver';
+
+  @override
+  String get relaySendFailed =>
+      'Het bericht kon niet via de relay worden verzonden';
+
+  @override
+  String get relayPeerNoResponse => 'Het andere apparaat reageert niet';
+
+  @override
+  String get relayNoStreamId => 'De relayserver gaf geen datastroom-ID terug';
+
+  @override
+  String get relayServerTimeout => 'De relayserver reageerde niet op tijd';
+
+  @override
+  String get relayDisconnected => 'De relayverbinding is verbroken';
+
+  @override
+  String get relayServerPeerOffline =>
+      'Het andere apparaat is niet verbonden met de relayserver';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Te veel gelijktijdige overdrachten voor de relayserver';
+
+  @override
+  String get relayServerRateLimited =>
+      'Te veel verzoeken. Probeer het later opnieuw';
+
+  @override
+  String get relayServerTokenRejected =>
+      'De relayserver heeft het toegangstoken geweigerd';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'De relayserver heeft de identiteit van dit apparaat geweigerd';
+
+  @override
+  String get relayServerUnknownError =>
+      'De relayserver gaf een onbekende fout terug';
+
+  @override
+  String get relayStreamTampered =>
+      'De gegevens zijn onderweg gewijzigd of afgekapt en zijn verwijderd';
+
+  @override
+  String get relaySessionInvalid => 'De relaysessiegegevens zijn ongeldig';
+
+  @override
+  String get relayPeerNoManifest =>
+      'Het andere apparaat heeft geen bestandslijst gestuurd';
+
+  @override
+  String get relayPeerStalled =>
+      'Het andere apparaat stuurt al lange tijd geen bestanden meer';
+
+  @override
+  String get relayPeerCancelled =>
+      'Het andere apparaat heeft de overdracht geannuleerd';
+
+  @override
+  String get relayResumeFailed =>
+      'Kan niet verdergaan waar de overdracht stopte';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Vul het adres van de relayserver en het toegangstoken in';
+
+  @override
+  String get relayAuthRejected =>
+      'De relayserver heeft het toegangstoken of de apparaatidentiteit geweigerd';
+
+  @override
+  String get relayUnreachable =>
+      'Relayserver onbereikbaar. Controleer het adres en het netwerk';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Verbinden met de relayserver mislukt: $details';
+  }
+
+  @override
+  String get relayTransferTimeout => 'Time-out bij overdracht via relay';
+
+  @override
+  String get transferCancelled => 'Bestandsoverdracht geannuleerd';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP zit mogelijk niet in hetzelfde netwerk als dit apparaat ($localIP). Als verzenden mislukt, verbind dan beide apparaten met dezelfde WiFi of router.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName geverifieerd met sleutel, $count bestanden worden automatisch ontvangen';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'Opslagtoestemming is permanent geweigerd. Schakel deze handmatig in via de instellingen.\n\nDeze toestemming is nodig om bestanden in de map Downloads op te slaan.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'Opslagtoestemming is nodig om bestanden in de map Downloads op te slaan.\n\nJe kunt deze verlenen via de instellingen.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'Aanvraag voor opslagtoestemming mislukt';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Fout bij aanvragen van toestemming: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nDetails: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get devInfoSavePath => '[Map voor ontvangen bestanden]';
+
+  @override
+  String get devInfoLogPath => '[Pad van logbestand]';
+
+  @override
+  String get devInfoHistoryPath => '[Pad van geschiedenisbestand]';
+
+  @override
+  String get logFileNotFound => 'Logbestand niet gevonden';
+
+  @override
+  String logReadFailed(String details) {
+    return 'Kan logbestand niet lezen: $details';
+  }
+
+  @override
+  String get edit => 'Bewerken';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../services/language_service.dart';
+import 'settings_section.dart';
 
 /// General settings card widget
 class GeneralSettingsCard extends StatelessWidget {
@@ -24,30 +25,7 @@ class GeneralSettingsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.language,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.general,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
+            SettingsCardHeader(icon: Icons.language, title: l10n.general),
             const SizedBox(height: 20),
             InkWell(
               onTap: onLanguageTap,

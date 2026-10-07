@@ -2611,17 +2611,6 @@ abstract class AppLocalizations {
   /// **'Cannot use broadcast address 255.255.255.255'**
   String get ipAddressSpecial2;
 
-  /// No description provided for @ipAddressNotInSameSubnet.
-  ///
-  /// In en, this message translates to:
-  /// **'⚠️ Subnet Mismatch\nLocal IP: {localIP} (Subnet: {localNetwork}.x)\nTarget IP: {targetIP} (Subnet: {targetNetwork}.x)\n\nNote: Both devices must be on the same LAN (same subnet) to transfer files.\nFor Class C IPv4 addresses, the first three numbers should be identical (e.g., 192.168.2), with only the last number differing.\nThe simplest solution is to connect both devices to the same WiFi network or router.\n'**
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  );
-
   /// No description provided for @responseParseError.
   ///
   /// In en, this message translates to:
@@ -3179,6 +3168,432 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connection interrupted, retrying ({attempt}/{maxAttempts})…'**
   String retryingAfterInterruption(int attempt, int maxAttempts);
+
+  /// No description provided for @tvShowAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Show address'**
+  String get tvShowAddress;
+
+  /// No description provided for @tvReceiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On a phone, open Icy Easy Send, then scan or enter this address to send files here.'**
+  String get tvReceiveHint;
+
+  /// No description provided for @tvRecentReceives.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get tvRecentReceives;
+
+  /// No description provided for @tvNoRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing received yet'**
+  String get tvNoRecent;
+
+  /// No description provided for @tvChooseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose files on this device'**
+  String get tvChooseFiles;
+
+  /// No description provided for @tvEnterAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter address'**
+  String get tvEnterAddress;
+
+  /// No description provided for @tvAddressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get tvAddressLabel;
+
+  /// No description provided for @tvPickerUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This TV could not open a file picker. Receiving still works.'**
+  String get tvPickerUnavailable;
+
+  /// No description provided for @tvNoDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'No devices found'**
+  String get tvNoDevices;
+
+  /// No description provided for @tvScanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning the local network…'**
+  String get tvScanning;
+
+  /// No description provided for @tvPathUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t change the folder. The current location stays.'**
+  String get tvPathUnchanged;
+
+  /// No description provided for @tvPairByCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair with a device code'**
+  String get tvPairByCode;
+
+  /// No description provided for @tvEnterDeviceCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Other device\'s code'**
+  String get tvEnterDeviceCode;
+
+  /// No description provided for @tvDownloadsFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get tvDownloadsFolder;
+
+  /// No description provided for @deleteAllRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all'**
+  String get deleteAllRecords;
+
+  /// No description provided for @peerErrorBadRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device didn\'t understand the request. Please update both devices to the same version.'**
+  String get peerErrorBadRequest;
+
+  /// No description provided for @peerErrorNoValidFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'None of the files can be received (invalid name, duplicate, or over the size limit).'**
+  String get peerErrorNoValidFiles;
+
+  /// No description provided for @peerErrorBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device is busy. Please try again shortly.'**
+  String get peerErrorBusy;
+
+  /// No description provided for @peerErrorNoUi.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device can\'t show a confirmation right now. Please open the app on it.'**
+  String get peerErrorNoUi;
+
+  /// No description provided for @peerErrorNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device has no confirmation for this transfer, it may have expired. Please send again.'**
+  String get peerErrorNotConfirmed;
+
+  /// No description provided for @peerErrorSourceMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Your network address changed after the transfer was confirmed. Please send again.'**
+  String get peerErrorSourceMismatch;
+
+  /// No description provided for @peerErrorContentMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The file doesn\'t match what the other device agreed to receive. Please send again.'**
+  String get peerErrorContentMismatch;
+
+  /// No description provided for @peerErrorDiskFull.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device is out of storage space.'**
+  String get peerErrorDiskFull;
+
+  /// No description provided for @peerErrorSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device couldn\'t save the file.'**
+  String get peerErrorSaveFailed;
+
+  /// No description provided for @peerErrorInternal.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device ran into an unexpected error.'**
+  String get peerErrorInternal;
+
+  /// No description provided for @peerErrorClipboardTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The clipboard content exceeds the other device\'s size limit.'**
+  String get peerErrorClipboardTooLarge;
+
+  /// No description provided for @relayResponseUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the reply from the relay'**
+  String get relayResponseUnreadable;
+
+  /// No description provided for @relayServerUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server address is invalid'**
+  String get relayServerUrlInvalid;
+
+  /// No description provided for @relayUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay upload failed: {details}'**
+  String relayUploadFailed(String details);
+
+  /// No description provided for @relayUploadFailedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay upload failed\nStatus code: {statusCode}'**
+  String relayUploadFailedStatus(int statusCode);
+
+  /// No description provided for @relayDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay download failed: {details}'**
+  String relayDownloadFailed(String details);
+
+  /// No description provided for @relayDownloadFailedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay download failed\nStatus code: {statusCode}'**
+  String relayDownloadFailedStatus(int statusCode);
+
+  /// No description provided for @relayPeerNotAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device didn\'t join the data stream'**
+  String get relayPeerNotAttached;
+
+  /// No description provided for @relayPayloadTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The file exceeds the relay server\'s per-transfer limit'**
+  String get relayPayloadTooLarge;
+
+  /// No description provided for @relaySendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the message through the relay'**
+  String get relaySendFailed;
+
+  /// No description provided for @relayPeerNoResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device didn\'t respond'**
+  String get relayPeerNoResponse;
+
+  /// No description provided for @relayNoStreamId.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server didn\'t return a data stream ID'**
+  String get relayNoStreamId;
+
+  /// No description provided for @relayServerTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server didn\'t respond in time'**
+  String get relayServerTimeout;
+
+  /// No description provided for @relayDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay connection was lost'**
+  String get relayDisconnected;
+
+  /// No description provided for @relayServerPeerOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device isn\'t connected to the relay server'**
+  String get relayServerPeerOffline;
+
+  /// No description provided for @relayServerTooManyStreams.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many simultaneous transfers for the relay server'**
+  String get relayServerTooManyStreams;
+
+  /// No description provided for @relayServerRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests. Please try again later'**
+  String get relayServerRateLimited;
+
+  /// No description provided for @relayServerTokenRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server rejected the access token'**
+  String get relayServerTokenRejected;
+
+  /// No description provided for @relayServerIdentityRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server rejected this device\'s identity'**
+  String get relayServerIdentityRejected;
+
+  /// No description provided for @relayServerUnknownError.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server returned an unknown error'**
+  String get relayServerUnknownError;
+
+  /// No description provided for @relayStreamTampered.
+  ///
+  /// In en, this message translates to:
+  /// **'The data was altered or cut short in transit and has been discarded'**
+  String get relayStreamTampered;
+
+  /// No description provided for @relaySessionInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay session data is invalid'**
+  String get relaySessionInvalid;
+
+  /// No description provided for @relayPeerNoManifest.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device never sent the file list'**
+  String get relayPeerNoManifest;
+
+  /// No description provided for @relayPeerStalled.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device stopped sending files'**
+  String get relayPeerStalled;
+
+  /// No description provided for @relayPeerCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The other device cancelled the transfer'**
+  String get relayPeerCancelled;
+
+  /// No description provided for @relayResumeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t resume from where the transfer stopped'**
+  String get relayResumeFailed;
+
+  /// No description provided for @relayConfigIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter both the relay server address and the access token'**
+  String get relayConfigIncomplete;
+
+  /// No description provided for @relayAuthRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The relay server rejected the access token or device identity'**
+  String get relayAuthRejected;
+
+  /// No description provided for @relayUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the relay server. Please check the address and network'**
+  String get relayUnreachable;
+
+  /// No description provided for @relayConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to connect to the relay server: {details}'**
+  String relayConnectFailed(String details);
+
+  /// No description provided for @relayTransferTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay transfer timed out'**
+  String get relayTransferTimeout;
+
+  /// No description provided for @transferCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'File transfer cancelled'**
+  String get transferCancelled;
+
+  /// No description provided for @ipAddressSubnetWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'{targetIP} may not be on the same network as this device ({localIP}). If sending fails, connect both devices to the same Wi-Fi or router.'**
+  String ipAddressSubnetWarning(String targetIP, String localIP);
+
+  /// No description provided for @filesReceivedWithSecretKey.
+  ///
+  /// In en, this message translates to:
+  /// **'{deviceName} verified with secret key, receiving {count} files automatically'**
+  String filesReceivedWithSecretKey(String deviceName, int count);
+
+  /// No description provided for @storagePermissionPermanentlyDeniedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage permission was permanently denied. Please enable it manually in Settings.\n\nThis permission is needed to save files to the Downloads folder.'**
+  String get storagePermissionPermanentlyDeniedMessage;
+
+  /// No description provided for @storagePermissionNeededMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage permission is needed to save files to the Downloads folder.\n\nYou can grant it in Settings.'**
+  String get storagePermissionNeededMessage;
+
+  /// No description provided for @storagePermissionRequestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage permission request failed'**
+  String get storagePermissionRequestFailed;
+
+  /// No description provided for @permissionRequestError.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission request error: {details}'**
+  String permissionRequestError(String details);
+
+  /// No description provided for @errorWithDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'{message}\nDetails: {details}'**
+  String errorWithDetails(String message, String details);
+
+  /// No description provided for @historyItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String historyItemsCount(int count);
+
+  /// No description provided for @devInfoSavePath.
+  ///
+  /// In en, this message translates to:
+  /// **'[Received files folder]'**
+  String get devInfoSavePath;
+
+  /// No description provided for @devInfoLogPath.
+  ///
+  /// In en, this message translates to:
+  /// **'[Log file path]'**
+  String get devInfoLogPath;
+
+  /// No description provided for @devInfoHistoryPath.
+  ///
+  /// In en, this message translates to:
+  /// **'[History file path]'**
+  String get devInfoHistoryPath;
+
+  /// No description provided for @logFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Log file not found'**
+  String get logFileNotFound;
+
+  /// No description provided for @logReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to read log file: {details}'**
+  String logReadFailed(String details);
+
+  /// No description provided for @edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get edit;
 }
 
 class _AppLocalizationsDelegate

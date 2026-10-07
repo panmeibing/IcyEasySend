@@ -21,7 +21,7 @@ class DeveloperInfoDialog {
     DialogHelper.showLoadingDialog(context, message: l10n.loadingDevInfo);
 
     try {
-      final devInfo = await developerController.getDeveloperInfo();
+      final devInfo = await developerController.getDeveloperInfo(l10n);
       final logPath = await PlatformUtil.getLoggerFilePath();
 
       if (!context.mounted) return;
@@ -99,17 +99,17 @@ class DeveloperInfoDialog {
 
     if (!context.mounted) return;
 
-    if (result['success']) {
-      await Clipboard.setData(ClipboardData(text: result['content']));
-      if (!context.mounted) return;
-      ToastHelper.showSuccess(context, l10n.logCopied(result['lineCount']));
-    } else {
-      final message = result['message'] as String;
-      if (message == l10n.logFileEmpty) {
-        ToastHelper.showWarning(context, message);
-      } else {
-        ToastHelper.showError(context, message);
-      }
+    switch (result.failure) {
+      case null:
+        await Clipboard.setData(ClipboardData(text: result.content!));
+        if (!context.mounted) return;
+        ToastHelper.showSuccess(context, l10n.logCopied(result.lineCount));
+      case LogCopyFailure.empty:
+        ToastHelper.showWarning(context, l10n.logFileEmpty);
+      case LogCopyFailure.notFound:
+        ToastHelper.showError(context, l10n.logFileNotFound);
+      case LogCopyFailure.readFailed:
+        ToastHelper.showError(context, l10n.logReadFailed(result.error ?? ''));
     }
   }
 }

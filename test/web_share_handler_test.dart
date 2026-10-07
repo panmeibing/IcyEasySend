@@ -123,9 +123,7 @@ void main() {
   });
 
   test('Content-Disposition keeps ASCII filename and UTF-8 filename*', () {
-    final header = WebShareHandler.buildContentDisposition(
-      '计算机软件著作权登记申请表.pdf',
-    );
+    final header = WebShareHandler.buildContentDisposition('计算机软件著作权登记申请表.pdf');
     expect(header, contains('filename="download.pdf"'));
     expect(header.contains('计算机'), isFalse);
     expect(

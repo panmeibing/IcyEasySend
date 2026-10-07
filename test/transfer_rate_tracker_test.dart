@@ -5,7 +5,10 @@ import 'package:icy_easy_send/utils/transfer_rate_tracker.dart';
 void main() {
   group('FormatUtil.formatDuration', () {
     test('formats as zero-padded HH:MM:SS', () {
-      expect(FormatUtil.formatDuration(const Duration(seconds: 25)), '00:00:25');
+      expect(
+        FormatUtil.formatDuration(const Duration(seconds: 25)),
+        '00:00:25',
+      );
       expect(
         FormatUtil.formatDuration(const Duration(minutes: 2, seconds: 5)),
         '00:02:05',
@@ -15,13 +18,18 @@ void main() {
         '01:15:00',
       );
       expect(
-        FormatUtil.formatDuration(const Duration(hours: 26, minutes: 3, seconds: 9)),
+        FormatUtil.formatDuration(
+          const Duration(hours: 26, minutes: 3, seconds: 9),
+        ),
         '26:03:09',
       );
     });
 
     test('clamps negative durations to zero', () {
-      expect(FormatUtil.formatDuration(const Duration(seconds: -3)), '00:00:00');
+      expect(
+        FormatUtil.formatDuration(const Duration(seconds: -3)),
+        '00:00:00',
+      );
     });
   });
 

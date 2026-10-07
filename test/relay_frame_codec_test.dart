@@ -46,7 +46,10 @@ void main() {
 
   Future<Uint8List> encryptAll(Uint8List plaintext, {int? pieceSize}) {
     return collect(
-      codec.encrypt(_asStream(plaintext, pieceSize ?? plaintext.length), fileKey),
+      codec.encrypt(
+        _asStream(plaintext, pieceSize ?? plaintext.length),
+        fileKey,
+      ),
     );
   }
 
@@ -89,17 +92,19 @@ void main() {
       }
     });
 
-    test('input arriving in odd pieces is regrouped into full chunks',
-        () async {
-      final plaintext = payload(AppConstants.relayChunkSize * 2 + 123);
+    test(
+      'input arriving in odd pieces is regrouped into full chunks',
+      () async {
+        final plaintext = payload(AppConstants.relayChunkSize * 2 + 123);
 
-      // Same bytes, different arrival pattern: the frames must be identical,
-      // or the receiver's chunk indices would not line up.
-      final whole = await encryptAll(plaintext);
-      final dribbled = await encryptAll(plaintext, pieceSize: 1000);
+        // Same bytes, different arrival pattern: the frames must be identical,
+        // or the receiver's chunk indices would not line up.
+        final whole = await encryptAll(plaintext);
+        final dribbled = await encryptAll(plaintext, pieceSize: 1000);
 
-      expect(dribbled, whole);
-    });
+        expect(dribbled, whole);
+      },
+    );
 
     test('an empty file still produces one authenticated frame', () async {
       final ciphertext = await encryptAll(payload(0));
@@ -142,29 +147,37 @@ void main() {
         ),
       );
 
-      expect(decrypted, Uint8List.sublistView(plaintext, startChunk * chunkSize));
-    });
-
-    test('a resumed frame is byte-identical to the same frame sent whole',
-        () async {
-      // Chunk numbering is part of the nonce and the additional data, so the
-      // two paths have to agree on it exactly. If they ever diverge, a resumed
-      // transfer produces a file that will not decrypt.
-      const size = chunkSize * 3;
-      final plaintext = payload(size);
-
-      final whole = await encryptAll(plaintext);
-      final tail = await collect(
-        codec.encrypt(
-          _asStream(Uint8List.sublistView(plaintext, chunkSize * 2), chunkSize),
-          fileKey,
-          startChunk: 2,
-        ),
+      expect(
+        decrypted,
+        Uint8List.sublistView(plaintext, startChunk * chunkSize),
       );
-
-      final frameLength = chunkSize + AppConstants.relayFrameOverhead;
-      expect(tail, Uint8List.sublistView(whole, frameLength * 2));
     });
+
+    test(
+      'a resumed frame is byte-identical to the same frame sent whole',
+      () async {
+        // Chunk numbering is part of the nonce and the additional data, so the
+        // two paths have to agree on it exactly. If they ever diverge, a resumed
+        // transfer produces a file that will not decrypt.
+        const size = chunkSize * 3;
+        final plaintext = payload(size);
+
+        final whole = await encryptAll(plaintext);
+        final tail = await collect(
+          codec.encrypt(
+            _asStream(
+              Uint8List.sublistView(plaintext, chunkSize * 2),
+              chunkSize,
+            ),
+            fileKey,
+            startChunk: 2,
+          ),
+        );
+
+        final frameLength = chunkSize + AppConstants.relayFrameOverhead;
+        expect(tail, Uint8List.sublistView(whole, frameLength * 2));
+      },
+    );
 
     test('the length of a resumed upload is known before it starts', () async {
       const size = chunkSize * 4 + 77;
@@ -277,9 +290,7 @@ void main() {
       );
 
       expect(
-        collect(
-          codec.decrypt(_asStream(clipped, 512), fileKey, chunkCount: 1),
-        ),
+        collect(codec.decrypt(_asStream(clipped, 512), fileKey, chunkCount: 1)),
         throwsA(isA<RelayCryptoException>()),
       );
     });

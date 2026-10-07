@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
+import 'settings_section.dart';
 
 /// Transfer settings card widget
 class TransferSettingsCard extends StatelessWidget {
@@ -95,893 +96,337 @@ class TransferSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final sections = <Widget>[
+      _buildSavePathSection(l10n),
+      _buildConcurrentTransfersSection(l10n),
+      _buildMaxHistorySection(l10n),
+      _buildMaxClipboardSizeSection(l10n),
+      if (Platform.isAndroid && onClipboardOverlayChanged != null)
+        _buildClipboardOverlaySection(l10n),
+      _buildIPValidationSection(l10n),
+      _buildSecretKeySection(l10n),
+    ];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.settings_suggest,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  l10n.transferSettings,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            SettingsCardHeader(
+              icon: Icons.settings_suggest,
+              title: l10n.transferSettings,
             ),
             const SizedBox(height: 20),
-
-            // Receive save path
-            _buildSavePathSection(),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Concurrent transfers setting
-            _buildConcurrentTransfersSection(),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Max history items setting
-            _buildMaxHistorySection(),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Max clipboard size setting
-            _buildMaxClipboardSizeSection(),
-
-            if (Platform.isAndroid && onClipboardOverlayChanged != null) ...[
-              const SizedBox(height: 24),
-              Divider(height: 1, color: Colors.grey[300]),
-              const SizedBox(height: 24),
-              _buildClipboardOverlaySection(),
+            for (var i = 0; i < sections.length; i++) ...[
+              if (i > 0) ...[
+                const SizedBox(height: 24),
+                Divider(height: 1, color: Colors.grey[300]),
+                const SizedBox(height: 24),
+              ],
+              sections[i],
             ],
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // IP validation toggle
-            _buildIPValidationSection(),
-
-            const SizedBox(height: 24),
-            Divider(height: 1, color: Colors.grey[300]),
-            const SizedBox(height: 24),
-
-            // Secret key setting
-            _buildSecretKeySection(),
           ],
         ),
       ),
     );
   }
 
-  /// Build receive save path section
-  Widget _buildSavePathSection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              l10n.savePath,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF212121),
-                fontWeight: FontWeight.w600,
-              ),
+  Widget _buildSavePathSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingTitle(title: l10n.savePath, description: l10n.savePathDesc),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2196F3).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFF2196F3).withValues(alpha: 0.35),
             ),
-            const SizedBox(height: 4),
-            Text(
-              l10n.savePathDesc,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.35),
-                ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                isCustomReceiveSavePath
+                    ? Icons.folder_special
+                    : Icons.folder_outlined,
+                size: 20,
+                color: const Color(0xFF2196F3),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    isCustomReceiveSavePath
-                        ? Icons.folder_special
-                        : Icons.folder_outlined,
-                    size: 20,
-                    color: const Color(0xFF2196F3),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isCustomReceiveSavePath)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2196F3),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                l10n.savePathDefaultBadge,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        Text(
-                          receiveSavePathDisplay.isEmpty
-                              ? l10n.savePathUnavailable
-                              : receiveSavePathDisplay,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF212121),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: onSelectSavePath,
-                  icon: const Icon(Icons.folder_open, size: 18),
-                  label: Text(l10n.selectSavePath),
-                ),
-                if (isCustomReceiveSavePath)
-                  OutlinedButton.icon(
-                    onPressed: onResetSavePathToDefault,
-                    icon: const Icon(Icons.restore, size: 18),
-                    label: Text(l10n.resetSavePathToDefault),
-                  ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Build concurrent transfers section
-  Widget _buildConcurrentTransfersSection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.concurrentTransfers,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.concurrentTransfersDesc(maxConcurrentTransfers),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '$tempConcurrentTransfers',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: const Color(0xFF2196F3),
-                inactiveTrackColor: Colors.grey[300],
-                thumbColor: const Color(0xFF2196F3),
-                overlayColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
-                trackHeight: 4,
-              ),
-              child: Slider(
-                value: tempConcurrentTransfers.toDouble(),
-                min: 1,
-                max: maxConcurrentTransfers.toDouble(),
-                divisions: 9,
-                label: '$tempConcurrentTransfers',
-                onChanged: (value) =>
-                    onConcurrentTransfersChanged(value.toInt()),
-                onChangeEnd: (value) =>
-                    onConcurrentTransfersChangeEnd(value.toInt()),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Color(0xFF1976D2),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.concurrentTransfersHintText,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Build max history section
-  Widget _buildMaxHistorySection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.maxHistory,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.maxHistoryDesc(allowMinHisCount, allowMaxHisCount),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 12),
-                      if (isEditingMaxHistory)
-                        TextField(
-                          controller: maxHistoryController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: InputDecoration(
-                            hintText: l10n.maxHistoryHintText(
-                              allowMinHisCount,
-                              allowMaxHisCount,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          autofocus: true,
-                        )
-                      else
-                        Container(
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!isCustomReceiveSavePath)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
+                            horizontal: 8,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF2196F3,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: const Color(0xFF2196F3),
-                              width: 1.5,
+                            color: const Color(0xFF2196F3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            l10n.savePathDefaultBadge,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.history,
-                                size: 20,
-                                color: Color(0xFF2196F3),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$maxHistoryItems 条',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2196F3),
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (isEditingMaxHistory) ...[
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                    onPressed: onSaveMaxHistory,
-                    tooltip: l10n.saved,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                    onPressed: onCancelMaxHistory,
-                    tooltip: l10n.cancel,
-                  ),
-                ] else ...[
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
-                    onPressed: onEditMaxHistory,
-                    tooltip: l10n.editDeviceName,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Color(0xFF1976D2),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.oldRecordsAutoDelete,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+                      ),
+                    Text(
+                      receiveSavePathDisplay.isEmpty
+                          ? l10n.savePathUnavailable
+                          : receiveSavePathDisplay,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF212121),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: onSelectSavePath,
+              icon: const Icon(Icons.folder_open, size: 18),
+              label: Text(l10n.selectSavePath),
             ),
+            if (isCustomReceiveSavePath)
+              OutlinedButton.icon(
+                onPressed: onResetSavePathToDefault,
+                icon: const Icon(Icons.restore, size: 18),
+                label: Text(l10n.resetSavePathToDefault),
+              ),
           ],
-        );
-      },
+        ),
+      ],
     );
   }
 
-  /// Build max clipboard size section
-  Widget _buildMaxClipboardSizeSection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildConcurrentTransfersSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.maxClipboard,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.maxClipboardDesc(
-                          AppConstants.minClipboardSizeMB,
-                          AppConstants.maxClipboardSizeMB,
-                        ),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 12),
-                      if (isEditingMaxClipboardSize)
-                        TextField(
-                          controller: maxClipboardSizeController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                          decoration: InputDecoration(
-                            hintText: l10n.maxClipboardHintText(
-                              AppConstants.minClipboardSizeMB,
-                              AppConstants.maxClipboardSizeMB,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          autofocus: true,
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF2196F3,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: const Color(0xFF2196F3),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.content_paste,
-                                size: 20,
-                                color: Color(0xFF2196F3),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$maxClipboardSizeMB MB',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2196F3),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
+            Expanded(
+              child: SettingTitle(
+                title: l10n.concurrentTransfers,
+                description: l10n.concurrentTransfersDesc(
+                  maxConcurrentTransfers,
                 ),
-                const SizedBox(width: 8),
-                if (isEditingMaxClipboardSize) ...[
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                    onPressed: onSaveMaxClipboardSize,
-                    tooltip: l10n.saved,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                    onPressed: onCancelMaxClipboardSize,
-                    tooltip: l10n.cancel,
-                  ),
-                ] else ...[
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
-                    onPressed: onEditMaxClipboardSize,
-                    tooltip: l10n.editDeviceName,
-                  ),
-                ],
-              ],
+              ),
             ),
-            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                color: const Color(0xFF2196F3),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Color(0xFF1976D2),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.clipboardSyncLimit,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
+              child: Text(
+                '$tempConcurrentTransfers',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 16),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: const Color(0xFF2196F3),
+            inactiveTrackColor: Colors.grey[300],
+            thumbColor: const Color(0xFF2196F3),
+            overlayColor: const Color(0xFF2196F3).withValues(alpha: 0.2),
+            trackHeight: 4,
+          ),
+          child: Slider(
+            value: tempConcurrentTransfers.toDouble(),
+            min: 1,
+            max: maxConcurrentTransfers.toDouble(),
+            divisions: 9,
+            label: '$tempConcurrentTransfers',
+            onChanged: (value) => onConcurrentTransfersChanged(value.toInt()),
+            onChangeEnd: (value) =>
+                onConcurrentTransfersChangeEnd(value.toInt()),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SettingHint(l10n.concurrentTransfersHintText),
+      ],
+    );
+  }
+
+  Widget _buildMaxHistorySection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        EditableSetting(
+          title: l10n.maxHistory,
+          description: l10n.maxHistoryDesc(allowMinHisCount, allowMaxHisCount),
+          isEditing: isEditingMaxHistory,
+          editor: _numberField(
+            maxHistoryController,
+            l10n.maxHistoryHintText(allowMinHisCount, allowMaxHisCount),
+          ),
+          display: SettingValueChip(
+            icon: Icons.history,
+            label: l10n.historyItemsCount(maxHistoryItems),
+          ),
+          onEdit: onEditMaxHistory,
+          onSave: onSaveMaxHistory,
+          onCancel: onCancelMaxHistory,
+        ),
+        const SizedBox(height: 12),
+        SettingHint(l10n.oldRecordsAutoDelete),
+      ],
+    );
+  }
+
+  Widget _buildMaxClipboardSizeSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        EditableSetting(
+          title: l10n.maxClipboard,
+          description: l10n.maxClipboardDesc(
+            AppConstants.minClipboardSizeMB,
+            AppConstants.maxClipboardSizeMB,
+          ),
+          isEditing: isEditingMaxClipboardSize,
+          editor: _numberField(
+            maxClipboardSizeController,
+            l10n.maxClipboardHintText(
+              AppConstants.minClipboardSizeMB,
+              AppConstants.maxClipboardSizeMB,
+            ),
+          ),
+          display: SettingValueChip(
+            icon: Icons.content_paste,
+            label: '$maxClipboardSizeMB MB',
+          ),
+          onEdit: onEditMaxClipboardSize,
+          onSave: onSaveMaxClipboardSize,
+          onCancel: onCancelMaxClipboardSize,
+        ),
+        const SizedBox(height: 12),
+        SettingHint(l10n.clipboardSyncLimit),
+      ],
     );
   }
 
   /// Android-only: floating bubble to refresh clipboard cache.
-  Widget _buildClipboardOverlaySection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.clipboardOverlay,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.clipboardOverlayDesc,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: clipboardOverlayEnabled,
-                  onChanged: onClipboardOverlayChanged,
-                  activeTrackColor: const Color(0xFF2196F3),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Color(0xFF1976D2),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.clipboardOverlayHint,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+  Widget _buildClipboardOverlaySection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingSwitchRow(
+          title: l10n.clipboardOverlay,
+          description: l10n.clipboardOverlayDesc,
+          value: clipboardOverlayEnabled,
+          onChanged: onClipboardOverlayChanged,
+        ),
+        const SizedBox(height: 12),
+        SettingHint(l10n.clipboardOverlayHint),
+      ],
     );
   }
 
-  /// Build IP validation section
-  Widget _buildIPValidationSection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.ipValidation,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.ipValidationDesc,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: enableIPValidation,
-                  onChanged: onIPValidationChanged,
-                  activeTrackColor: const Color(0xFF2196F3),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: enableIPValidation
-                    ? const Color(0xFF2196F3).withValues(alpha: 0.1)
-                    : const Color(0xFFFFA726).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    enableIPValidation
-                        ? Icons.info_outline
-                        : Icons.warning_amber_rounded,
-                    size: 16,
-                    color: enableIPValidation
-                        ? const Color(0xFF1976D2)
-                        : const Color(0xFFF57C00),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      enableIPValidation
-                          ? l10n.ipValidationEnabledHint
-                          : l10n.ipValidationDisabledHint,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: enableIPValidation
-                            ? Colors.grey[700]
-                            : const Color(0xFFE65100),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+  Widget _buildIPValidationSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SettingSwitchRow(
+          title: l10n.ipValidation,
+          description: l10n.ipValidationDesc,
+          value: enableIPValidation,
+          onChanged: onIPValidationChanged,
+        ),
+        const SizedBox(height: 12),
+        SettingHint(
+          enableIPValidation
+              ? l10n.ipValidationEnabledHint
+              : l10n.ipValidationDisabledHint,
+          warning: !enableIPValidation,
+        ),
+      ],
     );
   }
 
-  /// Build secret key section
-  Widget _buildSecretKeySection() {
-    return Builder(
-      builder: (context) {
-        final l10n = AppLocalizations.of(context);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.deviceSecretKey,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF212121),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        l10n.deviceSecretKeyDesc,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 12),
-                      if (isEditingSecretKey)
-                        TextField(
-                          controller: secretKeyController,
-                          decoration: InputDecoration(
-                            hintText: l10n.deviceSecretKeyHint,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          autofocus: true,
-                          obscureText: false,
-                          maxLength: 20,
-                          buildCounter:
-                              (
-                                context, {
-                                required currentLength,
-                                required isFocused,
-                                maxLength,
-                              }) {
-                                return Text(
-                                  '$currentLength/20',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                );
-                              },
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: deviceSecretKey.isEmpty
-                                ? Colors.grey.withValues(alpha: 0.1)
-                                : const Color(
-                                    0xFF2196F3,
-                                  ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: deviceSecretKey.isEmpty
-                                  ? Colors.grey
-                                  : const Color(0xFF2196F3),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                deviceSecretKey.isEmpty
-                                    ? Icons.lock_open
-                                    : Icons.lock,
-                                size: 20,
-                                color: deviceSecretKey.isEmpty
-                                    ? Colors.grey
-                                    : const Color(0xFF2196F3),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  deviceSecretKey.isEmpty
-                                      ? l10n.notSet
-                                      : '●' * deviceSecretKey.length,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: deviceSecretKey.isEmpty
-                                        ? Colors.grey
-                                        : const Color(0xFF2196F3),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (isEditingSecretKey) ...[
-                  IconButton(
-                    icon: const Icon(Icons.check, color: Color(0xFF4CAF50)),
-                    onPressed: onSaveSecretKey,
-                    tooltip: l10n.saved,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFE53935)),
-                    onPressed: onCancelSecretKey,
-                    tooltip: l10n.cancel,
-                  ),
-                ] else ...[
-                  IconButton(
-                    icon: Icon(Icons.edit, size: 20, color: Colors.grey[600]),
-                    onPressed: onEditSecretKey,
-                    tooltip: l10n.editDeviceName,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Color(0xFF1976D2),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      l10n.deviceSecretKeyDesc,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
+  Widget _buildSecretKeySection(AppLocalizations l10n) {
+    final hasKey = deviceSecretKey.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        EditableSetting(
+          title: l10n.deviceSecretKey,
+          description: l10n.deviceSecretKeyDesc,
+          isEditing: isEditingSecretKey,
+          editor: TextField(
+            controller: secretKeyController,
+            decoration: settingInputDecoration(l10n.deviceSecretKeyHint),
+            autofocus: true,
+            maxLength: _secretKeyMaxLength,
+            buildCounter:
+                (
+                  context, {
+                  required currentLength,
+                  required isFocused,
+                  maxLength,
+                }) {
+                  return Text(
+                    '$currentLength/$_secretKeyMaxLength',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  );
+                },
+          ),
+          display: SettingValueChip(
+            icon: hasKey ? Icons.lock : Icons.lock_open,
+            label: hasKey ? '●' * deviceSecretKey.length : l10n.notSet,
+            active: hasKey,
+          ),
+          onEdit: onEditSecretKey,
+          onSave: onSaveSecretKey,
+          onCancel: onCancelSecretKey,
+        ),
+        const SizedBox(height: 12),
+        SettingHint(l10n.deviceSecretKeyDesc),
+      ],
+    );
+  }
+
+  static const int _secretKeyMaxLength = 20;
+
+  Widget _numberField(TextEditingController controller, String hintText) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      decoration: settingInputDecoration(hintText),
+      autofocus: true,
     );
   }
 }

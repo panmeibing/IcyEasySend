@@ -7,15 +7,9 @@ class TransferFileItem {
   final File file;
   final String transferName;
 
-  const TransferFileItem({
-    required this.file,
-    required this.transferName,
-  });
+  const TransferFileItem({required this.file, required this.transferName});
 
   factory TransferFileItem.fromFile(File file) {
-    return TransferFileItem(
-      file: file,
-      transferName: path.basename(file.path),
-    );
+    return TransferFileItem(file: file, transferName: path.basename(file.path));
   }
 }

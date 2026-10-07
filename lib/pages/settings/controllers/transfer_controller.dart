@@ -1,13 +1,23 @@
 import '../../../services/preferences_service.dart';
 import '../../../services/transfer_history_service.dart';
+import '../../../services/validation_service.dart';
 import '../../../utils/platform_util.dart';
 
-/// Controller for transfer settings
+/// Outcome of [TransferController.setCustomReceiveSavePath].
+enum ReceivePathChange { saved, notWritable, saveFailed }
+
+/// Transfer settings shared by the phone and TV settings pages, so the two
+/// cannot drift apart in what saving a value actually does.
 class TransferController {
   final PreferencesService _preferencesService;
   final TransferHistoryService _historyService;
+  final ValidationService _validationService;
 
-  TransferController(this._preferencesService, this._historyService);
+  TransferController(
+    this._preferencesService,
+    this._historyService, {
+    ValidationService? validationService,
+  }) : _validationService = validationService ?? ValidationService();
 
   /// Load concurrent transfers setting
   Future<int> loadConcurrentTransfers() async {
@@ -24,23 +34,16 @@ class TransferController {
     return await _preferencesService.getMaxHistoryItems();
   }
 
-  /// Save max history items setting and trim history if needed
-  Future<Map<String, dynamic>> saveMaxHistoryItems(
+  /// Saves the history limit and immediately drops entries beyond it.
+  Future<({bool success, int deletedCount})> saveMaxHistoryItems(
     int newCount,
-    int currentCount,
   ) async {
     final success = await _preferencesService.saveMaxHistoryItems(newCount);
     if (!success) {
-      return {'success': false, 'deletedCount': 0};
+      return (success: false, deletedCount: 0);
     }
-
-    // If current count exceeds new limit, trim the history
-    int deletedCount = 0;
-    if (currentCount > newCount) {
-      deletedCount = await _historyService.trimHistory(newCount);
-    }
-
-    return {'success': true, 'deletedCount': deletedCount};
+    final deletedCount = await _historyService.trimHistory(newCount);
+    return (success: true, deletedCount: deletedCount);
   }
 
   /// Get current history count
@@ -69,25 +72,35 @@ class TransferController {
     return await _preferencesService.saveIPValidationEnabled(enabled);
   }
 
+  /// Custom receive save path, or null when the system downloads folder is used.
+  Future<String?> loadCustomReceiveSavePath() async {
+    final path = await _preferencesService.getCustomReceiveSavePath();
+    return path == null || path.isEmpty ? null : path;
+  }
+
   /// Whether a custom receive save path is configured
   Future<bool> hasCustomReceiveSavePath() async {
-    final path = await _preferencesService.getCustomReceiveSavePath();
-    return path != null && path.isNotEmpty;
+    return await loadCustomReceiveSavePath() != null;
   }
 
   /// Path shown in settings (custom path or system downloads folder)
   Future<String> getReceiveSavePathDisplay() async {
-    final custom = await _preferencesService.getCustomReceiveSavePath();
-    if (custom != null && custom.isNotEmpty) {
+    final custom = await loadCustomReceiveSavePath();
+    if (custom != null) {
       return custom;
     }
     final downloadsDir = await PlatformUtil.getDownloadsDirectory();
     return downloadsDir?.path ?? '';
   }
 
-  /// Save custom receive save path
-  Future<bool> saveCustomReceiveSavePath(String path) async {
-    return _preferencesService.saveCustomReceiveSavePath(path);
+  /// Makes [path] the receive directory, provided files can be written there.
+  Future<ReceivePathChange> setCustomReceiveSavePath(String path) async {
+    final writable = await _validationService.validateDirectoryWritable(path);
+    if (!writable.isSuccess) {
+      return ReceivePathChange.notWritable;
+    }
+    final saved = await _preferencesService.saveCustomReceiveSavePath(path);
+    return saved ? ReceivePathChange.saved : ReceivePathChange.saveFailed;
   }
 
   /// Clear custom receive save path (use system downloads folder)

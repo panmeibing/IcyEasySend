@@ -1456,16 +1456,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Нельзя использовать широковещательный адрес 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Несоответствие сегмента сети\nЛокальный IP: $localIP (сегмент: $localNetwork.x)\nЦелевой IP: $targetIP (сегмент: $targetNetwork.x)\n\nПодсказка: Оба устройства должны находиться в одной локальной сети (одном сегменте) для передачи файлов.\nДля адресов IPv4 класса C первые три числа двух IP-адресов должны быть одинаковыми, например, оба 192.169.2, отличается только последнее число\nСамый простой способ - подключить оба устройства к одному WiFi или маршрутизатору.\n';
-  }
-
-  @override
   String get responseParseError => 'Невозможно разобрать ответ сервера';
 
   @override
@@ -1796,4 +1786,273 @@ class AppLocalizationsRu extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Соединение прервано, повтор ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Показать адрес';
+
+  @override
+  String get tvReceiveHint =>
+      'На телефоне откройте Icy Easy Send и отсканируйте или введите этот адрес, чтобы отправить файлы сюда.';
+
+  @override
+  String get tvRecentReceives => 'Недавние';
+
+  @override
+  String get tvNoRecent => 'Пока ничего не получено';
+
+  @override
+  String get tvChooseFiles => 'Выбрать файлы на этом устройстве';
+
+  @override
+  String get tvEnterAddress => 'Ввести адрес';
+
+  @override
+  String get tvAddressLabel => 'IP-адрес';
+
+  @override
+  String get tvPickerUnavailable =>
+      'На этом телевизоре не удалось открыть выбор файлов. Приём по-прежнему работает.';
+
+  @override
+  String get tvNoDevices => 'Устройства не найдены';
+
+  @override
+  String get tvScanning => 'Поиск в локальной сети…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Не удалось сменить папку. Текущее расположение сохранено.';
+
+  @override
+  String get tvPairByCode => 'Сопряжение по коду';
+
+  @override
+  String get tvEnterDeviceCode => 'Код другого устройства';
+
+  @override
+  String get tvDownloadsFolder => 'Загрузки';
+
+  @override
+  String get deleteAllRecords => 'Удалить все';
+
+  @override
+  String get peerErrorBadRequest =>
+      'Другое устройство не распознало запрос. Обновите оба устройства до одной версии.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'Ни один из файлов нельзя принять (недопустимое имя, дубликат или превышен размер).';
+
+  @override
+  String get peerErrorBusy =>
+      'Другое устройство занято. Повторите попытку чуть позже.';
+
+  @override
+  String get peerErrorNoUi =>
+      'Другое устройство сейчас не может показать подтверждение. Откройте на нём приложение.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'У другого устройства нет подтверждения этой передачи, возможно, оно истекло. Отправьте ещё раз.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Ваш сетевой адрес изменился после подтверждения передачи. Отправьте ещё раз.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'Файл не совпадает с тем, что согласилось принять другое устройство. Отправьте ещё раз.';
+
+  @override
+  String get peerErrorDiskFull => 'На другом устройстве недостаточно места.';
+
+  @override
+  String get peerErrorSaveFailed =>
+      'Другому устройству не удалось сохранить файл.';
+
+  @override
+  String get peerErrorInternal =>
+      'На другом устройстве произошла непредвиденная ошибка.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'Содержимое буфера обмена превышает ограничение размера другого устройства.';
+
+  @override
+  String get relayResponseUnreadable =>
+      'Не удалось разобрать ответ ретранслятора';
+
+  @override
+  String get relayServerUrlInvalid => 'Неверный адрес сервера-ретранслятора';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Ошибка отправки через ретранслятор: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Ошибка отправки через ретранслятор\nКод состояния: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Ошибка загрузки через ретранслятор: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Ошибка загрузки через ретранслятор\nКод состояния: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'Другое устройство не подключилось к потоку данных';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'Файл превышает лимит одной передачи сервера-ретранслятора';
+
+  @override
+  String get relaySendFailed =>
+      'Не удалось отправить сообщение через ретранслятор';
+
+  @override
+  String get relayPeerNoResponse => 'Другое устройство не отвечает';
+
+  @override
+  String get relayNoStreamId =>
+      'Сервер-ретранслятор не вернул идентификатор потока';
+
+  @override
+  String get relayServerTimeout => 'Сервер-ретранслятор не ответил вовремя';
+
+  @override
+  String get relayDisconnected => 'Соединение с ретранслятором потеряно';
+
+  @override
+  String get relayServerPeerOffline =>
+      'Другое устройство не подключено к серверу-ретранслятору';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Слишком много одновременных передач для сервера-ретранслятора';
+
+  @override
+  String get relayServerRateLimited =>
+      'Слишком много запросов. Повторите попытку позже';
+
+  @override
+  String get relayServerTokenRejected =>
+      'Сервер-ретранслятор отклонил токен доступа';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'Сервер-ретранслятор отклонил удостоверение этого устройства';
+
+  @override
+  String get relayServerUnknownError =>
+      'Сервер-ретранслятор вернул неизвестную ошибку';
+
+  @override
+  String get relayStreamTampered =>
+      'Данные были изменены или обрезаны при передаче и отброшены';
+
+  @override
+  String get relaySessionInvalid =>
+      'Данные сеанса ретранслятора недействительны';
+
+  @override
+  String get relayPeerNoManifest =>
+      'Другое устройство не отправило список файлов';
+
+  @override
+  String get relayPeerStalled => 'Другое устройство давно не отправляет файлы';
+
+  @override
+  String get relayPeerCancelled => 'Другое устройство отменило передачу';
+
+  @override
+  String get relayResumeFailed => 'Не удаётся продолжить с места остановки';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Укажите адрес сервера-ретранслятора и токен доступа';
+
+  @override
+  String get relayAuthRejected =>
+      'Сервер-ретранслятор отклонил токен доступа или удостоверение устройства';
+
+  @override
+  String get relayUnreachable =>
+      'Не удаётся подключиться к серверу-ретранслятору. Проверьте адрес и сеть';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Не удалось подключиться к серверу-ретранслятору: $details';
+  }
+
+  @override
+  String get relayTransferTimeout =>
+      'Время передачи через ретранслятор истекло';
+
+  @override
+  String get transferCancelled => 'Передача файла отменена';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP может находиться в другой сети, чем это устройство ($localIP). Если отправка не удаётся, подключите оба устройства к одному WiFi или маршрутизатору.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName прошло проверку секретным ключом, автоматически принимается файлов: $count';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'Разрешение на хранилище отклонено навсегда. Включите его вручную в настройках.\n\nЭто разрешение нужно для сохранения файлов в папку загрузок.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'Для сохранения файлов в папку загрузок требуется разрешение на хранилище.\n\nЕго можно предоставить в настройках.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'Не удалось запросить разрешение на хранилище';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Ошибка запроса разрешения: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nПодробности: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return 'Записей: $count';
+  }
+
+  @override
+  String get devInfoSavePath => '[Папка полученных файлов]';
+
+  @override
+  String get devInfoLogPath => '[Путь к файлу журнала]';
+
+  @override
+  String get devInfoHistoryPath => '[Путь к файлу истории]';
+
+  @override
+  String get logFileNotFound => 'Файл журнала не найден';
+
+  @override
+  String logReadFailed(String details) {
+    return 'Не удалось прочитать файл журнала: $details';
+  }
+
+  @override
+  String get edit => 'Изменить';
 }

@@ -69,7 +69,8 @@ class AndroidForegroundService {
   static Future<bool> requestNotificationPermission() async {
     if (!Platform.isAndroid) return true;
 
-    final permission = await FlutterForegroundTask.checkNotificationPermission();
+    final permission =
+        await FlutterForegroundTask.checkNotificationPermission();
     if (permission == NotificationPermission.granted) {
       return true;
     }

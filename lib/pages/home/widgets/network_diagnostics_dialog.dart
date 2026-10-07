@@ -12,6 +12,41 @@ import '../../../utils/toast_helper.dart';
 class NetworkDiagnosticsDialog {
   NetworkDiagnosticsDialog._();
 
+  /// Runs diagnostics behind a loading dialog, then shows the report.
+  ///
+  /// Returns when the report is dismissed or the run has failed.
+  static Future<void> run(
+    BuildContext context, {
+    String? targetIP,
+    int? targetPort,
+  }) async {
+    final l10n = AppLocalizations.of(context);
+    DialogHelper.showLoadingDialog(context, message: l10n.runningDiagnostics);
+
+    DiagnosticsReport report;
+    try {
+      report = await NetworkDiagnostics.runDiagnostics(
+        targetIP: targetIP,
+        targetPort: targetPort,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        ToastHelper.showError(context, '${l10n.error}: $e');
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).pop();
+    await show(
+      context,
+      report: report,
+      targetIP: targetIP,
+      targetPort: targetPort,
+    );
+  }
+
   /// Show the diagnostics report dialog.
   ///
   /// Returns when the dialog is dismissed.

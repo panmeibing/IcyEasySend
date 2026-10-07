@@ -197,8 +197,8 @@ class OrbitDock extends StatelessWidget {
       final base = (name != null && name.isNotEmpty)
           ? name
           : (peer.hasLan
-              ? peer.lan!.ip
-              : (peer.deviceId ?? l10n.targetDeviceInfo));
+                ? peer.lan!.ip
+                : (peer.deviceId ?? l10n.targetDeviceInfo));
       return channel == null ? base : '$base · $channel';
     }
     return manualTargetLabel ?? l10n.targetDeviceInfo;

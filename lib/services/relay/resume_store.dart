@@ -336,7 +336,8 @@ class ResumeWriter {
     _bytesWritten += chunk.length;
     _lastChunk = chunk is Uint8List ? chunk : Uint8List.fromList(chunk);
 
-    if (_chunksWritten - _flushedChunks >= AppConstants.relayResumeFlushChunks) {
+    if (_chunksWritten - _flushedChunks >=
+        AppConstants.relayResumeFlushChunks) {
       await _persist();
     }
   }

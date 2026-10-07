@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../../l10n/current_localizations.dart';
 import '../../models/relay_config.dart';
 import '../../utils/constants.dart';
 import '../../utils/log_util.dart';
@@ -320,7 +321,7 @@ class RelayClient {
     String kind = RelayKind.transfer,
   }) async {
     if (!isConnected) {
-      return OperationResult.failure('未连接到中转服务器');
+      return OperationResult.failure(appText.relayNotConnected);
     }
 
     if (!_send(
@@ -333,7 +334,7 @@ class RelayClient {
         },
       ),
     )) {
-      return OperationResult.failure('发送中转消息失败');
+      return OperationResult.failure(appText.relaySendFailed);
     }
     return OperationResult.success();
   }
@@ -353,7 +354,7 @@ class RelayClient {
     String kind = RelayKind.transfer,
   }) async {
     if (!isConnected) {
-      return OperationResult.failure('未连接到中转服务器');
+      return OperationResult.failure(appText.relayNotConnected);
     }
 
     final mid = 'm${++_messageCounter}';
@@ -390,12 +391,12 @@ class RelayClient {
           },
         ),
       )) {
-        return OperationResult.failure('发送中转消息失败');
+        return OperationResult.failure(appText.relaySendFailed);
       }
 
       return await completer.future.timeout(
         timeout,
-        onTimeout: () => OperationResult.failure('对方设备没有响应'),
+        onTimeout: () => OperationResult.failure(appText.relayPeerNoResponse),
       );
     } finally {
       await replies.cancel();
@@ -421,9 +422,10 @@ class RelayClient {
           .timeout(timeout);
       return OperationResult.success(data: inbound.payload);
     } on TimeoutException {
-      return OperationResult.failure('对方设备没有响应');
+      return OperationResult.failure(appText.relayPeerNoResponse);
     } catch (e) {
-      return OperationResult.failure('等待对方响应失败: $e');
+      LogUtil.wTag(logTag, '等待对方响应失败: $e');
+      return OperationResult.failure(appText.relayPeerNoResponse);
     }
   }
 
@@ -443,7 +445,7 @@ class RelayClient {
 
     final streamId = response.data!.streamId;
     if (streamId == null) {
-      return OperationResult.failure('中转服务器未返回数据流标识');
+      return OperationResult.failure(appText.relayNoStreamId);
     }
     return OperationResult.success(data: streamId);
   }
@@ -456,9 +458,7 @@ class RelayClient {
   /// upload cannot be replayed against another stream.
   Future<Map<String, String>> streamHeaders(String streamId) async {
     final deviceId = await _identity.getDeviceId();
-    final proof = await _identity.sign(
-      _streamProofMessage(streamId),
-    );
+    final proof = await _identity.sign(_streamProofMessage(streamId));
 
     return {
       HttpHeaders.authorizationHeader: 'Bearer ${_config.token}',
@@ -591,11 +591,12 @@ class RelayClient {
       return;
     }
 
-    _delivery = _delivery
-        .then((_) => _deliver(from, payload))
-        .catchError((Object error, StackTrace stack) {
-          LogUtil.eTag(logTag, '处理中转消息失败: $error', error, stack);
-        });
+    _delivery = _delivery.then((_) => _deliver(from, payload)).catchError((
+      Object error,
+      StackTrace stack,
+    ) {
+      LogUtil.eTag(logTag, '处理中转消息失败: $error', error, stack);
+    });
   }
 
   Future<void> _deliver(String from, Map<String, dynamic> payload) async {
@@ -655,7 +656,7 @@ class RelayClient {
     Map<String, dynamic> fields = const {},
   }) async {
     if (!isConnected) {
-      return OperationResult.failure('未连接到中转服务器');
+      return OperationResult.failure(appText.relayNotConnected);
     }
 
     final mid = 'm${++_messageCounter}';
@@ -664,7 +665,7 @@ class RelayClient {
 
     if (!_send(RelayEnvelope.build(type, mid: mid, fields: fields))) {
       _pendingRequests.remove(mid);
-      return OperationResult.failure('发送中转消息失败');
+      return OperationResult.failure(appText.relaySendFailed);
     }
 
     try {
@@ -678,7 +679,10 @@ class RelayClient {
       }
       return OperationResult.success(data: response);
     } on TimeoutException {
-      return OperationResult.failure('中转服务器响应超时');
+      return OperationResult.failure(appText.relayServerTimeout);
+    } on StateError {
+      // Raised by _teardown for requests still waiting when the socket went.
+      return OperationResult.failure(appText.relayDisconnected);
     } finally {
       _pendingRequests.remove(mid);
     }
@@ -817,7 +821,7 @@ class RelayClient {
 
     for (final pending in _pendingRequests.values) {
       if (!pending.isCompleted) {
-        pending.completeError(StateError('中转连接已断开'));
+        pending.completeError(StateError('relay connection closed'));
       }
     }
     _pendingRequests.clear();
@@ -873,17 +877,17 @@ class RelayClient {
   static String _describeError(String? code, String? message) {
     switch (code) {
       case RelayErrorCode.peerOffline:
-        return '对方设备不在中转服务器上';
+        return appText.relayServerPeerOffline;
       case RelayErrorCode.tooManyStreams:
-        return '并发传输数超过中转服务器上限';
+        return appText.relayServerTooManyStreams;
       case RelayErrorCode.rateLimited:
-        return '请求过于频繁，请稍后再试';
+        return appText.relayServerRateLimited;
       case RelayErrorCode.unauthorized:
-        return '中转服务器拒绝了接入令牌';
+        return appText.relayServerTokenRejected;
       case RelayErrorCode.badIdentity:
-        return '中转服务器拒绝了设备身份';
+        return appText.relayServerIdentityRejected;
       default:
-        return message ?? (code ?? '中转服务器返回未知错误');
+        return message ?? code ?? appText.relayServerUnknownError;
     }
   }
 

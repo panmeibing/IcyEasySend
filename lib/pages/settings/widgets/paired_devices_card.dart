@@ -19,6 +19,7 @@ import '../../../utils/network_util.dart';
 import '../../home/widgets/channel_badge.dart';
 import '../../home/widgets/device_scan_dialog.dart';
 import '../../pairing/pairing_confirm_dialog.dart';
+import 'settings_section.dart';
 
 /// Trusted device list, plus the entry point for pairing a new one.
 ///
@@ -50,17 +51,18 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       setState(() => _devices = devices);
     });
     _onlinePeers = Set<String>.from(RelayService.instance.client.onlinePeers);
-    _presenceSubscription =
-        RelayService.instance.client.presenceChanges.listen((event) {
-      if (!mounted) return;
-      setState(() {
-        if (event.online) {
-          _onlinePeers.add(event.deviceId);
-        } else {
-          _onlinePeers.remove(event.deviceId);
-        }
-      });
-    });
+    _presenceSubscription = RelayService.instance.client.presenceChanges.listen(
+      (event) {
+        if (!mounted) return;
+        setState(() {
+          if (event.online) {
+            _onlinePeers.add(event.deviceId);
+          } else {
+            _onlinePeers.remove(event.deviceId);
+          }
+        });
+      },
+    );
     unawaited(_load());
   }
 
@@ -98,18 +100,14 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
     final selection = await showDialog<DeviceScanSelection>(
       context: context,
-      builder: (_) => DeviceScanDialog(
-        localIps: localIps,
-        includeRelayPeers: false,
-      ),
+      builder: (_) =>
+          DeviceScanDialog(localIps: localIps, includeRelayPeers: false),
     );
     final target = selection?.selected;
     if (target == null || !mounted || target.lan == null) return;
 
     setState(() => _pairing = true);
-    final prepared = await PairingService.instance.prepare(
-      target.lan!.address,
-    );
+    final prepared = await PairingService.instance.prepare(target.lan!.address);
     if (!mounted) return;
     setState(() => _pairing = false);
 
@@ -132,7 +130,11 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppLocalizations.of(context).pairingSucceeded(handshake.peerDeviceName)),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          ).pairingSucceeded(handshake.peerDeviceName),
+        ),
       ),
     );
   }
@@ -181,8 +183,12 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
       await proposal.finish(false);
       if (!mounted) return;
       final message = switch (peerDecision) {
-        PairingPeerDecision.rejected => AppLocalizations.of(context).peerRejected,
-        PairingPeerDecision.blocked => AppLocalizations.of(context).peerPairingBlocked,
+        PairingPeerDecision.rejected => AppLocalizations.of(
+          context,
+        ).peerRejected,
+        PairingPeerDecision.blocked => AppLocalizations.of(
+          context,
+        ).peerPairingBlocked,
         PairingPeerDecision.timeout => AppLocalizations.of(context).peerTimeout,
         _ => null,
       };
@@ -202,7 +208,11 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(AppLocalizations.of(context).pairingSucceeded(proposal.peerDeviceName)),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          ).pairingSucceeded(proposal.peerDeviceName),
+        ),
       ),
     );
   }
@@ -257,31 +267,9 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.verified_user_outlined,
-                    color: Color(0xFF2196F3),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    AppLocalizations.of(context).pairedDevicesTitle,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+            SettingsCardHeader(
+              icon: Icons.verified_user_outlined,
+              title: AppLocalizations.of(context).pairedDevicesTitle,
             ),
             if (_localDeviceId != null) ...[
               const SizedBox(height: 16),
@@ -325,7 +313,9 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
                 OutlinedButton.icon(
                   onPressed: _pairing ? null : _showBlocklist,
                   icon: const Icon(Icons.block, size: 18),
-                  label: Text(AppLocalizations.of(context).pairingBlocklistManage),
+                  label: Text(
+                    AppLocalizations.of(context).pairingBlocklistManage,
+                  ),
                 ),
               ],
             ),
@@ -361,8 +351,7 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
         ),
         IconButton(
           icon: Icon(Icons.copy, size: 18, color: Colors.grey[600]),
-          onPressed: () =>
-              Clipboard.setData(ClipboardData(text: deviceId)),
+          onPressed: () => Clipboard.setData(ClipboardData(text: deviceId)),
         ),
       ],
     );
@@ -370,7 +359,8 @@ class _PairedDevicesCardState extends State<PairedDevicesCard> {
 
   Widget _buildDeviceTile(PairedDevice device) {
     final online = _onlinePeers.contains(device.deviceId);
-    final hasLanHint = device.lastSeenLan != null && device.lastSeenLan!.isNotEmpty;
+    final hasLanHint =
+        device.lastSeenLan != null && device.lastSeenLan!.isNotEmpty;
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -438,8 +428,8 @@ class _DeviceCodePromptState extends State<_DeviceCodePrompt> {
     return AlertDialog(
       title: Text(AppLocalizations.of(context).pairOverRelay),
       content: SizedBox(
-        width: MediaQuery.of(context).size.width *
-            AppConstants.dialogWidthPercent,
+        width:
+            MediaQuery.of(context).size.width * AppConstants.dialogWidthPercent,
         child: TextField(
           controller: _controller,
           autofocus: true,

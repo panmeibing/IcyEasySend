@@ -6,30 +6,47 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:icy_easy_send/utils/constants.dart';
 
 import 'l10n/app_localizations.dart';
+import 'pages/app_user_notifier.dart';
+import 'pages/clipboard/clipboard_request_dialog.dart';
 import 'pages/main_container.dart';
+import 'pages/receive/batch_receive_dialog.dart';
 import 'pages/pairing/pairing_confirm_dialog.dart';
+import 'pages/tv/tv_pairing_dialog.dart';
+import 'pages/tv/tv_shell.dart';
+import 'pages/tv/tv_theme.dart';
 import 'services/android_foreground_service.dart';
+import 'services/batch_receive_prompter.dart';
 import 'services/cache_cleanup_service.dart';
 import 'services/clipboard_overlay_service.dart';
+import 'services/clipboard_request_prompter.dart';
 import 'services/http_server_manager.dart';
 import 'services/identity_service.dart';
 import 'services/language_service.dart';
 import 'services/pairing_prompter.dart';
 import 'services/sharing_intent_service.dart';
+import 'services/user_notifier.dart';
 import 'utils/dialog_helper.dart';
 import 'utils/log_util.dart';
+import 'ui/form_factor.dart';
 import 'utils/ohos_platform.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppFormFactor.resolve();
 
   // Android: port for foreground-task <-> UI communication
   AndroidForegroundService.initCommunicationPort();
 
-  // Hand the service layer a way to ask the user about inbound pairing without
-  // it having to reach into lib/pages itself. Installed before the HTTP server
-  // starts, so the first request cannot arrive to a prompter that refuses.
-  PairingPrompter.instance = const DialogPairingPrompter();
+  // Hand the service layer a way to ask and tell the user about inbound
+  // pairing, clipboard requests and incoming files without it having to reach
+  // into lib/pages itself. Installed before the HTTP server starts, so the
+  // first request cannot arrive to a prompter that refuses.
+  PairingPrompter.instance = AppFormFactor.isTv
+      ? const TvPairingPrompter()
+      : const DialogPairingPrompter();
+  ClipboardRequestPrompter.instance = const DialogClipboardRequestPrompter();
+  BatchReceivePrompter.instance = const DialogBatchReceivePrompter();
+  UserNotifier.instance = const AppUserNotifier();
 
   // Console logging already works; attach the file sink in the background so
   // cold start is not waiting on path_provider + creating a log file.
@@ -87,7 +104,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final treatAsBackground = isOhosPlatform
         ? state == AppLifecycleState.paused
         : state == AppLifecycleState.paused ||
-            state == AppLifecycleState.hidden;
+              state == AppLifecycleState.hidden;
     _serverManager.setInBackground(treatAsBackground);
 
     LogUtil.dTag(
@@ -175,7 +192,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       });
     }
 
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid && !AppFormFactor.isTv) {
       // Clipboard overlay is optional UX; keep it off the first-paint path.
       await Future<void>.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
@@ -187,7 +204,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _onAppResumed() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid || AppFormFactor.isTv) return;
     ClipboardOverlayService.instance.ensureInitialized();
     await ClipboardOverlayService.instance.restoreOverlayIfEnabled();
     await ClipboardOverlayService.instance.startClipboardChangeListening();
@@ -195,7 +212,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _onAppGoingBackground() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid || AppFormFactor.isTv) return;
     // Best-effort refresh while we may still have focus briefly.
     await ClipboardOverlayService.instance.refreshCache();
     await ClipboardOverlayService.instance.stopClipboardChangeListening();
@@ -218,7 +235,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       builder: (context, child) {
         return MaterialApp(
           title: AppConstants.projectName,
-          theme: _theme,
+          theme: AppFormFactor.isTv ? buildTvTheme(_theme) : _theme,
           locale: _languageService.locale,
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -242,11 +259,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
             return const Locale('en', 'US');
           },
-          home: MainContainer(
-            serverManager: _serverManager,
-            sharingIntentService: _sharingIntentService,
-            languageService: _languageService,
-          ),
+          home: AppFormFactor.isTv
+              ? TvShell(
+                  serverManager: _serverManager,
+                  languageService: _languageService,
+                )
+              : MainContainer(
+                  serverManager: _serverManager,
+                  sharingIntentService: _sharingIntentService,
+                  languageService: _languageService,
+                ),
         );
       },
     );

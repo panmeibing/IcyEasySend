@@ -43,7 +43,10 @@ void main() {
       // 28 means something unrelated on Windows, and 112 does off it.
       final foreign = Platform.isWindows ? 28 : 112;
 
-      expect(DiskSpaceError.isDiskFull(failure('some error', foreign)), isFalse);
+      expect(
+        DiskSpaceError.isDiskFull(failure('some error', foreign)),
+        isFalse,
+      );
     });
 
     test('does not mistake a permission failure for a full disk', () {

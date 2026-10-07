@@ -1,13 +1,34 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/platform_util.dart';
+
+enum LogCopyFailure { notFound, empty, readFailed }
+
+/// The tail of the log file, or why it could not be read.
+class LogCopyResult {
+  const LogCopyResult.success(String this.content, this.lineCount)
+    : failure = null,
+      error = null;
+
+  const LogCopyResult.failure(LogCopyFailure this.failure, {this.error})
+    : content = null,
+      lineCount = 0;
+
+  final String? content;
+  final int lineCount;
+  final LogCopyFailure? failure;
+
+  /// The exception text, for [LogCopyFailure.readFailed].
+  final String? error;
+}
 
 /// Controller for developer mode features
 class DeveloperController {
   /// Get developer information
-  Future<String> getDeveloperInfo() async {
+  Future<String> getDeveloperInfo(AppLocalizations l10n) async {
     // Get paths
     final downloadDir = await PlatformUtil.getReceiveSaveDirectory();
     final logPath = await PlatformUtil.getLoggerFilePath();
@@ -17,23 +38,23 @@ class DeveloperController {
     String separator = AppConstants.diagInfoSeparator;
     final buffer = StringBuffer();
     buffer.writeln(separator * 3);
-    buffer.writeln('开发信息');
+    buffer.writeln(l10n.devInfo);
     buffer.writeln(separator * 3);
     buffer.writeln();
 
-    buffer.writeln('【接收文件保存路径】');
+    buffer.writeln(l10n.devInfoSavePath);
     if (downloadDir != null) {
       buffer.writeln(downloadDir.path);
     } else {
-      buffer.writeln('无法获取接收保存路径');
+      buffer.writeln(l10n.savePathUnavailable);
     }
     buffer.writeln();
 
-    buffer.writeln('【日志文件路径】');
+    buffer.writeln(l10n.devInfoLogPath);
     buffer.writeln(logPath);
     buffer.writeln();
 
-    buffer.writeln('【历史文件路径】');
+    buffer.writeln(l10n.devInfoHistoryPath);
     buffer.writeln(historyPath);
     buffer.writeln();
 
@@ -44,19 +65,19 @@ class DeveloperController {
 
   /// Copy log content (last 50 lines)
   /// Efficiently reads from the end of the file without loading the entire file
-  Future<Map<String, dynamic>> copyLogContent(String logPath) async {
+  Future<LogCopyResult> copyLogContent(String logPath) async {
     try {
       final logFile = File(logPath);
 
       if (!await logFile.exists()) {
-        return {'success': false, 'message': '日志文件不存在'};
+        return const LogCopyResult.failure(LogCopyFailure.notFound);
       }
 
       // Get file size
       final fileSize = await logFile.length();
 
       if (fileSize == 0) {
-        return {'success': false, 'message': '日志文件为空'};
+        return const LogCopyResult.failure(LogCopyFailure.empty);
       }
 
       // Read from the end of file
@@ -84,7 +105,7 @@ class DeveloperController {
       }
 
       if (lines.isEmpty) {
-        return {'success': false, 'message': '日志文件为空'};
+        return const LogCopyResult.failure(LogCopyFailure.empty);
       }
 
       // Get last 50 lines (or all lines if less than 50)
@@ -94,13 +115,9 @@ class DeveloperController {
 
       final logContent = linesToCopy.join('\n');
 
-      return {
-        'success': true,
-        'content': logContent,
-        'lineCount': linesToCopy.length,
-      };
+      return LogCopyResult.success(logContent, linesToCopy.length);
     } catch (e) {
-      return {'success': false, 'message': '读取日志文件失败: $e'};
+      return LogCopyResult.failure(LogCopyFailure.readFailed, error: '$e');
     }
   }
 }

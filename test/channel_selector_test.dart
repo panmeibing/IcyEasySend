@@ -31,10 +31,7 @@ class _ProbeChannel implements TransportChannel {
       await Future<void>.delayed(delay);
     }
     return result ??
-        ProbeResult.reachable(
-          kind: kind,
-          rtt: const Duration(milliseconds: 1),
-        );
+        ProbeResult.reachable(kind: kind, rtt: const Duration(milliseconds: 1));
   }
 
   @override
@@ -46,8 +43,7 @@ class _ProbeChannel implements TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
-  }) async =>
-      {};
+  }) async => {};
 }
 
 void main() {

@@ -1498,16 +1498,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Broadcast-Adresse 255.255.255.255 kann nicht verwendet werden';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Subnetz-Nichtübereinstimmung\nLokale IP: $localIP (Subnetz: $localNetwork.x)\nZiel-IP: $targetIP (Subnetz: $targetNetwork.x)\n\nHinweis: Beide Geräte müssen sich im selben LAN (gleiches Subnetz) befinden, um Dateien zu übertragen.\nBei IPv4-Adressen der Klasse C sollten die ersten drei Zahlen gleich sein, z.B. beide 192.168.2, nur die letzte Zahl unterscheidet sich\nDer einfachste Weg ist, beide Geräte mit demselben WLAN oder Router zu verbinden.\n';
-  }
-
-  @override
   String get responseParseError => 'Serverantwort kann nicht geparst werden';
 
   @override
@@ -1844,4 +1834,277 @@ class AppLocalizationsDe extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Verbindung unterbrochen, neuer Versuch ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Adresse anzeigen';
+
+  @override
+  String get tvReceiveHint =>
+      'Öffne Icy Easy Send auf einem Telefon und scanne oder gib diese Adresse ein, um Dateien hierher zu senden.';
+
+  @override
+  String get tvRecentReceives => 'Zuletzt empfangen';
+
+  @override
+  String get tvNoRecent => 'Noch nichts empfangen';
+
+  @override
+  String get tvChooseFiles => 'Dateien auf diesem Gerät wählen';
+
+  @override
+  String get tvEnterAddress => 'Adresse eingeben';
+
+  @override
+  String get tvAddressLabel => 'IP-Adresse';
+
+  @override
+  String get tvPickerUnavailable =>
+      'Auf diesem Fernseher ließ sich kein Dateiauswahlfenster öffnen. Empfangen funktioniert weiter.';
+
+  @override
+  String get tvNoDevices => 'Keine Geräte gefunden';
+
+  @override
+  String get tvScanning => 'Lokales Netzwerk wird durchsucht…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Ordner konnte nicht geändert werden. Der aktuelle Speicherort bleibt.';
+
+  @override
+  String get tvPairByCode => 'Mit Gerätecode koppeln';
+
+  @override
+  String get tvEnterDeviceCode => 'Code des anderen Geräts';
+
+  @override
+  String get tvDownloadsFolder => 'Downloads';
+
+  @override
+  String get deleteAllRecords => 'Alle löschen';
+
+  @override
+  String get peerErrorBadRequest =>
+      'Das andere Gerät hat die Anfrage nicht verstanden. Bitte beide Geräte auf dieselbe Version aktualisieren.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'Keine der Dateien kann empfangen werden (ungültiger Name, doppelt oder zu groß).';
+
+  @override
+  String get peerErrorBusy =>
+      'Das andere Gerät ist beschäftigt. Bitte gleich noch einmal versuchen.';
+
+  @override
+  String get peerErrorNoUi =>
+      'Das andere Gerät kann gerade keine Bestätigung anzeigen. Bitte dort die App öffnen.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'Das andere Gerät hat keine Bestätigung für diese Übertragung, sie ist eventuell abgelaufen. Bitte erneut senden.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Deine Netzwerkadresse hat sich nach der Bestätigung geändert. Bitte erneut senden.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'Die Datei stimmt nicht mit dem überein, was das andere Gerät angenommen hat. Bitte erneut senden.';
+
+  @override
+  String get peerErrorDiskFull =>
+      'Auf dem anderen Gerät ist nicht genug Speicherplatz.';
+
+  @override
+  String get peerErrorSaveFailed =>
+      'Das andere Gerät konnte die Datei nicht speichern.';
+
+  @override
+  String get peerErrorInternal =>
+      'Auf dem anderen Gerät ist ein unerwarteter Fehler aufgetreten.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'Der Inhalt der Zwischenablage überschreitet das Größenlimit des anderen Geräts.';
+
+  @override
+  String get relayResponseUnreadable =>
+      'Die Antwort des Relays konnte nicht gelesen werden';
+
+  @override
+  String get relayServerUrlInvalid => 'Die Relay-Serveradresse ist ungültig';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Relay-Upload fehlgeschlagen: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Relay-Upload fehlgeschlagen\nStatuscode: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Relay-Download fehlgeschlagen: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Relay-Download fehlgeschlagen\nStatuscode: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'Das andere Gerät hat sich nicht mit dem Datenstrom verbunden';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'Die Datei überschreitet das Übertragungslimit des Relay-Servers';
+
+  @override
+  String get relaySendFailed =>
+      'Die Nachricht konnte nicht über das Relay gesendet werden';
+
+  @override
+  String get relayPeerNoResponse => 'Das andere Gerät antwortet nicht';
+
+  @override
+  String get relayNoStreamId =>
+      'Der Relay-Server hat keine Datenstrom-ID geliefert';
+
+  @override
+  String get relayServerTimeout =>
+      'Der Relay-Server hat nicht rechtzeitig geantwortet';
+
+  @override
+  String get relayDisconnected => 'Die Relay-Verbindung wurde getrennt';
+
+  @override
+  String get relayServerPeerOffline =>
+      'Das andere Gerät ist nicht mit dem Relay-Server verbunden';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Zu viele gleichzeitige Übertragungen für den Relay-Server';
+
+  @override
+  String get relayServerRateLimited =>
+      'Zu viele Anfragen. Bitte später erneut versuchen';
+
+  @override
+  String get relayServerTokenRejected =>
+      'Der Relay-Server hat das Zugangstoken abgelehnt';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'Der Relay-Server hat die Identität dieses Geräts abgelehnt';
+
+  @override
+  String get relayServerUnknownError =>
+      'Der Relay-Server hat einen unbekannten Fehler gemeldet';
+
+  @override
+  String get relayStreamTampered =>
+      'Die Daten wurden unterwegs verändert oder abgeschnitten und verworfen';
+
+  @override
+  String get relaySessionInvalid => 'Die Relay-Sitzungsdaten sind ungültig';
+
+  @override
+  String get relayPeerNoManifest =>
+      'Das andere Gerät hat keine Dateiliste gesendet';
+
+  @override
+  String get relayPeerStalled =>
+      'Das andere Gerät sendet seit längerem keine Dateien mehr';
+
+  @override
+  String get relayPeerCancelled =>
+      'Das andere Gerät hat die Übertragung abgebrochen';
+
+  @override
+  String get relayResumeFailed =>
+      'Die Übertragung kann nicht an der Abbruchstelle fortgesetzt werden';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Bitte Relay-Serveradresse und Zugangstoken eingeben';
+
+  @override
+  String get relayAuthRejected =>
+      'Der Relay-Server hat das Zugangstoken oder die Geräteidentität abgelehnt';
+
+  @override
+  String get relayUnreachable =>
+      'Relay-Server nicht erreichbar. Bitte Adresse und Netzwerk prüfen';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Verbindung zum Relay-Server fehlgeschlagen: $details';
+  }
+
+  @override
+  String get relayTransferTimeout =>
+      'Zeitüberschreitung bei der Relay-Übertragung';
+
+  @override
+  String get transferCancelled => 'Dateiübertragung abgebrochen';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP befindet sich möglicherweise nicht im selben Netzwerk wie dieses Gerät ($localIP). Falls das Senden fehlschlägt, verbinden Sie beide Geräte mit demselben WLAN oder Router.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName mit Geheimschlüssel verifiziert, $count Dateien werden automatisch empfangen';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'Die Speicherberechtigung wurde dauerhaft verweigert. Bitte aktivieren Sie sie manuell in den Einstellungen.\n\nDiese Berechtigung wird benötigt, um Dateien im Download-Ordner zu speichern.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'Die Speicherberechtigung wird benötigt, um Dateien im Download-Ordner zu speichern.\n\nSie können sie in den Einstellungen erteilen.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'Anfrage der Speicherberechtigung fehlgeschlagen';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Fehler bei der Berechtigungsanfrage: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nDetails: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count Einträge';
+  }
+
+  @override
+  String get devInfoSavePath => '[Ordner für empfangene Dateien]';
+
+  @override
+  String get devInfoLogPath => '[Pfad der Protokolldatei]';
+
+  @override
+  String get devInfoHistoryPath => '[Pfad der Verlaufsdatei]';
+
+  @override
+  String get logFileNotFound => 'Protokolldatei nicht gefunden';
+
+  @override
+  String logReadFailed(String details) {
+    return 'Protokolldatei konnte nicht gelesen werden: $details';
+  }
+
+  @override
+  String get edit => 'Bearbeiten';
 }

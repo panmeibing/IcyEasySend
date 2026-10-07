@@ -109,10 +109,7 @@ class PlatformUtil {
           LogUtil.iTag(logTag, '使用自定义接收目录: $customPath');
           return customDir;
         }
-        LogUtil.wTag(
-          logTag,
-          '自定义接收目录不存在，回退到系统下载目录: $customPath',
-        );
+        LogUtil.wTag(logTag, '自定义接收目录不存在，回退到系统下载目录: $customPath');
       }
 
       return await getDownloadsDirectory();

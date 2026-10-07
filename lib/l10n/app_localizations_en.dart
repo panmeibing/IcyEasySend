@@ -1477,16 +1477,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Cannot use broadcast address 255.255.255.255';
 
   @override
-  String ipAddressNotInSameSubnet(
-    String localIP,
-    String targetIP,
-    String localNetwork,
-    String targetNetwork,
-  ) {
-    return '⚠️ Subnet Mismatch\nLocal IP: $localIP (Subnet: $localNetwork.x)\nTarget IP: $targetIP (Subnet: $targetNetwork.x)\n\nNote: Both devices must be on the same LAN (same subnet) to transfer files.\nFor Class C IPv4 addresses, the first three numbers should be identical (e.g., 192.168.2), with only the last number differing.\nThe simplest solution is to connect both devices to the same WiFi network or router.\n';
-  }
-
-  @override
   String get responseParseError => 'Unable to parse server response';
 
   @override
@@ -1816,4 +1806,269 @@ class AppLocalizationsEn extends AppLocalizations {
   String retryingAfterInterruption(int attempt, int maxAttempts) {
     return 'Connection interrupted, retrying ($attempt/$maxAttempts)…';
   }
+
+  @override
+  String get tvShowAddress => 'Show address';
+
+  @override
+  String get tvReceiveHint =>
+      'On a phone, open Icy Easy Send, then scan or enter this address to send files here.';
+
+  @override
+  String get tvRecentReceives => 'Recent';
+
+  @override
+  String get tvNoRecent => 'Nothing received yet';
+
+  @override
+  String get tvChooseFiles => 'Choose files on this device';
+
+  @override
+  String get tvEnterAddress => 'Enter address';
+
+  @override
+  String get tvAddressLabel => 'IP address';
+
+  @override
+  String get tvPickerUnavailable =>
+      'This TV could not open a file picker. Receiving still works.';
+
+  @override
+  String get tvNoDevices => 'No devices found';
+
+  @override
+  String get tvScanning => 'Scanning the local network…';
+
+  @override
+  String get tvPathUnchanged =>
+      'Couldn\'t change the folder. The current location stays.';
+
+  @override
+  String get tvPairByCode => 'Pair with a device code';
+
+  @override
+  String get tvEnterDeviceCode => 'Other device\'s code';
+
+  @override
+  String get tvDownloadsFolder => 'Downloads';
+
+  @override
+  String get deleteAllRecords => 'Delete all';
+
+  @override
+  String get peerErrorBadRequest =>
+      'The other device didn\'t understand the request. Please update both devices to the same version.';
+
+  @override
+  String get peerErrorNoValidFiles =>
+      'None of the files can be received (invalid name, duplicate, or over the size limit).';
+
+  @override
+  String get peerErrorBusy =>
+      'The other device is busy. Please try again shortly.';
+
+  @override
+  String get peerErrorNoUi =>
+      'The other device can\'t show a confirmation right now. Please open the app on it.';
+
+  @override
+  String get peerErrorNotConfirmed =>
+      'The other device has no confirmation for this transfer, it may have expired. Please send again.';
+
+  @override
+  String get peerErrorSourceMismatch =>
+      'Your network address changed after the transfer was confirmed. Please send again.';
+
+  @override
+  String get peerErrorContentMismatch =>
+      'The file doesn\'t match what the other device agreed to receive. Please send again.';
+
+  @override
+  String get peerErrorDiskFull => 'The other device is out of storage space.';
+
+  @override
+  String get peerErrorSaveFailed => 'The other device couldn\'t save the file.';
+
+  @override
+  String get peerErrorInternal =>
+      'The other device ran into an unexpected error.';
+
+  @override
+  String get peerErrorClipboardTooLarge =>
+      'The clipboard content exceeds the other device\'s size limit.';
+
+  @override
+  String get relayResponseUnreadable =>
+      'Couldn\'t read the reply from the relay';
+
+  @override
+  String get relayServerUrlInvalid => 'The relay server address is invalid';
+
+  @override
+  String relayUploadFailed(String details) {
+    return 'Relay upload failed: $details';
+  }
+
+  @override
+  String relayUploadFailedStatus(int statusCode) {
+    return 'Relay upload failed\nStatus code: $statusCode';
+  }
+
+  @override
+  String relayDownloadFailed(String details) {
+    return 'Relay download failed: $details';
+  }
+
+  @override
+  String relayDownloadFailedStatus(int statusCode) {
+    return 'Relay download failed\nStatus code: $statusCode';
+  }
+
+  @override
+  String get relayPeerNotAttached =>
+      'The other device didn\'t join the data stream';
+
+  @override
+  String get relayPayloadTooLarge =>
+      'The file exceeds the relay server\'s per-transfer limit';
+
+  @override
+  String get relaySendFailed => 'Couldn\'t send the message through the relay';
+
+  @override
+  String get relayPeerNoResponse => 'The other device didn\'t respond';
+
+  @override
+  String get relayNoStreamId =>
+      'The relay server didn\'t return a data stream ID';
+
+  @override
+  String get relayServerTimeout => 'The relay server didn\'t respond in time';
+
+  @override
+  String get relayDisconnected => 'The relay connection was lost';
+
+  @override
+  String get relayServerPeerOffline =>
+      'The other device isn\'t connected to the relay server';
+
+  @override
+  String get relayServerTooManyStreams =>
+      'Too many simultaneous transfers for the relay server';
+
+  @override
+  String get relayServerRateLimited =>
+      'Too many requests. Please try again later';
+
+  @override
+  String get relayServerTokenRejected =>
+      'The relay server rejected the access token';
+
+  @override
+  String get relayServerIdentityRejected =>
+      'The relay server rejected this device\'s identity';
+
+  @override
+  String get relayServerUnknownError =>
+      'The relay server returned an unknown error';
+
+  @override
+  String get relayStreamTampered =>
+      'The data was altered or cut short in transit and has been discarded';
+
+  @override
+  String get relaySessionInvalid => 'The relay session data is invalid';
+
+  @override
+  String get relayPeerNoManifest => 'The other device never sent the file list';
+
+  @override
+  String get relayPeerStalled => 'The other device stopped sending files';
+
+  @override
+  String get relayPeerCancelled => 'The other device cancelled the transfer';
+
+  @override
+  String get relayResumeFailed =>
+      'Couldn\'t resume from where the transfer stopped';
+
+  @override
+  String get relayConfigIncomplete =>
+      'Please enter both the relay server address and the access token';
+
+  @override
+  String get relayAuthRejected =>
+      'The relay server rejected the access token or device identity';
+
+  @override
+  String get relayUnreachable =>
+      'Can\'t reach the relay server. Please check the address and network';
+
+  @override
+  String relayConnectFailed(String details) {
+    return 'Failed to connect to the relay server: $details';
+  }
+
+  @override
+  String get relayTransferTimeout => 'Relay transfer timed out';
+
+  @override
+  String get transferCancelled => 'File transfer cancelled';
+
+  @override
+  String ipAddressSubnetWarning(String targetIP, String localIP) {
+    return '$targetIP may not be on the same network as this device ($localIP). If sending fails, connect both devices to the same Wi-Fi or router.';
+  }
+
+  @override
+  String filesReceivedWithSecretKey(String deviceName, int count) {
+    return '$deviceName verified with secret key, receiving $count files automatically';
+  }
+
+  @override
+  String get storagePermissionPermanentlyDeniedMessage =>
+      'Storage permission was permanently denied. Please enable it manually in Settings.\n\nThis permission is needed to save files to the Downloads folder.';
+
+  @override
+  String get storagePermissionNeededMessage =>
+      'Storage permission is needed to save files to the Downloads folder.\n\nYou can grant it in Settings.';
+
+  @override
+  String get storagePermissionRequestFailed =>
+      'Storage permission request failed';
+
+  @override
+  String permissionRequestError(String details) {
+    return 'Permission request error: $details';
+  }
+
+  @override
+  String errorWithDetails(String message, String details) {
+    return '$message\nDetails: $details';
+  }
+
+  @override
+  String historyItemsCount(int count) {
+    return '$count items';
+  }
+
+  @override
+  String get devInfoSavePath => '[Received files folder]';
+
+  @override
+  String get devInfoLogPath => '[Log file path]';
+
+  @override
+  String get devInfoHistoryPath => '[History file path]';
+
+  @override
+  String get logFileNotFound => 'Log file not found';
+
+  @override
+  String logReadFailed(String details) {
+    return 'Failed to read log file: $details';
+  }
+
+  @override
+  String get edit => 'Edit';
 }
