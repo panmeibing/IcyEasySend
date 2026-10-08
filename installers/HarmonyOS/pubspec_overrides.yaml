@@ -1,0 +1,41 @@
+# Copied to the repo root by installers/HarmonyOS/pub-get.ps1.
+# F:/ohos-deps-341 is rewritten to this machine's OHOS_DEPS_ROOT.
+dependency_overrides:
+  connectivity_plus:
+    path: F:/ohos-deps-341/flutter_plus_plugins_connectivity/packages/connectivity_plus/connectivity_plus
+  connectivity_plus_platform_interface:
+    path: F:/ohos-deps-341/flutter_plus_plugins_connectivity/packages/connectivity_plus/connectivity_plus_platform_interface
+  desktop_drop:
+    path: F:/ohos-deps-341/fluttertpc_desktop_drop/packages/desktop_drop
+  device_info_plus:
+    path: F:/ohos-deps-341/flutter_plus_plugins_device_info/packages/device_info_plus/device_info_plus
+  device_info_plus_platform_interface:
+    path: F:/ohos-deps-341/flutter_plus_plugins_device_info/packages/device_info_plus/device_info_plus_platform_interface
+  file_picker:
+    path: F:/ohos-deps-341/fluttertpc_file_picker
+  open_filex:
+    path: F:/ohos-deps-341/fluttertpc_open_filex
+  path_provider:
+    path: F:/ohos-deps-341/flutter_packages_path_provider/packages/path_provider/path_provider
+  path_provider_ohos:
+    path: F:/ohos-deps-341/flutter_packages_path_provider/packages/path_provider/path_provider_ohos
+  path_provider_platform_interface:
+    path: F:/ohos-deps-341/flutter_packages_path_provider/packages/path_provider/path_provider_platform_interface
+  permission_handler:
+    path: F:/ohos-deps-341/flutter_permission_handler/permission_handler
+  permission_handler_ohos:
+    path: F:/ohos-deps-341/flutter_permission_handler/permission_handler_ohos
+  permission_handler_platform_interface:
+    path: F:/ohos-deps-341/flutter_permission_handler/permission_handler_platform_interface
+  shared_preferences:
+    path: F:/ohos-deps-341/flutter_packages_shared_preferences/packages/shared_preferences/shared_preferences
+  shared_preferences_ohos:
+    path: F:/ohos-deps-341/flutter_packages_shared_preferences/packages/shared_preferences/shared_preferences_ohos
+  shared_preferences_platform_interface:
+    path: F:/ohos-deps-341/flutter_packages_shared_preferences/packages/shared_preferences/shared_preferences_platform_interface
+  url_launcher:
+    path: F:/ohos-deps-341/flutter_packages_url_launcher/packages/url_launcher/url_launcher
+  url_launcher_ohos:
+    path: F:/ohos-deps-341/flutter_packages_url_launcher/packages/url_launcher/url_launcher_ohos
+  url_launcher_platform_interface:
+    path: F:/ohos-deps-341/flutter_packages_url_launcher/packages/url_launcher/url_launcher_platform_interface

@@ -55,16 +55,14 @@ git config --global core.longpaths true
 2. USB 连真机并开调试，或启动模拟器
 3. **File → Sync and Refresh Project**
 4. **File → Project Structure → Project → Signing Configs**
-5. 登录华为账号 → 勾选 **Automatically generate signature** → **Apply**
-6. 仓库根执行：
+5. 登录华为账号 → 勾选 **Automatically generate signature** → **Apply**（保留名为 `default` 的自动签名）
+6. 切到调试签名后，再 **Sync** → **Run**：
 
 ```powershell
-.\installers\HarmonyOS\ensure-signing-config.ps1
+.\installers\HarmonyOS\switch-signing-config.ps1 -Name default
 ```
 
-7. 再 **Sync** → 点 **Run**
-
-Deploy 日志里应是 `entry-default-signed.hap`。
+Deploy 日志里应是 `entry-default-signed.hap`。打商店包用 `-Name release`，见 [`release-signing.md`](./release-signing.md)。不要用 `ensure-signing-config.ps1` 切换，它发现已经绑定就退出，不会改当前签名。
 
 命令行等价：
 
@@ -77,11 +75,11 @@ Deploy 日志里应是 `entry-default-signed.hap`。
 
 | 报错 | 处理 |
 |------|------|
-| `9568320` / 装的是 `*-unsigned.hap` | 再跑 `ensure-signing-config.ps1`，Sync 后 Run |
+| `9568320` / `no signature file` / 装的是 `*-unsigned.hap` | `switch-signing-config.ps1 -Name default`，Sync 后再 Run |
 | `9568263` version downgrade | `apply-ohos-native.ps1` 后卸载再装：`hdc uninstall com.icyhope.icy_easy_send` |
 | Sync 找不到插件 `build-profile.json5` | `repair-ohos-deps.ps1` 再 `pub-get.ps1` |
 | `file_picker` / `file_picker_ohos`（`00303053`） | 再跑 `pub-get.ps1` |
 | 缺 `ohos/local.properties` | 再跑 `apply-ohos-native.ps1` |
-| `00303242` | 删掉 Signing Configs 里该项，重新勾选自动签名并 Apply，再跑 `ensure-signing-config.ps1` |
+| `00303242` | 删掉 Signing Configs 里该项，重新勾选自动签名并 Apply，再 `switch-signing-config.ps1 -Name default` |
 
 发布包与上架见 [`release-signing.md`](./release-signing.md)。

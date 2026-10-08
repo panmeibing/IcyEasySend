@@ -87,13 +87,11 @@ ohos\build\outputs\default\ohos-default-signed.app
 
 只用 **signed**。不要上传 `ohos-default-unsigned.app` 或 HAP。
 
-打完切回调试：
+打完切回调试再 Sync、Run：
 
 ```powershell
 .\installers\HarmonyOS\switch-signing-config.ps1 -Name default
 ```
-
-再 Sync。之后日常 Run 仍走自动签名。
 
 ## 5. 上传
 
@@ -109,6 +107,7 @@ ohos\build\outputs\default\ohos-default-signed.app
 | `11014001` Key alias not found | Alias 改为 `IcyEasySendRelease`，重新填密码 Apply |
 | `00303107` Invalid storeFile | 核对 `F:\harmony-signing\release\*.p12` 存在 |
 | `00303242` | 删掉 `release` 配置，按第 2 节重建并重填密码 |
-| `9568448` / `9568322`（`hdc install` Release 包） | 正常。不要本地装发布包；用 AGC 邀请测试，或切回 `default` 再 Run |
+| `9568448` / `9568322`（`hdc install` Release 包） | 正常。不要本地装发布包；用 AGC 邀请测试，或 `switch-signing-config.ps1 -Name default` 后再 Run |
+| 打完 Release 再 Debug，报 `9568320` | `switch-signing-config.ps1 -Name default`，Sync 后再 Run |
 | 云测 ACL 不一致 / `9568289` | 按第 1 步重下勾了两条权限的 `.p7b`，在 `release` 里换 Profile，再 Build APP |
 | `9568263` | 提高 `versionCode`，或先卸载旧包 |

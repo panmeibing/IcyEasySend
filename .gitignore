@@ -87,8 +87,9 @@ kernel_blob.bin
 isolate_snapshot_data
 vm_snapshot_data
 
-# HarmonyOS local overrides (copied from installers/HarmonyOS by pub-get.ps1)
-pubspec_overrides.yaml
+# HarmonyOS local overrides (copied from installers/HarmonyOS by pub-get.ps1).
+# Only the repo-root copy is generated; the template under installers/ is tracked.
+/pubspec_overrides.yaml
 
 # Go relay service build outputs
 relay/relayd
