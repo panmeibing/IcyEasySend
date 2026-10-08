@@ -40,41 +40,49 @@ class AppConstants {
 
   // Device scan constants
 
-  /// Lower concurrency for retry / alternate-port passes to reduce router load
-  static const int deviceScanRetryConcurrency = 8;
-
-  /// Per-probe timeout during LAN scan (aligned with health check)
-  static const int deviceScanProbeTimeoutSeconds = checkHealthTimeout;
-
-  /// Max attempts per IP:port during a scan phase
-  static const int deviceScanMaxAttempts = 2;
-
-  /// Max attempts when retrying default port on previously missed IPs
-  static const int deviceScanDefaultPortRetryAttempts = 3;
-
-  /// Delay between retry attempts
-  static const Duration deviceScanRetryDelay = Duration(milliseconds: 400);
-
   /// UDP multicast group for LAN discovery (224.0.0.0/24, LocalSend default).
-  /// Discovery UDP uses the same port as the HTTP server ([defaultPort]).
+  ///
+  /// Announcements are sent to every port in [defaultPort]–[maxServerPort].
+  /// Listeners bind that whole range, so two devices still find each other
+  /// when one of them had to move its HTTP server off [defaultPort].
   static const String multicastGroup = '224.0.0.167';
+
+  /// UDP ports that carry discovery, inclusive.
+  static Iterable<int> get discoveryUdpPorts sync* {
+    for (var port = defaultPort; port <= maxServerPort; port++) {
+      yield port;
+    }
+  }
 
   /// Background multicast announcement interval while the server runs.
   static const Duration multicastBackgroundInterval = Duration(seconds: 20);
 
-  /// How long to listen for multicast responses during a scan.
-  static const Duration deviceScanMulticastWait = Duration(milliseconds: 2600);
+  /// How long a scan waits for multicast replies before deciding the network
+  /// answered (LocalSend's staged-scan grace is 1s).
+  ///
+  /// The announcement burst runs at the same time, so a peer that answers
+  /// the first datagram is listed well before this elapses. HTTP subnet
+  /// scanning starts only when the grace period ends with no peer.
+  static const Duration deviceScanMulticastGrace = Duration(seconds: 1);
 
-  /// Extra wait after burst announcements for TCP/UDP responses to arrive.
+  /// Extra wait for an HTTP register that was already in flight when a peer
+  /// had already been found.
   static const Duration deviceScanMulticastTailWait = Duration(
-    milliseconds: 500,
+    milliseconds: 200,
   );
 
-  /// Delays between repeated multicast announcements (like LocalSend)
+  /// Delays before each datagram of an announcement burst (LocalSend).
+  ///
+  /// A single UDP datagram is easy to lose, so the announcement is repeated.
+  /// A scan that already has a peer does not wait for the last repeat.
   static const List<int> multicastAnnouncementDelaysMs = [100, 500, 2000];
 
-  /// Fast HTTP probe timeout for fallback discovery (milliseconds)
-  static const int deviceScanDiscoveryTimeoutMs = 1000;
+  /// Per-host timeout for the HTTP fallback scan, and for the register
+  /// request a peer sends back after an announcement.
+  ///
+  /// LocalSend's default discovery timeout. LAN peers answer in tens of
+  /// milliseconds; anything slower is treated as absent.
+  static const int deviceScanDiscoveryTimeoutMs = 500;
 
   /// How long the LAN probe gets to win a race against the relay.
   ///
