@@ -35,7 +35,9 @@ class MulticastSocketOptions {
         return;
       }
       // IP_MULTICAST_IF: 9 on Winsock/BSD, 32 on Linux/Android.
-      final option = (Platform.isLinux || Platform.isAndroid) ? 32 : 9;
+      // OHOS uses Linux-like sockets, same as IP_MULTICAST_TTL above.
+      final option =
+          (Platform.isLinux || Platform.isAndroid || isOhosPlatform) ? 32 : 9;
       socket.setRawOption(
         RawSocketOption(
           RawSocketOption.levelIPv4,
