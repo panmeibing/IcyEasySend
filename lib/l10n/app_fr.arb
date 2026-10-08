@@ -17,6 +17,7 @@
   "receiveFiles": "Recevoir des fichiers",
   "selectFiles": "Sélectionner des fichiers",
   "selectFolder": "Sélectionner un dossier",
+  "ohosFeatureUnavailable": "Cette fonction est temporairement indisponible en raison des limites d'HarmonyOS.",
   "dragDropHint": "Glissez-déposez les fichiers ici",
   "noFilesSelected": "Aucun fichier sélectionné",
   "filesSelected": "{count, plural, =1{{count} fichier sélectionné} other{{count} fichiers sélectionnés}}",

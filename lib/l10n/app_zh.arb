@@ -17,6 +17,7 @@
   "receiveFiles": "接收文件",
   "selectFiles": "选择文件",
   "selectFolder": "选择文件夹",
+  "ohosFeatureUnavailable": "由于鸿蒙系统限制，该功能暂时不可用",
   "dragDropHint": "拖拽文件到此处",
   "noFilesSelected": "未选择文件",
   "filesSelected": "已选择 {count} 个文件",

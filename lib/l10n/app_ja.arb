@@ -17,6 +17,7 @@
   "receiveFiles": "ファイルを受信",
   "selectFiles": "ファイルを選択",
   "selectFolder": "フォルダを選択",
+  "ohosFeatureUnavailable": "HarmonyOS のシステム制限により、この機能は現在利用できません",
   "dragDropHint": "ここにファイルをドラッグ",
   "noFilesSelected": "ファイルが選択されていません",
   "filesSelected": "{count}個のファイルが選択されました",

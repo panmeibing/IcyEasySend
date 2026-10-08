@@ -17,6 +17,7 @@
   "receiveFiles": "Bestanden ontvangen",
   "selectFiles": "Bestanden selecteren",
   "selectFolder": "Map selecteren",
+  "ohosFeatureUnavailable": "Deze functie is tijdelijk niet beschikbaar vanwege beperkingen van HarmonyOS.",
   "dragDropHint": "Sleep bestanden hierheen",
   "noFilesSelected": "Geen bestanden geselecteerd",
   "filesSelected": "{count} bestanden geselecteerd",

@@ -17,6 +17,7 @@
   "receiveFiles": "Ricevi File",
   "selectFiles": "Seleziona File",
   "selectFolder": "Seleziona Cartella",
+  "ohosFeatureUnavailable": "Questa funzione non è al momento disponibile a causa dei limiti di HarmonyOS.",
   "dragDropHint": "Trascina i file qui",
   "noFilesSelected": "Nessun file selezionato",
   "filesSelected": "{count} file selezionati",

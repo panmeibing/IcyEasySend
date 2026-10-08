@@ -17,6 +17,7 @@
   "receiveFiles": "Получить файлы",
   "selectFiles": "Выбрать файлы",
   "selectFolder": "Выбрать папку",
+  "ohosFeatureUnavailable": "Из-за ограничений HarmonyOS эта функция пока недоступна.",
   "dragDropHint": "Перетащите файлы сюда",
   "noFilesSelected": "Файлы не выбраны",
   "filesSelected": "Выбрано файлов: {count}",

@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/ohos_platform.dart';
+import '../../../utils/toast_helper.dart';
 import 'settings_section.dart';
 
 /// Transfer settings card widget
@@ -97,7 +99,7 @@ class TransferSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final sections = <Widget>[
-      _buildSavePathSection(l10n),
+      _buildSavePathSection(context, l10n),
       _buildConcurrentTransfersSection(l10n),
       _buildMaxHistorySection(l10n),
       _buildMaxClipboardSizeSection(l10n),
@@ -132,7 +134,8 @@ class TransferSettingsCard extends StatelessWidget {
     );
   }
 
-  Widget _buildSavePathSection(AppLocalizations l10n) {
+  Widget _buildSavePathSection(BuildContext context, AppLocalizations l10n) {
+    final pathLocked = isOhosPlatform;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -207,8 +210,24 @@ class TransferSettingsCard extends StatelessWidget {
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: onSelectSavePath,
-              icon: const Icon(Icons.folder_open, size: 18),
+              onPressed: pathLocked
+                  ? () => ToastHelper.showInfo(
+                      context,
+                      l10n.ohosFeatureUnavailable,
+                      duration: const Duration(seconds: 3),
+                    )
+                  : onSelectSavePath,
+              style: pathLocked
+                  ? OutlinedButton.styleFrom(
+                      foregroundColor: Colors.grey,
+                      side: const BorderSide(color: Color(0xFFBDBDBD)),
+                    )
+                  : null,
+              icon: Icon(
+                Icons.folder_open,
+                size: 18,
+                color: pathLocked ? Colors.grey : null,
+              ),
               label: Text(l10n.selectSavePath),
             ),
             if (isCustomReceiveSavePath)

@@ -17,6 +17,7 @@
   "receiveFiles": "Receber Arquivos",
   "selectFiles": "Selecionar Arquivos",
   "selectFolder": "Selecionar Pasta",
+  "ohosFeatureUnavailable": "Este recurso está temporariamente indisponível devido às restrições do HarmonyOS.",
   "dragDropHint": "Arraste arquivos para aqui",
   "noFilesSelected": "Nenhum arquivo selecionado",
   "filesSelected": "{count} arquivos selecionados",

@@ -60,6 +60,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get selectFolder => 'Map selecteren';
 
   @override
+  String get ohosFeatureUnavailable =>
+      'Deze functie is tijdelijk niet beschikbaar vanwege beperkingen van HarmonyOS.';
+
+  @override
   String get dragDropHint => 'Sleep bestanden hierheen';
 
   @override

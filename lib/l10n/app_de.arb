@@ -17,6 +17,7 @@
   "receiveFiles": "Dateien empfangen",
   "selectFiles": "Dateien auswählen",
   "selectFolder": "Ordner auswählen",
+  "ohosFeatureUnavailable": "Diese Funktion ist wegen Einschränkungen von HarmonyOS vorübergehend nicht verfügbar.",
   "dragDropHint": "Dateien hierher ziehen",
   "noFilesSelected": "Keine Dateien ausgewählt",
   "filesSelected": "{count, plural, =1{{count} Datei ausgewählt} other{{count} Dateien ausgewählt}}",

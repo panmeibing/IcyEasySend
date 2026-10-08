@@ -60,6 +60,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get selectFolder => 'Выбрать папку';
 
   @override
+  String get ohosFeatureUnavailable =>
+      'Из-за ограничений HarmonyOS эта функция пока недоступна.';
+
+  @override
   String get dragDropHint => 'Перетащите файлы сюда';
 
   @override

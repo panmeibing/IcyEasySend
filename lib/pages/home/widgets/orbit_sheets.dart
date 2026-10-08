@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transfer_file_item.dart';
 import '../../../utils/constants.dart';
+import '../../../utils/ohos_platform.dart';
+import '../../../utils/toast_helper.dart';
 import '../controllers/target_endpoint_controller.dart';
 import '../home_ui.dart';
 import 'quick_ip_chips.dart';
@@ -65,9 +67,18 @@ Future<void> showOrbitPickSheet({
                   const SizedBox(width: 12),
                   Expanded(
                     child: _PickTile(
+                      enabled: !isOhosPlatform,
                       icon: Icons.folder_rounded,
                       label: l10n.selectFolder,
                       onTap: () {
+                        if (isOhosPlatform) {
+                          ToastHelper.showInfo(
+                            ctx,
+                            l10n.ohosFeatureUnavailable,
+                            duration: const Duration(seconds: 3),
+                          );
+                          return;
+                        }
                         Navigator.pop(ctx);
                         onSelectFolder();
                       },
@@ -102,17 +113,25 @@ class _PickTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool enabled;
 
   const _PickTile({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = enabled
+        ? HomeUi.primary
+        : HomeUi.inkMuted.withValues(alpha: 0.45);
+    final labelColor = enabled
+        ? HomeUi.ink
+        : HomeUi.inkMuted.withValues(alpha: 0.55);
     return Material(
-      color: HomeUi.fieldFill,
+      color: enabled ? HomeUi.fieldFill : const Color(0xFFF0F2F4),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -125,10 +144,10 @@ class _PickTile extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: HomeUi.primarySoft,
+                  color: enabled ? HomeUi.primarySoft : const Color(0xFFE6E9ED),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(icon, size: 26, color: HomeUi.primary),
+                child: Icon(icon, size: 26, color: iconColor),
               ),
               const SizedBox(height: 12),
               Text(
@@ -136,10 +155,10 @@ class _PickTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: HomeUi.ink,
+                  color: labelColor,
                   height: 1.25,
                 ),
               ),

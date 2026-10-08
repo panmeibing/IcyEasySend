@@ -60,6 +60,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get selectFolder => 'Selecionar Pasta';
 
   @override
+  String get ohosFeatureUnavailable =>
+      'Este recurso está temporariamente indisponível devido às restrições do HarmonyOS.';
+
+  @override
   String get dragDropHint => 'Arraste arquivos para aqui';
 
   @override

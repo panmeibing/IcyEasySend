@@ -60,6 +60,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get selectFolder => '选择文件夹';
 
   @override
+  String get ohosFeatureUnavailable => '由于鸿蒙系统限制，该功能暂时不可用';
+
+  @override
   String get dragDropHint => '拖拽文件到此处';
 
   @override
@@ -1987,6 +1990,9 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
 
   @override
   String get selectFolder => '選擇資料夾';
+
+  @override
+  String get ohosFeatureUnavailable => '由於鴻蒙系統限制，該功能暫時無法使用';
 
   @override
   String get dragDropHint => '拖曳檔案到此處';

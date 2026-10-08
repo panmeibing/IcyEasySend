@@ -219,6 +219,12 @@ abstract class AppLocalizations {
   /// **'Select Folder'**
   String get selectFolder;
 
+  /// No description provided for @ohosFeatureUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This feature is unavailable for now because of HarmonyOS system limits.'**
+  String get ohosFeatureUnavailable;
+
   /// No description provided for @dragDropHint.
   ///
   /// In en, this message translates to:

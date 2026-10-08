@@ -60,6 +60,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectFolder => 'Select Folder';
 
   @override
+  String get ohosFeatureUnavailable =>
+      'This feature is unavailable for now because of HarmonyOS system limits.';
+
+  @override
   String get dragDropHint => 'Drag and drop files here';
 
   @override
