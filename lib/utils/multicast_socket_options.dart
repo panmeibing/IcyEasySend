@@ -9,7 +9,7 @@ class MulticastSocketOptions {
 
   static void setMulticastTtl(RawDatagramSocket socket, int ttl) {
     try {
-      if (Platform.isWindows || Platform.isMacOS) {
+      if (Platform.isWindows || Platform.isMacOS || Platform.isIOS) {
         // IPPROTO_IP = 0, IP_MULTICAST_TTL = 10 (Winsock / BSD)
         socket.setRawOption(RawSocketOption.fromInt(0, 10, ttl));
       } else if (Platform.isLinux || Platform.isAndroid || isOhosPlatform) {
@@ -18,6 +18,33 @@ class MulticastSocketOptions {
       }
     } catch (_) {
       // Best-effort; broadcast fallback may still work.
+    }
+  }
+
+  /// Pins the next multicast send to [interfaceAddress].
+  ///
+  /// One socket sends on a single interface. Without this, every announcement
+  /// follows the default route and a second LAN adapter (Ethernet next to
+  /// Wi-Fi, a hotspot, a VPN) never sees it.
+  static void setMulticastInterface(
+    RawDatagramSocket socket,
+    InternetAddress interfaceAddress,
+  ) {
+    try {
+      if (interfaceAddress.type != InternetAddressType.IPv4) {
+        return;
+      }
+      // IP_MULTICAST_IF: 9 on Winsock/BSD, 32 on Linux/Android.
+      final option = (Platform.isLinux || Platform.isAndroid) ? 32 : 9;
+      socket.setRawOption(
+        RawSocketOption(
+          RawSocketOption.levelIPv4,
+          option,
+          interfaceAddress.rawAddress,
+        ),
+      );
+    } catch (_) {
+      // Best-effort; the socket still sends on the default route.
     }
   }
 }
