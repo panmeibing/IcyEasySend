@@ -58,8 +58,11 @@ F:\harmony-signing\release\
 
 ## 3. 发版号与图标（每次上架）
 
-`ohos/AppScope/app.json5`：`versionCode` 必须大于上一版，`versionName` 与商店一致。同步：
+项目文件：`ohos/AppScope/app.json5`和`local.properties`
+- `versionCode` 必须大于上一版
+- `versionName` 与商店一致
 
+其他文件：
 - `pubspec.yaml` 的 `version`
 - `lib/utils/constants.dart` 的 `AppConstants.version`
 
