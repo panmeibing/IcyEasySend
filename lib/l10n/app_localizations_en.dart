@@ -95,6 +95,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cancel => 'Cancel';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
   String get confirm => 'Confirm';
 
   @override

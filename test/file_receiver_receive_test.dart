@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -113,6 +114,49 @@ void main() {
     expect(await saved('overflow.bin').exists(), isFalse);
   });
 
+  test('keeps a slow stream that is still delivering bytes', () async {
+    Stream<List<int>> paced() async* {
+      yield List<int>.filled(40, 1);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      yield List<int>.filled(40, 1);
+    }
+
+    final result = await receiver.receiveFileDirectly(
+      fileStream: paced(),
+      fileName: 'paced.bin',
+      fileSize: 80,
+      senderIP: '192.168.1.9',
+      idleTimeout: const Duration(milliseconds: 200),
+    );
+
+    expect(result.isSuccess, isTrue, reason: result.errorMessage);
+    expect(await saved('paced.bin').length(), 80);
+  });
+
+  test(
+    'fails a stream that goes silent and removes the partial file',
+    () async {
+      final controller = StreamController<List<int>>();
+      addTearDown(controller.close);
+
+      final started = DateTime.now();
+      final result = await receiver.receiveFileDirectly(
+        fileStream: controller.stream,
+        fileName: 'quiet.bin',
+        fileSize: 10,
+        senderIP: '192.168.1.9',
+        idleTimeout: const Duration(milliseconds: 200),
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(
+        DateTime.now().difference(started),
+        lessThan(const Duration(seconds: 2)),
+      );
+      expect(await saved('quiet.bin').exists(), isFalse);
+    },
+  );
+
   test('rejects a transfer that stops short of the declared size', () async {
     final result = await receiver.receiveFileDirectly(
       fileStream: Stream.fromIterable([List<int>.filled(100, 3)]),
@@ -123,5 +167,104 @@ void main() {
 
     expect(result.isSuccess, isFalse);
     expect(await saved('short.bin').exists(), isFalse);
+    expect(await saved('short.bin.part').exists(), isFalse);
+  });
+
+  test('bytes only appear under the real name once the file is complete, '
+      'so a crash cannot leave a truncated file that looks finished', () async {
+    final controller = StreamController<List<int>>();
+    final pending = receiver.receiveFileDirectly(
+      fileStream: controller.stream,
+      fileName: 'photo.jpg',
+      fileSize: 200,
+      senderIP: '192.168.1.9',
+    );
+
+    controller.add(List<int>.filled(100, 1));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(await saved('photo.jpg').exists(), isFalse);
+    expect(await saved('photo.jpg.part').exists(), isTrue);
+
+    controller.add(List<int>.filled(100, 2));
+    await controller.close();
+    final result = await pending;
+
+    expect(result.isSuccess, isTrue, reason: result.errorMessage);
+    expect(result.data?.savedPath, saved('photo.jpg').path);
+    expect(await saved('photo.jpg').length(), 200);
+    expect(await saved('photo.jpg.part').exists(), isFalse);
+  });
+
+  test('two receives of the same name at once land in two files', () async {
+    final first = StreamController<List<int>>();
+    final second = StreamController<List<int>>();
+    final a = receiver.receiveFileDirectly(
+      fileStream: first.stream,
+      fileName: 'same.txt',
+      fileSize: 3,
+      senderIP: '192.168.1.9',
+    );
+    final b = receiver.receiveFileDirectly(
+      fileStream: second.stream,
+      fileName: 'same.txt',
+      fileSize: 3,
+      senderIP: '192.168.1.10',
+    );
+
+    first.add([1, 1, 1]);
+    second.add([2, 2, 2]);
+    await Future.wait([first.close(), second.close()]);
+    final results = await Future.wait([a, b]);
+
+    final paths = results.map((r) => r.data?.savedPath).toSet();
+    expect(paths, hasLength(2));
+    expect(
+      paths,
+      containsAll([saved('same.txt').path, saved('same(1).txt').path]),
+    );
+    final contents = {
+      for (final path in paths) (await File(path!).readAsBytes()).first,
+    };
+    expect(contents, {1, 2});
+  });
+
+  test('a name already on disk is kept and the new file is numbered', () async {
+    await saved('notes.txt').writeAsString('old');
+
+    final result = await receiver.receiveFileDirectly(
+      fileStream: Stream.fromIterable([
+        [1, 2, 3],
+      ]),
+      fileName: 'notes.txt',
+      fileSize: 3,
+      senderIP: '192.168.1.9',
+    );
+
+    expect(result.data?.savedPath, saved('notes(1).txt').path);
+    expect(await saved('notes.txt').readAsString(), 'old');
+  });
+
+  test('a cancel that lands after the last byte still cancels', () async {
+    final controller = StreamController<List<int>>();
+    final cancel = Completer<void>();
+    final pending = receiver.receiveFileDirectly(
+      fileStream: controller.stream,
+      fileName: 'late.bin',
+      fileSize: 4,
+      senderIP: '192.168.1.9',
+      cancel: cancel.future,
+      onProgress: (progress, _, _) {
+        // The user presses cancel as the bar reaches the end.
+        if (progress >= 1.0 && !cancel.isCompleted) cancel.complete();
+      },
+    );
+
+    controller.add([1, 2, 3, 4]);
+    await controller.close();
+    final result = await pending;
+
+    expect(result.isSuccess, isFalse);
+    expect(await saved('late.bin').exists(), isFalse);
+    expect(await saved('late.bin.part').exists(), isFalse);
   });
 }

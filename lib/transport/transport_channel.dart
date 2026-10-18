@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import '../models/transfer_data.dart';
 import '../models/transfer_file_item.dart';
+import '../services/transfer/transfer_cancellation.dart';
 import '../utils/constants.dart';
 import '../utils/operation_result.dart';
+
+export '../services/transfer/transfer_cancellation.dart';
 
 /// The physical path a [TransportChannel] uses to reach a peer.
 enum TransportKind {
@@ -293,5 +296,6 @@ abstract class TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   });
 }

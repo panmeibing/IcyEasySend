@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../models/transfer_file_item.dart';
 import '../../../transport/transport_channel.dart';
 import '../../../utils/format_util.dart';
 import '../home_ui.dart';
@@ -20,6 +21,11 @@ class OrbitDock extends StatelessWidget {
   final String progressStatus;
   final double transferSpeed;
   final Duration? estimatedTimeRemaining;
+  final List<TransferFileItem> sendingFiles;
+  final Set<int> completedFileIndices;
+  final bool Function(String name)? isFileSettled;
+  final void Function(String name)? onCancelFile;
+  final VoidCallback? onCancelAll;
   final VoidCallback onMore;
   final VoidCallback onSend;
   final VoidCallback onShareViaQr;
@@ -39,6 +45,11 @@ class OrbitDock extends StatelessWidget {
     required this.progressStatus,
     required this.transferSpeed,
     required this.estimatedTimeRemaining,
+    this.sendingFiles = const [],
+    this.completedFileIndices = const {},
+    this.isFileSettled,
+    this.onCancelFile,
+    this.onCancelAll,
     required this.onMore,
     required this.onSend,
     required this.onShareViaQr,
@@ -135,6 +146,11 @@ class OrbitDock extends StatelessWidget {
               status: progressStatus,
               transferSpeed: transferSpeed,
               estimatedTimeRemaining: estimatedTimeRemaining,
+              sendingFiles: sendingFiles,
+              completedFileIndices: completedFileIndices,
+              isFileSettled: isFileSettled,
+              onCancelFile: onCancelFile,
+              onCancelAll: onCancelAll,
             ),
           ],
           const SizedBox(height: 14),
@@ -242,19 +258,28 @@ class _DockProgress extends StatelessWidget {
   final String status;
   final double transferSpeed;
   final Duration? estimatedTimeRemaining;
+  final List<TransferFileItem> sendingFiles;
+  final Set<int> completedFileIndices;
+  final bool Function(String name)? isFileSettled;
+  final void Function(String name)? onCancelFile;
+  final VoidCallback? onCancelAll;
 
   const _DockProgress({
     required this.progress,
     required this.status,
     required this.transferSpeed,
     required this.estimatedTimeRemaining,
+    required this.sendingFiles,
+    required this.completedFileIndices,
+    required this.isFileSettled,
+    required this.onCancelFile,
+    required this.onCancelAll,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final pct = (progress.clamp(0.0, 1.0) * 100).round();
-    final showRate = transferSpeed > 0 || estimatedTimeRemaining != null;
 
     return Container(
       width: double.infinity,
@@ -300,41 +325,88 @@ class _DockProgress extends StatelessWidget {
               color: HomeUi.primary,
             ),
           ),
-          if (showRate) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (transferSpeed > 0)
-                  Expanded(
-                    child: Text(
-                      FormatUtil.formatTransferSpeedLabel(
-                        l10n.transferSpeed,
-                        transferSpeed,
-                      ),
-                      style: const TextStyle(
-                        color: HomeUi.inkMuted,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  )
-                else
-                  const Spacer(),
-                if (estimatedTimeRemaining != null)
-                  Text(
-                    FormatUtil.formatRemainingTimeLabel(
-                      l10n.remainingTime,
-                      estimatedTimeRemaining!,
-                    ),
-                    style: const TextStyle(
-                      color: HomeUi.inkMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  FormatUtil.formatTransferSpeedLabel(
+                    l10n.transferSpeed,
+                    transferSpeed,
                   ),
-              ],
+                  style: const TextStyle(
+                    color: HomeUi.inkMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                FormatUtil.formatRemainingTimeLabel(
+                  l10n.remainingTime,
+                  estimatedTimeRemaining,
+                ),
+                style: const TextStyle(
+                  color: HomeUi.inkMuted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          if (sendingFiles.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 160),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: sendingFiles.length,
+                itemBuilder: (context, index) {
+                  final item = sendingFiles[index];
+                  final name = item.transferName;
+                  final done =
+                      completedFileIndices.contains(index) ||
+                      (isFileSettled?.call(name) ?? false);
+                  return SizedBox(
+                    height: 32,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: HomeUi.ink,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        if (!done && onCancelFile != null)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            tooltip: l10n.cancel,
+                            onPressed: () => onCancelFile!(name),
+                            icon: const Icon(Icons.close, size: 16),
+                            color: HomeUi.inkMuted,
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+          if (onCancelAll != null) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onCancelAll,
+                child: Text(l10n.cancelAll),
+              ),
             ),
           ],
         ],

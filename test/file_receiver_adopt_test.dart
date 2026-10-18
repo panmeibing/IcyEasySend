@@ -88,6 +88,26 @@ void main() {
     );
   });
 
+  test('a name another receive is still writing is left to it', () async {
+    await File(p.join(saveDir.path, 'clip.mp4.part')).writeAsString('busy');
+
+    final result = await receiver.adoptReceivedFile(
+      source: await partialWith([1, 2, 3]),
+      fileName: 'clip.mp4',
+      fileSize: 3,
+    );
+
+    expect(result.data!.savedPath, p.join(saveDir.path, 'clip(1).mp4'));
+    expect(
+      await File(p.join(saveDir.path, 'clip.mp4.part')).readAsString(),
+      'busy',
+    );
+    expect(
+      await File(p.join(saveDir.path, 'clip(1).mp4.part')).exists(),
+      isFalse,
+    );
+  });
+
   test('creates the folders a nested transfer name asks for', () async {
     final result = await receiver.adoptReceivedFile(
       source: await partialWith([7, 7, 7]),

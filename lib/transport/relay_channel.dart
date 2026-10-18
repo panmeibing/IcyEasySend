@@ -21,6 +21,7 @@ import '../services/relay/relay_crypto_worker.dart';
 import '../services/relay/relay_frame_codec.dart';
 import '../services/relay/relay_protocol.dart';
 import '../services/relay/relay_receive_coordinator.dart';
+import '../services/transfer/batch_progress.dart';
 import '../services/transfer/transfer_http.dart';
 import '../services/transfer/transfer_history_manager.dart';
 import '../utils/constants.dart';
@@ -148,6 +149,7 @@ class RelayChannel implements TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     final deviceId = peer.deviceId;
     if (deviceId == null) {
@@ -172,28 +174,59 @@ class RelayChannel implements TransportChannel {
 
     onStatusChange?.call(_statusProvider.preparingTransferInfo);
     final entries = await _describeFiles(deviceId, files);
-    final totalBytes = entries.fold<int>(0, (sum, entry) => sum + entry.size);
     final sessionId = _randomHex(16);
 
     onStatusChange?.call(_statusProvider.relayNegotiatingSession);
-    final established = await _establishSession(
+    final establishing = _establishSession(
       peerDeviceId: deviceId,
       sessionId: sessionId,
       peerPublicKey: peerPublicKey,
     );
+    final established = cancellation == null
+        ? await establishing
+        : await cancellation.unlessAborted(establishing);
+    if (established == null) {
+      // The handshake may still finish; the peer is then told to drop it
+      // rather than wait for a manifest that is never coming.
+      unawaited(
+        establishing.then((late) async {
+          if (!late.isSuccess) return;
+          await _client.sendPayload(
+            toDeviceId: deviceId,
+            payload: TransferCancel(
+              sessionId: sessionId,
+              reason: 'sender_stopped',
+            ).toJson(),
+          );
+          _client.sessions.remove(sessionId);
+        }),
+      );
+      return _failAll(files, appText.transferCancelled);
+    }
     if (!established.isSuccess) {
       return _failAll(files, established.errorMessage!);
     }
     final session = established.data!;
 
     RelayCryptoWorker? worker;
+    StreamSubscription<RelayInboundPayload>? refusedEarly;
+    final cancelledByReceiver = <String>{};
+    ({String fileId, _FileStop stop})? current;
     var notifyCancel = true;
     try {
-      final accept = await _offer(
+      final offering = _offer(
         session: session,
         entries: entries,
         onStatusChange: onStatusChange,
       );
+      // Aborting here leaves notifyCancel set, so the finally below tells the
+      // receiver to close the prompt it may still be showing.
+      final accept = cancellation == null
+          ? await offering
+          : await cancellation.unlessAborted(offering);
+      if (accept == null) {
+        return _failAll(files, appText.transferCancelled);
+      }
       if (!accept.isSuccess) {
         return _failAll(files, accept.errorMessage!);
       }
@@ -203,26 +236,85 @@ class RelayChannel implements TransportChannel {
       };
       onStatusChange?.call(_statusProvider.relayTransferNotice);
 
+      final fileIds = {
+        for (final entry in entries) entry.item.transferName: entry.fileId,
+      };
+      void tellReceiver(Iterable<String> names) {
+        for (final name in names) {
+          final fileId = fileIds[name];
+          if (fileId == null) continue;
+          unawaited(
+            _sendSealed(
+              session,
+              FileCancel(sessionId: sessionId, fileId: fileId).toJson(),
+            ),
+          );
+        }
+      }
+
+      cancellation?.onChanged = tellReceiver;
+      tellReceiver(cancellation?.cancelled ?? const <String>{});
+
+      // A receiver whose prompt closes says which files it called off before
+      // they began, since it will not be around to refuse their `file.begin`.
+      refusedEarly = _client.payloads.listen((inbound) {
+        if (inbound.fromDeviceId != deviceId ||
+            inbound.payload['type'] != RelayPayloadType.fileDone) {
+          return;
+        }
+        final done = FileDone.tryParse(inbound.payload);
+        if (done != null &&
+            done.sessionId == sessionId &&
+            PeerError.fromCode(done.code) == PeerError.cancelled) {
+          cancelledByReceiver.add(done.fileId);
+          if (done.fileId == current?.fileId) {
+            current?.stop.stop(appText.transferCancelled);
+          }
+        }
+      });
+
       worker = await RelayCryptoWorker.spawn();
       final codec = RelayFrameCodec(worker: worker);
 
       final results = <String, OperationResult<TransferData>>{};
       final histories = <TransferHistory>[];
-      var sentBytes = 0;
+      final progress = BatchProgress({
+        for (var index = 0; index < entries.length; index++)
+          index: entries[index].size,
+      });
+      void reportOverall() {
+        if (progress.totalBytes <= 0) return;
+        onProgress?.call(
+          progress.fraction,
+          progress.sentBytes,
+          progress.totalBytes,
+        );
+      }
 
       // Sequential, unlike the LAN channel: the relay is a shared uplink, and
       // several parallel streams through it would only divide the same
       // bandwidth while multiplying the server's memory footprint.
       for (var index = 0; index < entries.length; index++) {
         final entry = entries[index];
-        final completedBefore = sentBytes;
+        final name = entry.item.transferName;
+        if ((cancellation?.isCancelled(name) ?? false) ||
+            cancelledByReceiver.contains(entry.fileId)) {
+          results[name] = OperationResult.failure(appText.transferCancelled);
+          progress.settle(index, success: false);
+          reportOverall();
+          continue;
+        }
 
+        final stop = _FileStop();
+        current = (fileId: entry.fileId, stop: stop);
+        cancellation?.attach(name, () => stop.stop(appText.transferCancelled));
         final result = acceptedFiles.containsKey(entry.fileId)
             ? await _sendOne(
                 session: session,
                 codec: codec,
                 entry: entry,
                 accepted: acceptedFiles[entry.fileId]!,
+                stop: stop,
                 onStatusChange: onStatusChange,
                 onFileBytes: (bytes) {
                   onFileProgress?.call(
@@ -231,18 +323,18 @@ class RelayChannel implements TransportChannel {
                     bytes,
                     entry.size,
                   );
-                  if (totalBytes > 0) {
-                    final overall = completedBefore + bytes;
-                    onProgress?.call(overall / totalBytes, overall, totalBytes);
-                  }
+                  progress.update(index, bytes);
+                  reportOverall();
                 },
               )
             : OperationResult<TransferData>.failure(
                 _statusProvider.receiverRejected,
               );
 
-        sentBytes += entry.size;
-        results[entry.item.transferName] = result;
+        results[name] = result;
+        cancellation?.markFinished(name);
+        progress.settle(index, success: result.isSuccess);
+        reportOverall();
         histories.add(
           _historyManager.createTransferHistory(
             fileName: entry.item.transferName,
@@ -255,10 +347,6 @@ class RelayChannel implements TransportChannel {
                 : peer.deviceName,
           ),
         );
-      }
-
-      if (totalBytes > 0) {
-        onProgress?.call(1.0, totalBytes, totalBytes);
       }
 
       await _historyManager.saveTransferHistoryBatch(histories);
@@ -276,6 +364,7 @@ class RelayChannel implements TransportChannel {
           ).toJson(),
         );
       }
+      await refusedEarly?.cancel();
       // The keys die with the transfer. Nothing later may be decrypted with
       // them, which is what makes a captured session worthless afterwards.
       _client.sessions.remove(sessionId);
@@ -416,6 +505,7 @@ class RelayChannel implements TransportChannel {
     required RelayFrameCodec codec,
     required _RelayFileEntry entry,
     required AcceptedFile accepted,
+    required _FileStop stop,
     required void Function(int bytes) onFileBytes,
     void Function(String status)? onStatusChange,
   }) async {
@@ -435,6 +525,9 @@ class RelayChannel implements TransportChannel {
         );
         await Future<void>.delayed(AppConstants.relayRetryBackoff[attempt - 1]);
       }
+      if (stop.isStopped) {
+        return OperationResult.failure(stop.reason!);
+      }
 
       final attemptResult = await _attempt(
         session: session,
@@ -442,10 +535,14 @@ class RelayChannel implements TransportChannel {
         entry: entry,
         startChunk: startChunk,
         attempt: attempt,
+        stop: stop,
         onFileBytes: onFileBytes,
       );
       if (attemptResult.result.isSuccess) {
         return attemptResult.result;
+      }
+      if (stop.isStopped) {
+        return OperationResult.failure(stop.reason!);
       }
 
       final resume = attemptResult.resumeFromChunk;
@@ -507,6 +604,7 @@ class RelayChannel implements TransportChannel {
     required _RelayFileEntry entry,
     required int startChunk,
     required int attempt,
+    required _FileStop stop,
     required void Function(int bytes) onFileBytes,
   }) async {
     final stream = await _client.createStream(
@@ -549,27 +647,60 @@ class RelayChannel implements TransportChannel {
       return _SendAttempt.failed(announced.errorMessage!);
     }
 
-    final uploaded = await _upload(
-      streamId: streamId,
-      entry: entry,
-      startChunk: startChunk,
-      fileKey: await session.keys.fileKey(entry.fileId, attempt: attempt),
-      codec: codec,
-      onFileBytes: onFileBytes,
+    final token = CancelToken();
+    void abortUpload() {
+      if (!token.isCancelled) token.cancel();
+    }
+
+    stop.bind(abortUpload);
+    // A receiver that gives up on the file, whether its user cancelled it or
+    // its disk filled, says so before the upload is over. There is no one
+    // left reading the stream, so the upload stops instead of running on.
+    unawaited(
+      acknowledged.then((ack) {
+        final done = ack.isSuccess ? FileDone.tryParse(ack.data!) : null;
+        if (done != null && !done.ok) abortUpload();
+      }),
     );
+
+    final OperationResult<void> uploaded;
+    try {
+      uploaded = await _upload(
+        streamId: streamId,
+        entry: entry,
+        startChunk: startChunk,
+        fileKey: await session.keys.fileKey(entry.fileId, attempt: attempt),
+        codec: codec,
+        cancelToken: token,
+        onFileBytes: onFileBytes,
+      );
+    } finally {
+      stop.unbind();
+    }
+    if (stop.isStopped) {
+      return _SendAttempt.failed(stop.reason!);
+    }
     if (!uploaded.isSuccess) {
       // The receiver saw the same break and is about to say how far it got.
       // Waiting for that is what makes a retry safe: it proves the peer has
       // stopped writing, so a second stream cannot overlap the first.
+      final verdict = await _verdictAfterBreak(acknowledged);
+      final finalVerdict = verdict != null && verdict.resumeFromChunk == null;
       return _SendAttempt.failed(
-        uploaded.errorMessage!,
-        resumeFromChunk: await _resumeOffered(acknowledged),
+        finalVerdict ? _describeFailedDone(verdict) : uploaded.errorMessage!,
+        resumeFromChunk: verdict?.resumeFromChunk,
       );
     }
 
     // The relay accepting every byte only means it forwarded them. Whether
     // they reached the peer's disk is something only the peer can say.
-    final ack = await acknowledged;
+    final ack = await Future.any<OperationResult<Map<String, dynamic>>?>([
+      acknowledged,
+      stop.stopped.then((_) => null),
+    ]);
+    if (ack == null) {
+      return _SendAttempt.failed(stop.reason!);
+    }
     if (!ack.isSuccess) {
       return _SendAttempt.failed(ack.errorMessage!);
     }
@@ -586,12 +717,13 @@ class RelayChannel implements TransportChannel {
     return _SendAttempt.sent(entry.size);
   }
 
-  /// Waits, briefly, for the receiver to say where a broken transfer stopped.
+  /// Waits, briefly, for the receiver to say how a broken transfer ended:
+  /// where a retry may pick up, or why there will be none.
   ///
   /// The pending acknowledgement was armed with a timeout sized for the whole
   /// upload, which is far too long to sit on once the upload has already
   /// failed.
-  Future<int?> _resumeOffered(
+  Future<FileDone?> _verdictAfterBreak(
     Future<OperationResult<Map<String, dynamic>>> acknowledged,
   ) async {
     try {
@@ -600,10 +732,20 @@ class RelayChannel implements TransportChannel {
         return null;
       }
       final done = FileDone.tryParse(ack.data!);
-      return done != null && !done.ok ? done.resumeFromChunk : null;
+      return done != null && !done.ok ? done : null;
     } on TimeoutException {
       return null;
     }
+  }
+
+  Future<void> _sendSealed(
+    RelaySecureSession session,
+    Map<String, dynamic> payload,
+  ) async {
+    await _client.sendPayload(
+      toDeviceId: session.peerDeviceId,
+      payload: await session.seal(payload),
+    );
   }
 
   Future<OperationResult<void>> _upload({
@@ -612,6 +754,7 @@ class RelayChannel implements TransportChannel {
     required int startChunk,
     required RelayFileKey fileKey,
     required RelayFrameCodec codec,
+    required CancelToken cancelToken,
     required void Function(int bytes) onFileBytes,
   }) async {
     final uri = _client.streamUri(streamId);
@@ -643,6 +786,7 @@ class RelayChannel implements TransportChannel {
           fileKey,
           startChunk: startChunk,
         ),
+        cancelToken: cancelToken,
         options: Options(
           headers: {...headers, Headers.contentLengthHeader: wireLength},
           contentType: 'application/octet-stream',
@@ -816,6 +960,34 @@ class _SendAttempt {
 
   _SendAttempt.failed(String error, {this.resumeFromChunk})
     : result = OperationResult<TransferData>.failure(error);
+}
+
+/// The user calling off the one file being sent, across all its retries.
+class _FileStop {
+  final Completer<String> _stopped = Completer<String>();
+  void Function()? _abort;
+
+  String? reason;
+
+  bool get isStopped => _stopped.isCompleted;
+
+  Future<String> get stopped => _stopped.future;
+
+  void stop(String why) {
+    if (isStopped) return;
+    reason = why;
+    _stopped.complete(why);
+    _abort?.call();
+  }
+
+  /// [abort] ends the upload currently running; runs at once if already
+  /// stopped.
+  void bind(void Function() abort) {
+    _abort = abort;
+    if (isStopped) abort();
+  }
+
+  void unbind() => _abort = null;
 }
 
 /// One file, resolved and ready to send.

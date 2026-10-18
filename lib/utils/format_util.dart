@@ -58,9 +58,16 @@ class FormatUtil {
     return '$label: ${formatSpeed(bytesPerSecond)}';
   }
 
+  /// Shown while a transfer is running but the rate is not known yet.
+  static const String unknownDuration = '--:--:--';
+
   /// Localized remaining-time line, e.g. `剩余时间: 00:25:23`.
-  static String formatRemainingTimeLabel(String label, Duration duration) {
-    return '$label: ${formatDuration(duration)}';
+  ///
+  /// A null [duration] keeps the same label shape so the row does not collapse
+  /// when the rate briefly drops to zero.
+  static String formatRemainingTimeLabel(String label, Duration? duration) {
+    final shown = duration == null ? unknownDuration : formatDuration(duration);
+    return '$label: $shown';
   }
 
   /// Format full date time for detail view

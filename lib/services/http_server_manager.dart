@@ -345,6 +345,11 @@ class HTTPServerManager {
 
         // Configure file transfer endpoint
         router.post('/transfer', _fileTransferHandler.handleFileTransfer);
+        router.post('/batch-cancel', _fileTransferHandler.handleBatchCancel);
+        router.get(
+          '/transfer-status',
+          _fileTransferHandler.handleTransferStatus,
+        );
 
         // Configure clipboard request endpoint
         router.post(

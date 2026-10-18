@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_localizations.dart';
-import '../../models/incoming_batch.dart';
+import '../../services/batch_receive_manager.dart';
 import '../../services/batch_receive_prompter.dart';
 import '../../services/screen_wake_lock_service.dart';
 import '../../ui/form_factor.dart';
@@ -183,10 +183,10 @@ class _BatchView {
       title: batch.isAccepted
           ? l10n.receivingFiles(count)
           : l10n.receiveFilesCount(count),
-      speedLine: receiving && rate.speed > 0
+      speedLine: receiving
           ? FormatUtil.formatTransferSpeedLabel(l10n.transferSpeed, rate.speed)
           : null,
-      etaLine: receiving && eta != null
+      etaLine: receiving
           ? FormatUtil.formatRemainingTimeLabel(l10n.remainingTime, eta)
           : null,
       countdown: batch.isDecided
@@ -346,6 +346,11 @@ class _PhoneBatchDialog extends StatelessWidget {
                     return _ReceiveFileTile(
                       file: file,
                       status: view.statusOf(file),
+                      onCancel: file.isAccepted && !file.isCompleted
+                          ? () => BatchReceiveManager().cancelTransfer(
+                              file.transferId,
+                            )
+                          : null,
                     );
                   },
                 ),
@@ -356,15 +361,22 @@ class _PhoneBatchDialog extends StatelessWidget {
           ],
         ),
       ),
-      actions: batch.isDecided
-          ? null
-          : [
+      actions: !batch.isDecided
+          ? [
               TextButton(onPressed: batch.reject, child: Text(l10n.rejectAll)),
               ElevatedButton(
                 onPressed: batch.accept,
                 child: Text(l10n.acceptAll),
               ),
-            ],
+            ]
+          : batch.isAccepted && !batch.isFinished
+          ? [
+              TextButton(
+                onPressed: () => BatchReceiveManager().cancelBatch(batch),
+                child: Text(l10n.cancelAll),
+              ),
+            ]
+          : null,
     );
   }
 }
@@ -426,10 +438,15 @@ class _PhoneStatusLine extends StatelessWidget {
 }
 
 class _ReceiveFileTile extends StatelessWidget {
-  const _ReceiveFileTile({required this.file, required this.status});
+  const _ReceiveFileTile({
+    required this.file,
+    required this.status,
+    this.onCancel,
+  });
 
   final PendingFileInfo file;
   final String status;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +464,14 @@ class _ReceiveFileTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: Icon(Icons.insert_drive_file, size: 20, color: color),
+      trailing: onCancel == null
+          ? null
+          : IconButton(
+              tooltip: AppLocalizations.of(context).cancel,
+              visualDensity: VisualDensity.compact,
+              onPressed: onCancel,
+              icon: const Icon(Icons.close, size: 18),
+            ),
       title: Text(
         file.fileName,
         style: const TextStyle(fontSize: 13),

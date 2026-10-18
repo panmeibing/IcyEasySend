@@ -41,6 +41,13 @@ class FileTransferHandler {
   /// address that asked.
   final Map<String, _Ticket> _tickets = {};
 
+  /// Confirmations by the sender's request ID, so a sender that gives up
+  /// while the user is still deciding can take its request back.
+  final Map<String, _ReceiveBatch> _requests = {};
+
+  /// Transfers this device called off, kept for [handleTransferStatus].
+  final Map<String, ({String? from, DateTime at})> _cancelledRecently = {};
+
   /// Confirmation dialogs currently waiting on the local user.
   int _promptsOnScreen = 0;
 
@@ -199,49 +206,60 @@ class FileTransferHandler {
       final batch = _ReceiveBatch(
         peer: peer,
         confirmedFrom: remoteAddress,
-        expected: pendingFiles.length,
+        files: pendingFiles,
       );
       final ctx = contextGetter?.call();
       final hasUi = ctx != null && ctx.mounted && !_isInBackground;
 
-      bool accepted;
-      if (skipConfirmation && !hasUi) {
-        LogUtil.iTag(logTag, '密钥自动接受（无界面）');
-        batch.flushOnFinish = true;
-        batch.headless = true;
-        accepted = await _batchReceiveManager.acceptBatchHeadless(
-          files: pendingFiles,
-          senderIP: peer,
-        );
-      } else if (!skipConfirmation && _isInBackground) {
-        LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
-        return _confirmError(403, PeerError.backgroundNeedsSecretKey);
-      } else if (ctx == null || !ctx.mounted) {
-        LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
-        return _confirmError(500, PeerError.noUi);
-      } else if (!skipConfirmation &&
-          _promptsOnScreen >= AppConstants.maxPendingReceivePrompts) {
-        LogUtil.wTag(logTag, '待确认的接收请求过多，拒绝来自 $peer 的请求');
-        return _confirmError(429, PeerError.busy);
-      } else {
-        if (!skipConfirmation) _promptsOnScreen++;
-        try {
-          accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
-            context: ctx,
+      final requestId = body['requestId'];
+      if (requestId is String && requestId.isNotEmpty) {
+        _requests[requestId] = batch;
+      }
+
+      var accepted = false;
+      try {
+        if (skipConfirmation && !hasUi) {
+          LogUtil.iTag(logTag, '密钥自动接受（无界面）');
+          batch.flushOnFinish = true;
+          batch.headless = true;
+          accepted = await _batchReceiveManager.acceptBatchHeadless(
             files: pendingFiles,
             senderIP: peer,
-            senderDeviceName: senderDeviceName,
-            autoAccept: skipConfirmation,
-            onComplete: () async {
-              await _flushHistories(batch);
-              // Files still in flight when the dialog closed are saved once
-              // the last of them lands.
-              batch.flushOnFinish = true;
-            },
           );
-        } finally {
-          if (!skipConfirmation) _promptsOnScreen--;
+        } else if (!skipConfirmation && _isInBackground) {
+          LogUtil.iTag(logTag, '应用在后台且无有效秘钥，拒绝批量接收');
+          return _confirmError(403, PeerError.backgroundNeedsSecretKey);
+        } else if (ctx == null || !ctx.mounted) {
+          LogUtil.eTag(logTag, '无法显示确认对话框：缺少上下文');
+          return _confirmError(500, PeerError.noUi);
+        } else if (!skipConfirmation &&
+            _promptsOnScreen >= AppConstants.maxPendingReceivePrompts) {
+          LogUtil.wTag(logTag, '待确认的接收请求过多，拒绝来自 $peer 的请求');
+          return _confirmError(429, PeerError.busy);
+        } else {
+          if (!skipConfirmation) _promptsOnScreen++;
+          try {
+            accepted = await _batchReceiveManager.requestBatchReceiveConfirmation(
+              context: ctx,
+              files: pendingFiles,
+              senderIP: peer,
+              senderDeviceName: senderDeviceName,
+              autoAccept: skipConfirmation,
+              onComplete: () async {
+                await _flushHistories(batch);
+                // Files still in flight when the dialog closed are saved once
+                // the last of them lands.
+                batch.flushOnFinish = true;
+              },
+            );
+          } finally {
+            if (!skipConfirmation) _promptsOnScreen--;
+          }
         }
+      } finally {
+        // Kept only for an accepted batch: that is the one whose tickets a
+        // late withdrawal still has to reach.
+        if (!accepted) _requests.remove(requestId);
       }
 
       if (!accepted) {
@@ -252,6 +270,7 @@ class FileTransferHandler {
       for (final fileInfo in pendingFiles) {
         _tickets[fileInfo.transferId] = _Ticket(
           batch: batch,
+          file: fileInfo,
           fileName: TransferPathUtil.normalizeTransferPath(fileInfo.fileName),
           fileSize: fileInfo.fileSize,
         );
@@ -276,6 +295,79 @@ class FileTransferHandler {
     } catch (e, stackTrace) {
       LogUtil.eTag(logTag, '批量确认接收处理异常: $e', e, stackTrace);
       return _confirmError(500, PeerError.internalError);
+    }
+  }
+
+  /// Drops files the sender no longer wants to upload.
+  ///
+  /// In-flight receives are stopped. Files that have not started are refused
+  /// when their `/transfer` arrives.
+  Future<Response> handleBatchCancel(Request request) async {
+    LogUtil.iTag(logTag, '收到取消传输请求: /batch-cancel');
+    try {
+      final Object? decoded;
+      try {
+        decoded = await ServerHttpUtil.readJson(
+          request,
+          maxBytes: AppConstants.maxJsonBodyBytes,
+        );
+      } on RequestBodyTooLargeException {
+        return _transferError(413, PeerError.badRequest, '取消请求体过大');
+      } on FormatException {
+        return _transferError(400, PeerError.badRequest, '取消请求不是 JSON');
+      }
+      if (decoded is! Map<String, dynamic>) {
+        return _transferError(400, PeerError.badRequest, '取消请求格式错误');
+      }
+      final ids = decoded['transferIds'];
+      if (ids is! List) {
+        return _transferError(400, PeerError.badRequest, '缺少 transferIds');
+      }
+
+      final from = ServerHttpUtil.remoteAddress(request);
+      final targets = <String>{
+        for (final id in ids)
+          if (id is String && id.isNotEmpty) id,
+      };
+      final touched = <_ReceiveBatch>{};
+
+      // A withdrawn confirmation: every file it asked about, whether the user
+      // is still deciding or has just accepted.
+      final requestId = decoded['requestId'];
+      final requested = requestId is String ? _requests[requestId] : null;
+      if (requested != null) {
+        if (requested.confirmedFrom != null &&
+            requested.confirmedFrom != from) {
+          LogUtil.wTag(logTag, '忽略来源不符的撤回: $requestId');
+        } else {
+          _requests.remove(requestId);
+          LogUtil.iTag(logTag, '发送方撤回了接收请求: ${requested.peer}');
+          targets.addAll(requested.files.map((f) => f.transferId));
+          touched.add(requested);
+        }
+      }
+
+      for (final id in targets) {
+        final ticket = _tickets[id];
+        if (ticket != null &&
+            ticket.batch.confirmedFrom != null &&
+            ticket.batch.confirmedFrom != from) {
+          LogUtil.wTag(logTag, '忽略来源不符的取消: $id');
+          continue;
+        }
+        if (ticket != null) touched.add(ticket.batch);
+        _tickets.remove(id);
+        _progressCallbacks.remove(id);
+        _batchReceiveManager.cancelTransfer(id);
+      }
+
+      for (final batch in touched) {
+        await _settleIfDone(batch);
+      }
+      return ServerHttpUtil.json({'success': true});
+    } catch (e, stackTrace) {
+      LogUtil.eTag(logTag, '取消传输处理异常: $e', e, stackTrace);
+      return _transferError(500, PeerError.internalError, '取消传输处理异常');
     }
   }
 
@@ -361,6 +453,16 @@ class FileTransferHandler {
         return _transferError(403, PeerError.contentMismatch, '传输内容与确认内容不符');
       }
 
+      if (ticket.file.isCancelled ||
+          _batchReceiveManager.isCancelled(transferId)) {
+        _tickets.remove(transferId);
+        _progressCallbacks.remove(transferId);
+        _rememberCancelled(transferId, requestFrom);
+        await _settleIfDone(batch);
+        LogUtil.iTag(LogTags.transfer, '接收已取消，拒绝文件: $fileName');
+        return _transferError(409, PeerError.cancelled, '用户已取消接收');
+      }
+
       _tickets.remove(transferId);
       final progressCallback = _progressCallbacks.remove(transferId);
 
@@ -371,6 +473,8 @@ class FileTransferHandler {
 
       batch.active++;
       batch.touch();
+      final stop = Completer<void>();
+      _batchReceiveManager.bindStop(transferId, stop);
       final OperationResult<TransferData> receiveResult;
       try {
         receiveResult = await _fileTransferService.receiveFileDirectly(
@@ -380,8 +484,10 @@ class FileTransferHandler {
           senderIP: batch.peer,
           senderDeviceName: senderDeviceName,
           onProgress: progressCallback,
+          cancel: stop.future,
         );
       } finally {
+        _batchReceiveManager.unbindStop(transferId);
         batch.active--;
         batch.touch();
       }
@@ -399,17 +505,15 @@ class FileTransferHandler {
         ),
       );
       batch.finished++;
+      batch.ended.add(transferId);
+      if (receiveResult.isSuccess) {
+        _batchReceiveManager.markTransferReceived(transferId);
+      }
       LogUtil.dTag(
         LogTags.transfer,
-        '文件传输进度: ${batch.finished}/${batch.expected} 来自 ${batch.peer}',
+        '文件传输进度: ${batch.finished}/${batch.files.length} 来自 ${batch.peer}',
       );
-      if (batch.isDone && batch.flushOnFinish) {
-        LogUtil.iTag(LogTags.transfer, '所有文件已接收完成，保存批量历史记录');
-        await _flushHistories(batch);
-        if (batch.headless) {
-          _batchReceiveManager.clearPendingForSender(batch.peer);
-        }
-      }
+      await _settleIfDone(batch);
 
       if (!receiveResult.isSuccess) {
         LogUtil.wTag(
@@ -429,9 +533,16 @@ class FileTransferHandler {
           unawaited(DiskFullNotifier().notify(contextGetter?.call()));
         }
 
+        final cancelled =
+            receiveResult.errorMessage == ErrorMessages.transferCancelled;
+        if (cancelled) _rememberCancelled(transferId, requestFrom);
         return _transferError(
-          500,
-          receiveResult.isDiskFull ? PeerError.diskFull : PeerError.saveFailed,
+          cancelled ? 409 : 500,
+          cancelled
+              ? PeerError.cancelled
+              : receiveResult.isDiskFull
+              ? PeerError.diskFull
+              : PeerError.saveFailed,
           '文件保存失败: ${receiveResult.errorMessage}',
         );
       }
@@ -446,6 +557,38 @@ class FileTransferHandler {
     } catch (e, stackTrace) {
       LogUtil.eTag(LogTags.transfer, '文件传输处理异常: $e', e, stackTrace);
       return _transferError(500, PeerError.internalError, '文件传输处理异常');
+    }
+  }
+
+  /// Handle GET /transfer-status requests
+  ///
+  /// Answers whether this device called off a transfer. A sender whose upload
+  /// was cut short asks this, because closing the socket mid-body makes its
+  /// write fail before it can read the 409 that explains why.
+  Future<Response> handleTransferStatus(Request request) async {
+    _dropIdleBatches();
+    final transferId = request.url.queryParameters['transferId'];
+    final record = transferId == null ? null : _cancelledRecently[transferId];
+    final from = ServerHttpUtil.remoteAddress(request);
+    final known =
+        record != null && (record.from == null || record.from == from);
+    return ServerHttpUtil.json({'state': known ? 'cancelled' : 'unknown'});
+  }
+
+  void _rememberCancelled(String transferId, String? from) {
+    _cancelledRecently[transferId] = (from: from, at: DateTime.now());
+  }
+
+  /// Saves the batch's history once every file in it has ended, cancelled
+  /// ones included. Waiting for a `/transfer` per file would wait forever for
+  /// files that were called off before they started.
+  Future<void> _settleIfDone(_ReceiveBatch batch) async {
+    if (!batch.isDone || !batch.flushOnFinish) return;
+    LogUtil.iTag(LogTags.transfer, '批次中的文件均已结束，保存批量历史记录');
+    _requests.removeWhere((_, requested) => identical(requested, batch));
+    await _flushHistories(batch);
+    if (batch.headless) {
+      _batchReceiveManager.clearPendingForSender(batch.peer);
     }
   }
 
@@ -484,6 +627,18 @@ class FileTransferHandler {
       LogUtil.iTag(logTag, '丢弃长时间未使用的接收确认: ${batch.peer}');
       unawaited(_flushHistories(batch));
     }
+
+    // A confirmation outlives its prompt by far less than this, and a batch
+    // whose tickets are all spent has nothing left to withdraw.
+    _requests.removeWhere(
+      (_, batch) =>
+          batch.active == 0 &&
+          now.difference(batch.lastActivity) > AppConstants.receiveBatchIdleTtl,
+    );
+    _cancelledRecently.removeWhere(
+      (_, record) =>
+          now.difference(record.at) > AppConstants.receiveBatchIdleTtl,
+    );
   }
 
   Response _confirmError(int status, PeerError error) => ServerHttpUtil.json({
@@ -506,7 +661,7 @@ class _ReceiveBatch {
   _ReceiveBatch({
     required this.peer,
     required this.confirmedFrom,
-    required this.expected,
+    required this.files,
   });
 
   final String peer;
@@ -514,9 +669,17 @@ class _ReceiveBatch {
   /// Address the confirmation came from. Null means it could not be
   /// determined, in which case tickets are not bound to an address.
   final String? confirmedFrom;
-  final int expected;
+
+  /// The same entries the prompt shows, so a file cancelled before it ever
+  /// arrived still counts as ended.
+  final List<PendingFileInfo> files;
 
   int finished = 0;
+
+  /// Transfer ids that came through `/transfer`, whatever the outcome. The
+  /// shared entries stop hearing about results once the prompt has closed
+  /// and the manager has let go of them.
+  final Set<String> ended = {};
   int active = 0;
   bool headless = false;
 
@@ -526,7 +689,8 @@ class _ReceiveBatch {
   DateTime lastActivity = DateTime.now();
   final List<_TransferMetadata> results = [];
 
-  bool get isDone => finished >= expected;
+  bool get isDone =>
+      files.every((f) => f.isCompleted || ended.contains(f.transferId));
 
   void touch() => lastActivity = DateTime.now();
 }
@@ -534,11 +698,16 @@ class _ReceiveBatch {
 class _Ticket {
   _Ticket({
     required this.batch,
+    required this.file,
     required this.fileName,
     required this.fileSize,
   });
 
   final _ReceiveBatch batch;
+
+  /// The entry the prompt shows. Its cancelled flag is what refuses a file
+  /// the user called off before it arrived.
+  final PendingFileInfo file;
   final String fileName;
   final int fileSize;
 }

@@ -89,6 +89,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get cancel => 'Annulla';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
   String get confirm => 'Conferma';
 
   @override

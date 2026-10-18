@@ -43,6 +43,7 @@ class _ProbeChannel implements TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async => {};
 }
 

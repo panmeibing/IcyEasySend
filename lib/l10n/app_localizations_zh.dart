@@ -89,6 +89,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cancel => '取消';
 
   @override
+  String get cancelAll => '取消全部';
+
+  @override
   String get confirm => '确认';
 
   @override
@@ -2016,6 +2019,9 @@ class AppLocalizationsZhHk extends AppLocalizationsZh {
 
   @override
   String get cancel => '取消';
+
+  @override
+  String get cancelAll => '取消全部';
 
   @override
   String get confirm => '確認';

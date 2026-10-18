@@ -44,4 +44,16 @@ class TransferRequestBuilder {
   String buildBatchConfirmationUrl(String targetIP) {
     return NetworkUtil.buildHttpUrl(targetIP, '/batch-confirm-receive');
   }
+
+  /// Tells the receiver to drop files the sender no longer wants to send.
+  String buildBatchCancelUrl(String targetIP) {
+    return NetworkUtil.buildHttpUrl(targetIP, '/batch-cancel');
+  }
+
+  /// Asks the receiver whether it called off [transferId].
+  String buildTransferStatusUrl(String targetIP, String transferId) {
+    return Uri.parse(
+      NetworkUtil.buildHttpUrl(targetIP, '/transfer-status'),
+    ).replace(queryParameters: {'transferId': transferId}).toString();
+  }
 }

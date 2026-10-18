@@ -51,6 +51,7 @@ class HomePageState extends State<HomePage> {
   bool isServerRunning = false;
   String? serverAddress;
   bool isSending = false;
+  TransferCancellation? _sendCancellation;
   bool _isCreatingWebShare = false;
   bool _isDragging = false;
 
@@ -253,6 +254,17 @@ class HomePageState extends State<HomePage> {
                     transferSpeed: _sendProgress.speed,
                     estimatedTimeRemaining:
                         _sendProgress.estimatedTimeRemaining,
+                    sendingFiles: isSending ? selectedItems : const [],
+                    completedFileIndices: _sendProgress.completedFileIndices,
+                    isFileSettled: _sendCancellation?.isSettled,
+                    onCancelFile: _sendCancellation == null
+                        ? null
+                        : (name) => _sendCancellation!.cancelFile(name),
+                    onCancelAll: _sendCancellation == null
+                        ? null
+                        : () => _sendCancellation!.cancelAll(
+                            selectedItems.map((item) => item.transferName),
+                          ),
                     onMore: _showOrbitMore,
                     onSend: _sendFiles,
                     onShareViaQr: _shareViaQr,
@@ -388,7 +400,15 @@ class HomePageState extends State<HomePage> {
     if (items.isEmpty || !mounted) return;
     final previous = selectedItems;
     setState(() {
-      selectedItems = append ? [...selectedItems, ...items] : items;
+      selectedItems = append
+          ? [
+              ...selectedItems,
+              ...TransferFileItem.withUniqueNames(
+                items,
+                existing: selectedItems,
+              ),
+            ]
+          : TransferFileItem.withUniqueNames(items);
     });
     if (!append) {
       await _shareIntentHandler.cleanupShareCacheForItems(previous);
@@ -416,7 +436,11 @@ class HomePageState extends State<HomePage> {
       paths,
     );
     if (validItems.isNotEmpty && mounted) {
-      setState(() => selectedItems.addAll(validItems));
+      setState(
+        () => selectedItems.addAll(
+          TransferFileItem.withUniqueNames(validItems, existing: selectedItems),
+        ),
+      );
     }
   }
 
@@ -429,7 +453,11 @@ class HomePageState extends State<HomePage> {
       isSending: isSending,
       isMounted: () => mounted,
       onItemsAdded: (items) {
-        setState(() => selectedItems.addAll(items));
+        setState(
+          () => selectedItems.addAll(
+            TransferFileItem.withUniqueNames(items, existing: selectedItems),
+          ),
+        );
       },
     );
   }
@@ -479,63 +507,76 @@ class HomePageState extends State<HomePage> {
     final peer = _endpoint.peerForSend();
     if (peer == null) return;
 
-    await _withInputLocked(
-      () => _fileTransferController.sendFiles(
-        context: context,
-        files: selectedItems,
-        targetIP: peer.lan?.ip ?? _endpoint.targetIP,
-        targetPort:
-            peer.lan?.port ?? _endpoint.port ?? AppConstants.defaultPort,
-        peer: peer,
-        secretKey: _endpoint.secretKey,
-        onProgress: (progress, bytesTransferred, totalBytes) {
-          // The transfer outlives this page — callbacks keep arriving after
-          // the user navigates away, and every one of them calls setState.
-          if (!mounted) return;
-          _sendProgress.onOverallProgress(
-            progress: progress,
-            bytesTransferred: bytesTransferred,
-            totalBytes: totalBytes,
-            onUiUpdate: () => setState(() {}),
-          );
-        },
-        onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
-          if (!mounted) return;
-          _sendProgress.onFileProgress(
-            fileIndex: fileIndex,
-            progress: progress,
-            items: selectedItems,
-            l10n: AppLocalizations.of(context),
-            onUiUpdate: () => setState(() {}),
-          );
-        },
-        onStatusChange: (status) {
-          if (!mounted) return;
-          _sendProgress.onStatusChange(status, () => setState(() {}));
-        },
-        onTransferStart: () {
-          final preparing = mounted
-              ? AppLocalizations.of(context).preparingSend
-              : '';
-          _sendProgress.onTransferStart(
-            fileCount: selectedItems.length,
-            preparingLabel: preparing,
-            onUiUpdate: () {
-              if (mounted) setState(() => isSending = true);
-            },
-          );
-        },
-        onTransferEnd: () {
-          _sendProgress.onTransferEnd(
-            onUiUpdate: () {
-              if (mounted) setState(() => isSending = false);
-            },
-            clearSelectedItems: () => selectedItems.clear(),
-          );
-        },
-        onHistoryUpdated: widget.serverManager.refreshHistory,
-      ),
-    );
+    final cancellation = TransferCancellation();
+    void onCancelChanged() {
+      if (mounted) setState(() {});
+    }
+
+    cancellation.addListener(onCancelChanged);
+    setState(() => _sendCancellation = cancellation);
+    try {
+      await _withInputLocked(
+        () => _fileTransferController.sendFiles(
+          context: context,
+          files: selectedItems,
+          targetIP: peer.lan?.ip ?? _endpoint.targetIP,
+          targetPort:
+              peer.lan?.port ?? _endpoint.port ?? AppConstants.defaultPort,
+          peer: peer,
+          secretKey: _endpoint.secretKey,
+          onProgress: (progress, bytesTransferred, totalBytes) {
+            // The transfer outlives this page — callbacks keep arriving after
+            // the user navigates away, and every one of them calls setState.
+            if (!mounted) return;
+            _sendProgress.onOverallProgress(
+              progress: progress,
+              bytesTransferred: bytesTransferred,
+              totalBytes: totalBytes,
+              onUiUpdate: () => setState(() {}),
+            );
+          },
+          onFileProgress: (fileIndex, progress, bytesTransferred, totalBytes) {
+            if (!mounted) return;
+            _sendProgress.onFileProgress(
+              fileIndex: fileIndex,
+              progress: progress,
+              items: selectedItems,
+              l10n: AppLocalizations.of(context),
+              onUiUpdate: () => setState(() {}),
+            );
+          },
+          onStatusChange: (status) {
+            if (!mounted) return;
+            _sendProgress.onStatusChange(status, () => setState(() {}));
+          },
+          onTransferStart: () {
+            final preparing = mounted
+                ? AppLocalizations.of(context).preparingSend
+                : '';
+            _sendProgress.onTransferStart(
+              fileCount: selectedItems.length,
+              preparingLabel: preparing,
+              onUiUpdate: () {
+                if (mounted) setState(() => isSending = true);
+              },
+            );
+          },
+          onTransferEnd: () {
+            _sendProgress.onTransferEnd(
+              onUiUpdate: () {
+                if (mounted) setState(() => isSending = false);
+              },
+              clearSelectedItems: () => selectedItems.clear(),
+            );
+          },
+          onHistoryUpdated: widget.serverManager.refreshHistory,
+          cancellation: cancellation,
+        ),
+      );
+    } finally {
+      cancellation.removeListener(onCancelChanged);
+      if (mounted) setState(() => _sendCancellation = null);
+    }
   }
 
   /// Request clipboard content from target device

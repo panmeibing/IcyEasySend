@@ -271,6 +271,7 @@ class FileTransferController {
     required Function() onTransferStart,
     required Function() onTransferEnd,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     final resolvedPeer =
         peer ??
@@ -292,12 +293,14 @@ class FileTransferController {
 
       final results = await _fileTransferService.sendFilesTo(
         peer: resolvedPeer,
-        files: files,
+        // The page's selection list stays editable while this runs.
+        files: List.unmodifiable(files),
         secretKey: secretKey,
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,
         onHistoryUpdated: onHistoryUpdated,
+        cancellation: cancellation,
       );
 
       // Count successes and failures
@@ -333,11 +336,15 @@ class FileTransferController {
             await _preferencesService.saveLastUsedPort(targetPort);
           }
         } else if (successCount == 0) {
+          final allCancelled = results.values.every(
+            (result) => result.errorMessage == l10n.transferCancelled,
+          );
           await DialogHelper.showErrorDialog(
             context,
-            message:
-                '${l10n.allFilesSendFailed}\n${l10n.failedFiles}:\n${failedFiles.join('\n')}',
-            title: l10n.error,
+            message: allCancelled
+                ? l10n.transferCancelled
+                : '${l10n.allFilesSendFailed}\n${l10n.failedFiles}:\n${failedFiles.join('\n')}',
+            title: allCancelled ? l10n.cancel : l10n.error,
             confirmText: l10n.confirm,
           );
         } else {

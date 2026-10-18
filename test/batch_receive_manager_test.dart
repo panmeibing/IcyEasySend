@@ -79,7 +79,7 @@ void main() {
       expect(batch.files.every((f) => f.isFailed), isTrue);
     });
 
-    test('tracks totals and completion from progress', () {
+    test('tracks totals from progress', () {
       final batch = IncomingBatch(senderKey: 'a', files: files('f', 2))
         ..accept();
       batch.updateProgress(batch.files[0], 1.0, 100);
@@ -87,8 +87,33 @@ void main() {
 
       expect(batch.totalBytes, 200);
       expect(batch.bytesReceived, 150);
-      expect(batch.files[0].isReceived, isTrue);
+    });
+
+    test('the last byte does not finish a file; saving it does', () {
+      final batch = IncomingBatch(senderKey: 'a', files: files('f', 1))
+        ..accept();
+      final file = batch.files.single;
+
+      batch.updateProgress(file, 1.0, 100);
+      expect(file.isCompleted, isFalse, reason: 'not flushed or checked yet');
       expect(batch.isFinished, isFalse);
+
+      batch.markReceived(file);
+      expect(file.isReceived, isTrue);
+      expect(batch.isFinished, isTrue);
+    });
+
+    test('a file can still be cancelled after its last byte arrived', () {
+      final batch = IncomingBatch(senderKey: 'a', files: files('f', 1))
+        ..accept();
+      final file = batch.files.single;
+      batch.updateProgress(file, 1.0, 100);
+
+      expect(batch.cancel(file, 'cancelled'), isTrue);
+      batch.markReceived(file);
+
+      expect(file.isCancelled, isTrue);
+      expect(file.isReceived, isFalse);
     });
   });
 
@@ -150,6 +175,7 @@ void main() {
       );
 
       manager.updateProgress('a-0', 1.0, 100, 100);
+      manager.markTransferReceived('a-0');
       manager.markTransferFailed('b-0', 'disk full');
 
       expect(first.single.isReceived, isTrue);
@@ -160,6 +186,58 @@ void main() {
         r();
       }
       await tester.pump();
+    });
+
+    test('cancelling a file that already arrived leaves it received', () async {
+      final batch = files('r', 2);
+      await manager.acceptBatchHeadless(files: batch, senderIP: 'peer-3');
+      manager.markTransferReceived('r-0');
+
+      manager.cancelTransfer('r-0');
+      manager.cancelTransfer('r-1');
+
+      expect(batch[0].isReceived, isTrue);
+      expect(batch[0].isCancelled, isFalse);
+      expect(batch[0].errorMessage, isNull);
+      expect(batch[1].isCancelled, isTrue);
+      expect(batch[1].isFailed, isTrue);
+    });
+
+    test(
+      'a cancelled file stays cancelled after the batch is dropped',
+      () async {
+        final batch = files('c', 1);
+        await manager.acceptBatchHeadless(files: batch, senderIP: 'peer-4');
+
+        manager.cancelTransfer('c-0');
+        manager.clearPendingForSender('peer-4');
+
+        // The flag lives on the file the server's ticket still points at, not
+        // in bookkeeping that goes away with the prompt.
+        expect(batch.single.isCancelled, isTrue);
+      },
+    );
+
+    test('cancelling an in-flight file completes its stop signal', () async {
+      final batch = files('s', 1);
+      await manager.acceptBatchHeadless(files: batch, senderIP: 'peer-5');
+      final stop = Completer<void>();
+      manager.bindStop('s-0', stop);
+
+      manager.cancelTransfer('s-0');
+
+      expect(stop.isCompleted, isTrue);
+    });
+
+    test('a stop bound after cancelling completes at once', () async {
+      final batch = files('l', 1);
+      await manager.acceptBatchHeadless(files: batch, senderIP: 'peer-6');
+      manager.cancelTransfer('l-0');
+
+      final stop = Completer<void>();
+      manager.bindStop('l-0', stop);
+
+      expect(stop.isCompleted, isTrue);
     });
 
     test(

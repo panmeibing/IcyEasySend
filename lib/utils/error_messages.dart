@@ -19,6 +19,7 @@ class ErrorMessages {
   static String get networkRequestFailed => appText.networkRequestFailed;
   static String get targetDeviceUnavailable => appText.targetDeviceUnavailable;
   static String get transferTimeout => appText.transferTimeout;
+  static String get transferCancelled => appText.transferCancelled;
   static String get transferInterrupted => appText.transferInterrupted;
 
   static String get fileNotFound => appText.fileNotFound;

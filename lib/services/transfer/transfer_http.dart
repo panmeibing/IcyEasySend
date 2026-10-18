@@ -12,9 +12,9 @@ enum TransferDirection { upload, download }
 
 /// Shared Dio setup for LAN and relay file transfers.
 ///
-/// Both paths budget one second per megabyte on top of the base request
-/// timeout. Centralising that here keeps send and receive aligned regardless
-/// of whether bytes go over the LAN or through a relay.
+/// [transferTimeout] is the short budget relay signaling still waits on.
+/// LAN uploads leave the body timeout unset and fail only when a file goes
+/// silent for [AppConstants.transferStallTimeout].
 class TransferHttp {
   TransferHttp._();
 
@@ -26,13 +26,23 @@ class TransferHttp {
 
   /// Dio for an upload POST, whether to `/transfer` on the LAN or
   /// `/v1/stream/{id}` on a relay.
-  static Dio createForUpload(int fileSize) {
-    final timeout = transferTimeout(fileSize);
+  ///
+  /// [timeout] overrides the send and receive limits. Relay uploads keep
+  /// [transferTimeout]. LAN uploads pass [unbounded] so a slow but still
+  /// moving transfer is not cut off by a wall-clock budget.
+  static Dio createForUpload(
+    int fileSize, {
+    Duration? timeout,
+    bool unbounded = false,
+  }) {
+    final Duration? effective = unbounded
+        ? null
+        : (timeout ?? transferTimeout(fileSize));
     return Dio(
       BaseOptions(
         connectTimeout: Duration(seconds: AppConstants.requestTimeout),
-        sendTimeout: timeout,
-        receiveTimeout: timeout,
+        sendTimeout: effective,
+        receiveTimeout: effective,
       ),
     );
   }

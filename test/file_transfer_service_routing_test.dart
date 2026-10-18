@@ -58,6 +58,7 @@ class _RecordingChannel implements TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     lastPeer = peer;
     lastFiles = files;

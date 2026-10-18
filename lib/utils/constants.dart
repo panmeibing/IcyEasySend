@@ -104,6 +104,29 @@ class AppConstants {
   /// Actual timeout is calculated as: baseTimeout + (fileSize / 1MB) seconds
   static const Duration fileTransferBaseTimeout = Duration(seconds: 60);
 
+  /// How long a transfer may go without any new bytes before the socket is
+  /// closed.
+  ///
+  /// This is an idle gap, not a budget for the whole file. A slow link that
+  /// keeps delivering data is left alone; one that has stopped is not.
+  static const Duration transferStallTimeout = Duration(seconds: 30);
+
+  /// How long a sender waits for the receiver's answer once every byte has
+  /// been handed to the socket.
+  ///
+  /// Progress cannot be observed in this phase: the tail of the file may still
+  /// be sitting in socket buffers, and the receiver still has to flush and
+  /// verify it. A peer that vanished without closing the connection would
+  /// otherwise be waited on forever.
+  static const Duration transferAckTimeout = Duration(minutes: 3);
+
+  /// Unflushed bytes a receiver lets pile up before waiting for the disk.
+  ///
+  /// File writes do not push back on the network by themselves, so a disk
+  /// slower than the link would otherwise buffer the difference in memory and
+  /// leave the sender waiting on a long flush after the last byte.
+  static const int receiveFlushThresholdBytes = 8 * 1024 * 1024;
+
   // File size constants
 
   /// Maximum file size (20GB)

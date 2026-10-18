@@ -26,6 +26,7 @@
   "sendSuccess": "发送成功",
   "sendFailed": "发送失败",
   "cancel": "取消",
+  "cancelAll": "取消全部",
   "confirm": "确认",
   "historyTitle": "传输历史",
   "noHistory": "暂无历史记录",
