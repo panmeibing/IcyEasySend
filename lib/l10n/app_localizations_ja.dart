@@ -92,6 +92,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get cancel => 'キャンセル';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
   String get confirm => '確認';
 
   @override

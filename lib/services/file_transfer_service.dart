@@ -98,6 +98,7 @@ class FileTransferService {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     final resolved = _withFreshPresence(peer);
     final selector = _selector();
@@ -126,6 +127,7 @@ class FileTransferService {
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,
         onHistoryUpdated: onHistoryUpdated,
+        cancellation: cancellation,
       );
 
       int successCount = 0;
@@ -213,6 +215,7 @@ class FileTransferService {
     String? senderDeviceName,
     void Function(double progress, int bytesReceived, int totalBytes)?
     onProgress,
+    Future<void>? cancel,
   }) async {
     LogUtil.iTag(
       logTag,
@@ -227,6 +230,7 @@ class FileTransferService {
         senderIP: senderIP,
         senderDeviceName: senderDeviceName,
         onProgress: onProgress,
+        cancel: cancel,
       );
 
       if (result.isSuccess) {

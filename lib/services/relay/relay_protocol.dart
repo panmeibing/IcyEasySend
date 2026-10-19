@@ -167,6 +167,7 @@ class RelayPayloadType {
   static const String transferAccept = 'transfer.accept';
   static const String fileBegin = 'file.begin';
   static const String fileDone = 'file.done';
+  static const String fileCancel = 'file.cancel';
   static const String transferCancel = 'transfer.cancel';
 
   /// Envelope holding any of the above once session keys exist.
@@ -686,6 +687,32 @@ class FileDone {
       code: code is String && code.isNotEmpty ? code : null,
       error: error is String && error.isNotEmpty ? error : null,
     );
+  }
+}
+
+/// Sender to receiver: this one file is off; the rest of the session goes on.
+///
+/// The receiver calls a file off the other way, with a [FileDone] carrying
+/// the `cancelled` code. Older receivers ignore the type and fall back to
+/// their watchdog, which is what they did before it existed.
+class FileCancel {
+  final String sessionId;
+  final String fileId;
+
+  const FileCancel({required this.sessionId, required this.fileId});
+
+  Map<String, dynamic> toJson() => {
+    'type': RelayPayloadType.fileCancel,
+    'sid': sessionId,
+    'fileId': fileId,
+  };
+
+  static FileCancel? tryParse(Map<String, dynamic> json) {
+    final sessionId = json['sid'];
+    final fileId = json['fileId'];
+    if (sessionId is! String || sessionId.isEmpty) return null;
+    if (fileId is! String || fileId.isEmpty) return null;
+    return FileCancel(sessionId: sessionId, fileId: fileId);
   }
 }
 

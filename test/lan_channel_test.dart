@@ -73,6 +73,7 @@ class _FakeBatchTransferManager implements BatchTransferManager {
     onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     calls++;
     lastTargetIP = targetIP;

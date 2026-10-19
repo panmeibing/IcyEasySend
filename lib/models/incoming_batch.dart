@@ -21,6 +21,10 @@ class PendingFileInfo {
   /// Why the file failed, or null if it has not.
   String? errorMessage;
 
+  /// The user or the sender called this file off. Outlives the prompt, since
+  /// the sender may still knock for it after the dialog has closed.
+  bool isCancelled = false;
+
   PendingFileInfo({
     required this.fileName,
     required this.fileSize,
@@ -94,13 +98,30 @@ class IncomingBatch extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Bytes arriving. Even the last of them does not end the file: it is not
+  /// received until it has been flushed and checked, see [markReceived].
   void updateProgress(PendingFileInfo file, double progress, int bytes) {
+    if (file.isCompleted) return;
     file.progress = progress;
     file.bytesReceived = bytes;
-    if (progress >= 1.0) {
-      file.isCompleted = true;
-    }
     notifyListeners();
+  }
+
+  /// The file is on disk at its full size.
+  void markReceived(PendingFileInfo file) {
+    if (file.isCompleted) return;
+    file.progress = 1.0;
+    file.bytesReceived = file.fileSize;
+    file.isCompleted = true;
+    notifyListeners();
+  }
+
+  /// Calls off [file] unless it has already ended. Returns whether it did.
+  bool cancel(PendingFileInfo file, String reason) {
+    if (file.isCompleted) return false;
+    file.isCancelled = true;
+    markFailed(file, reason);
+    return true;
   }
 
   void markFailed(PendingFileInfo file, String errorMessage) {

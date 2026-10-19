@@ -93,6 +93,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get cancel => 'Annuleren';
 
   @override
+  String get cancelAll => 'Cancel all';
+
+  @override
   String get confirm => 'Bevestigen';
 
   @override

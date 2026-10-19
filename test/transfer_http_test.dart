@@ -42,6 +42,17 @@ void main() {
       dio.close();
     });
 
+    test('unbounded upload has no body timeout', () {
+      final dio = TransferHttp.createForUpload(
+        4 * AppConstants.bytesPerMB,
+        unbounded: true,
+      );
+
+      expect(dio.options.sendTimeout, isNull);
+      expect(dio.options.receiveTimeout, isNull);
+      dio.close();
+    });
+
     test('createForDownload sets receive timeout only', () {
       final dio = TransferHttp.createForDownload(AppConstants.bytesPerMB);
       final timeout = TransferHttp.transferTimeout(AppConstants.bytesPerMB);

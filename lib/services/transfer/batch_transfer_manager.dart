@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -8,6 +11,7 @@ import '../../models/transfer_file_item.dart';
 import '../../models/transfer_history.dart';
 import '../../utils/constants.dart';
 import '../../utils/error_messages.dart';
+import '../../utils/hex_util.dart';
 import '../../utils/http_helper.dart';
 import '../../utils/log_util.dart';
 import '../../utils/network_util.dart';
@@ -16,8 +20,10 @@ import '../../utils/peer_error.dart';
 import '../../utils/transfer_status_provider.dart';
 import '../preferences_service.dart';
 import '../validation_service.dart';
+import 'batch_progress.dart';
 import 'file_sender.dart' as sender;
 import 'health_checker.dart';
+import 'transfer_cancellation.dart';
 import 'transfer_history_manager.dart';
 import 'transfer_request_builder.dart';
 
@@ -65,6 +71,7 @@ class BatchTransferManager {
     onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     final results = <String, OperationResult<TransferData>>{};
 
@@ -95,7 +102,7 @@ class BatchTransferManager {
 
       // Step 3: Validate files and prepare file list
       final fileList = <Map<String, dynamic>>[];
-      int totalBytes = 0;
+      final fileSizes = <String, int>{};
 
       final validationResults = await _validationService
           .validateFilesForSending(files);
@@ -108,11 +115,12 @@ class BatchTransferManager {
           results[fileName] = OperationResult.failure(
             validationResult.errorMessage!,
           );
+          cancellation?.markFinished(fileName);
           continue;
         }
 
         final fileData = validationResult.data!;
-        totalBytes += fileData.fileSize;
+        fileSizes[fileName] = fileData.fileSize;
         fileList.add({
           'fileName': fileData.fileName,
           'fileSize': fileData.fileSize,
@@ -123,16 +131,33 @@ class BatchTransferManager {
         return results;
       }
 
+      void cancelRemaining() {
+        for (final fileData in fileList) {
+          results[fileData['fileName'] as String] = OperationResult.failure(
+            ErrorMessages.transferCancelled,
+          );
+        }
+      }
+
+      if (cancellation?.isAborted ?? false) {
+        cancelRemaining();
+        return results;
+      }
+
       // Step 4: Send batch confirmation request
       onStatusChange?.call(
         _statusProvider.waitingForReceiverConfirmFiles(fileList.length),
       );
 
+      // Lets the sender withdraw the request while the receiver is still
+      // looking at it, before any transfer ID exists to name the files by.
+      final requestId = HexUtil.random(16);
       final confirmUrl = _requestBuilder.buildBatchConfirmationUrl(targetIP);
       final confirmBody = jsonEncode({
         'files': fileList,
         'senderIP': senderIP,
         'senderDeviceName': deviceName,
+        'requestId': requestId,
       });
 
       LogUtil.iTag(
@@ -146,12 +171,22 @@ class BatchTransferManager {
         headers['X-Secret-Key'] = secretKey;
       }
 
-      final confirmResult = await HttpHelper.post(
+      final confirmRequest = HttpHelper.post(
         confirmUrl,
         headers: headers,
         body: confirmBody,
         timeout: AppConstants.confirmTimeout,
       );
+      final confirmResult = cancellation == null
+          ? await confirmRequest
+          : await cancellation.unlessAborted(confirmRequest);
+
+      if (confirmResult == null) {
+        LogUtil.iTag(logTag, '等待接收方确认时已取消，撤回请求');
+        unawaited(_withdrawRequest(targetIP, requestId));
+        cancelRemaining();
+        return results;
+      }
 
       if (!confirmResult.isSuccess) {
         final errorMsg = confirmResult.errorMessage!;
@@ -220,6 +255,16 @@ class BatchTransferManager {
         confirmData['transferIds'] as Map,
       );
 
+      cancellation?.onChanged = (names) {
+        unawaited(_notifyPeerCancelled(targetIP, names, transferIds));
+      };
+      final alreadyCancelled = cancellation?.cancelled ?? const <String>{};
+      if (alreadyCancelled.isNotEmpty) {
+        unawaited(
+          _notifyPeerCancelled(targetIP, alreadyCancelled, transferIds),
+        );
+      }
+
       // Step 5: Send files with concurrent control
       await _sendFilesWithConcurrency(
         files: files,
@@ -228,17 +273,19 @@ class BatchTransferManager {
         senderIP: senderIP,
         deviceName: deviceName,
         secretKey: secretKey,
-        totalBytes: totalBytes,
+        fileSizes: fileSizes,
         results: results,
         onProgress: onProgress,
         onFileProgress: onFileProgress,
         onStatusChange: onStatusChange,
+        cancellation: cancellation,
       );
 
       // Step 6: Save all transfer histories in batch after all transfers complete
       await _saveBatchTransferHistories(
         files: files,
         results: results,
+        fileSizes: fileSizes,
         targetIP: targetIP,
         deviceName: deviceName,
       );
@@ -268,7 +315,7 @@ class BatchTransferManager {
     required String senderIP,
     String? deviceName,
     String? secretKey,
-    required int totalBytes,
+    required Map<String, int> fileSizes,
     required Map<String, OperationResult<TransferData>> results,
     void Function(double progress, int bytesTransferred, int totalBytes)?
     onProgress,
@@ -280,25 +327,32 @@ class BatchTransferManager {
     )?
     onFileProgress,
     void Function(String status)? onStatusChange,
+    TransferCancellation? cancellation,
   }) async {
-    final concurrentCount = await _preferencesService.getConcurrentTransfers();
+    final concurrentCount = max(
+      1,
+      await _preferencesService.getConcurrentTransfers(),
+    );
 
-    final Map<int, double> fileProgress = {};
-    final Map<int, int> fileBytes = {};
-
-    // Initialize fileBytes for valid files
-    for (int i = 0; i < files.length; i++) {
-      if (transferIds.containsKey(files[i].transferName)) {
-        fileBytes[i] = 0;
-      }
-    }
-
-    // Create list of valid file indices
     final validFileIndices = <int>[];
     for (int i = 0; i < files.length; i++) {
       if (transferIds.containsKey(files[i].transferName)) {
         validFileIndices.add(i);
+      } else {
+        cancellation?.markFinished(files[i].transferName);
       }
+    }
+
+    final progress = BatchProgress({
+      for (final i in validFileIndices)
+        i: fileSizes[files[i].transferName] ?? 0,
+    });
+    void reportOverall() {
+      onProgress?.call(
+        progress.fraction,
+        progress.sentBytes,
+        progress.totalBytes,
+      );
     }
 
     // Function to send a single file with timeout protection
@@ -316,54 +370,34 @@ class BatchTransferManager {
         return OperationResult.failure(_statusProvider.transferIdNotFound);
       }
 
+      if (cancellation?.isCancelled(fileName) ?? false) {
+        return OperationResult.failure(ErrorMessages.transferCancelled);
+      }
+
       onStatusChange?.call(
         _statusProvider.transferringFile(fileIndex + 1, files.length, fileName),
       );
 
       try {
-        // Add timeout protection for each file transfer
-        final fileSize = await file.length();
-        // Calculate timeout: base timeout + time based on file size (1 second per MB)
-        final timeoutDuration = Duration(
-          seconds:
-              AppConstants.requestTimeout +
-              (fileSize ~/ AppConstants.bytesPerMB),
+        // The sender future returns only after its socket is closed. A timeout
+        // wrapped around it used to mark the file failed and free this slot
+        // while the upload was still running, so the next wave stacked more
+        // connections on top of the ones that had already stalled.
+        final result = await _fileSender.sendFileWithTransferId(
+          targetIP: targetIP,
+          file: file,
+          transferId: transferId,
+          senderIP: senderIP,
+          deviceName: deviceName,
+          secretKey: secretKey,
+          transferName: fileName,
+          cancellation: cancellation,
+          onProgress: (fraction, bytes, total) {
+            onFileProgress?.call(fileIndex, fraction, bytes, total);
+            progress.update(fileIndex, bytes);
+            reportOverall();
+          },
         );
-
-        final result = await _fileSender
-            .sendFileWithTransferId(
-              targetIP: targetIP,
-              file: file,
-              transferId: transferId,
-              senderIP: senderIP,
-              deviceName: deviceName,
-              secretKey: secretKey,
-              transferName: fileName,
-              onProgress: (progress, bytes, total) {
-                fileProgress[fileIndex] = progress;
-                fileBytes[fileIndex] = bytes;
-                onFileProgress?.call(fileIndex, progress, bytes, total);
-
-                int overallBytes = 0;
-                for (final entry in fileBytes.entries) {
-                  overallBytes += entry.value;
-                }
-                final overallProgress = totalBytes > 0
-                    ? overallBytes / totalBytes
-                    : 0.0;
-                onProgress?.call(overallProgress, overallBytes, totalBytes);
-              },
-            )
-            .timeout(
-              timeoutDuration,
-              onTimeout: () {
-                LogUtil.wTag(
-                  logTag,
-                  'File transfer timeout for $fileName after ${timeoutDuration.inSeconds} seconds',
-                );
-                return OperationResult.failure(ErrorMessages.transferTimeout);
-              },
-            );
 
         return result;
       } catch (e) {
@@ -373,35 +407,68 @@ class BatchTransferManager {
       }
     }
 
-    // Process files with concurrent control
-    for (int i = 0; i < validFileIndices.length; i += concurrentCount) {
-      final batchEnd = (i + concurrentCount < validFileIndices.length)
-          ? i + concurrentCount
-          : validFileIndices.length;
-
-      final batch = <Future<void>>[];
-      for (int j = i; j < batchEnd; j++) {
-        final fileIndex = validFileIndices[j];
-        batch.add(
-          sendFile(fileIndex)
-              .then((result) {
-                results[files[fileIndex].transferName] = result;
-              })
-              .catchError((error) {
-                final fileName = files[fileIndex].transferName;
-                LogUtil.eTag(
-                  logTag,
-                  'Error in batch transfer for $fileName: $error',
-                );
-                results[fileName] = OperationResult.failure(
-                  appText.unexpectedError('$error'),
-                );
-              }),
-        );
+    // A pool rather than waves: a slot frees up the moment its file ends, so
+    // one slow file holds one slot instead of the whole next wave.
+    var next = 0;
+    Future<void> worker() async {
+      while (next < validFileIndices.length) {
+        final fileIndex = validFileIndices[next++];
+        final fileName = files[fileIndex].transferName;
+        OperationResult<TransferData> result;
+        try {
+          result = await sendFile(fileIndex);
+        } catch (error) {
+          LogUtil.eTag(logTag, 'Error in batch transfer for $fileName: $error');
+          result = OperationResult.failure(appText.unexpectedError('$error'));
+        }
+        results[fileName] = result;
+        progress.settle(fileIndex, success: result.isSuccess);
+        reportOverall();
       }
+    }
 
-      // Wait for all files in this batch to complete (success or failure)
-      await Future.wait(batch, eagerError: false);
+    await Future.wait([
+      for (var i = 0; i < min(concurrentCount, validFileIndices.length); i++)
+        worker(),
+    ]);
+  }
+
+  Future<void> _notifyPeerCancelled(
+    String targetIP,
+    Set<String> names,
+    Map<String, String> transferIds,
+  ) async {
+    final ids = <String>[
+      for (final name in names)
+        if (transferIds[name] != null) transferIds[name]!,
+    ];
+    if (ids.isEmpty) return;
+    try {
+      await HttpHelper.post(
+        _requestBuilder.buildBatchCancelUrl(targetIP),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'transferIds': ids}),
+        timeout: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      LogUtil.wTag(logTag, '通知对端取消失败: $e');
+    }
+  }
+
+  /// Takes back a confirmation request the receiver may still be showing.
+  ///
+  /// The empty ID list keeps older receivers, which only know `transferIds`,
+  /// from rejecting the body.
+  Future<void> _withdrawRequest(String targetIP, String requestId) async {
+    try {
+      await HttpHelper.post(
+        _requestBuilder.buildBatchCancelUrl(targetIP),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'transferIds': <String>[], 'requestId': requestId}),
+        timeout: const Duration(seconds: 3),
+      );
+    } catch (e) {
+      LogUtil.wTag(logTag, '撤回确认请求失败: $e');
     }
   }
 
@@ -410,6 +477,7 @@ class BatchTransferManager {
   Future<void> _saveBatchTransferHistories({
     required List<TransferFileItem> files,
     required Map<String, OperationResult<TransferData>> results,
+    required Map<String, int> fileSizes,
     required String targetIP,
     String? deviceName,
   }) async {
@@ -420,7 +488,10 @@ class BatchTransferManager {
         final result = results[item.transferName];
 
         if (result != null) {
-          final fileSize = await item.file.length();
+          // The size measured before sending. Reading it again would throw
+          // for a file deleted since, and lose the whole batch's history.
+          final fileSize =
+              fileSizes[item.transferName] ?? await _lengthOrZero(item.file);
           final history = _historyManager.createTransferHistory(
             fileName: item.transferName,
             fileSize: fileSize,
@@ -441,6 +512,14 @@ class BatchTransferManager {
       }
     } catch (e) {
       LogUtil.eTag(logTag, '批量保存传输历史失败: $e');
+    }
+  }
+
+  static Future<int> _lengthOrZero(File file) async {
+    try {
+      return await file.length();
+    } on FileSystemException {
+      return 0;
     }
   }
 }

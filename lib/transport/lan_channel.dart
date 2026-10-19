@@ -85,6 +85,7 @@ class LanChannel implements TransportChannel {
     FileProgressCallback? onFileProgress,
     void Function(String status)? onStatusChange,
     VoidCallback? onHistoryUpdated,
+    TransferCancellation? cancellation,
   }) async {
     final lan = peer.lan;
     if (lan == null) {
@@ -105,6 +106,7 @@ class LanChannel implements TransportChannel {
       onFileProgress: onFileProgress,
       onStatusChange: onStatusChange,
       onHistoryUpdated: onHistoryUpdated,
+      cancellation: cancellation,
     );
   }
 }

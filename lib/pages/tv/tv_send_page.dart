@@ -115,7 +115,7 @@ class _TvSendPageState extends State<TvSendPage> {
       }
       if (!mounted) return;
       if (picked.isEmpty) return;
-      setState(() => _files = picked);
+      setState(() => _files = TransferFileItem.withUniqueNames(picked));
     } catch (_) {
       if (!mounted) return;
       ToastHelper.showError(context, l10n.tvPickerUnavailable);

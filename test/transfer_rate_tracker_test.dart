@@ -46,6 +46,10 @@ void main() {
         ),
         'Remaining Time: 00:25:23',
       );
+      expect(
+        FormatUtil.formatRemainingTimeLabel('Remaining Time', null),
+        'Remaining Time: --:--:--',
+      );
     });
   });
 

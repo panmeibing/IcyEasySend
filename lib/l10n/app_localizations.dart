@@ -279,6 +279,12 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get cancel;
 
+  /// No description provided for @cancelAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel all'**
+  String get cancelAll;
+
   /// No description provided for @confirm.
   ///
   /// In en, this message translates to:

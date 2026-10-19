@@ -119,7 +119,7 @@ void main() {
     expect(find.byType(BatchReceiveDialog), findsOneWidget);
 
     for (final file in receiving.files) {
-      receiving.updateProgress(file, 1.0, file.fileSize);
+      receiving.markReceived(file);
     }
     await tester.pump(AppConstants.autoCloseDelay);
     await settle(tester);
@@ -131,8 +131,15 @@ void main() {
     await show(tester, batch);
     expect(await batch.decision, isTrue);
 
+    // All bytes in, but not yet saved: the dialog must stay, cancel button
+    // and all.
     batch.updateProgress(batch.files[0], 1.0, 1000);
     batch.markFailed(batch.files[1], 'disk full');
+    await tester.pump(AppConstants.autoCloseDelay);
+    await settle(tester);
+    expect(find.byType(BatchReceiveDialog), findsOneWidget);
+
+    batch.markReceived(batch.files[0]);
     await tester.pump();
     expect(find.byType(BatchReceiveDialog), findsOneWidget);
 

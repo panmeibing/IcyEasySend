@@ -137,6 +137,8 @@ class RelayReceiveCoordinator {
         unawaited(_onManifest(inbound));
       case RelayPayloadType.fileBegin:
         unawaited(_onFileBegin(inbound));
+      case RelayPayloadType.fileCancel:
+        _onFileCancel(inbound);
       case RelayPayloadType.transferCancel:
         unawaited(_onCancel(inbound));
     }
@@ -473,6 +475,13 @@ class RelayReceiveCoordinator {
       return;
     }
 
+    // Called off before it began: say so straight away, which is also what
+    // stops the upload the sender has just started.
+    if (info.isCancelled) {
+      await _reportCancelled(session, begin.fileId);
+      return;
+    }
+
     // A retry arrives as a second `file.begin` for the same file. Two at once
     // would have both attempts writing the same partial file.
     if (!session.receiving.add(begin.fileId)) {
@@ -503,13 +512,15 @@ class RelayReceiveCoordinator {
       savedPath: result.savedPath,
     );
 
+    // Whatever broke the download, a cancelled file is not retried. Its
+    // partial bytes stay behind for a later send to resume from.
+    if (!result.ok && info.isCancelled) {
+      await _reportCancelled(session, begin.fileId);
+      return;
+    }
+
     if (result.ok) {
-      _batchReceiveManager.updateProgress(
-        info.transferId,
-        1.0,
-        info.fileSize,
-        info.fileSize,
-      );
+      _batchReceiveManager.markTransferReceived(info.transferId);
     } else if (result.resumeFromChunk == null) {
       _batchReceiveManager.markTransferFailed(
         info.transferId,
@@ -569,9 +580,20 @@ class RelayReceiveCoordinator {
     final dio =
         _dioFactory?.call(info.fileSize) ??
         TransferHttp.createForDownload(info.fileSize);
+    // Cancelling, from the dialog or by the sender, drops the download. The
+    // caller sees the file flagged and tells the sender not to retry.
+    final cancelToken = CancelToken();
+    final stop = Completer<void>();
+    _batchReceiveManager.bindStop(info.transferId, stop);
+    unawaited(
+      stop.future.then((_) {
+        if (!cancelToken.isCancelled) cancelToken.cancel();
+      }),
+    );
     try {
       final response = await dio.get<ResponseBody>(
         uri.toString(),
+        cancelToken: cancelToken,
         options: Options(
           headers: await _client.streamHeaders(begin.streamId),
           responseType: ResponseType.stream,
@@ -595,6 +617,12 @@ class RelayReceiveCoordinator {
       );
 
       await for (final chunk in plaintext) {
+        if (stop.isCompleted) {
+          return _ReceiveOutcome.retryable(
+            appText.transferCancelled,
+            await writer.abandon(),
+          );
+        }
         await writer.add(chunk);
         _batchReceiveManager.updateProgress(
           info.transferId,
@@ -607,6 +635,12 @@ class RelayReceiveCoordinator {
         );
       }
 
+      if (stop.isCompleted) {
+        return _ReceiveOutcome.retryable(
+          appText.transferCancelled,
+          await writer.abandon(),
+        );
+      }
       if (writer.bytesWritten != info.fileSize) {
         await writer.discard();
         LogUtil.wTag(
@@ -673,6 +707,7 @@ class RelayReceiveCoordinator {
         await writer.abandon(),
       );
     } finally {
+      _batchReceiveManager.unbindStop(info.transferId);
       dio.close();
     }
   }
@@ -700,6 +735,30 @@ class RelayReceiveCoordinator {
     );
   }
 
+  Future<void> _reportCancelled(_ReceiveSession session, String fileId) {
+    session.reportedCancelled.add(fileId);
+    return _reportDone(
+      session,
+      fileId,
+      ok: false,
+      code: PeerError.cancelled,
+      error: PeerError.cancelled.englishMessage,
+    );
+  }
+
+  /// The sender dropped one file; the dialog stops waiting for it.
+  void _onFileCancel(RelayInboundPayload inbound) {
+    final cancel = FileCancel.tryParse(inbound.payload);
+    if (cancel == null) return;
+    final session = _sessions[cancel.sessionId];
+    if (session == null || session.peerDeviceId != inbound.fromDeviceId) {
+      return;
+    }
+    final info = session.pending[cancel.fileId];
+    if (info == null) return;
+    _batchReceiveManager.cancelTransfer(info.transferId);
+  }
+
   // -- session lifecycle ----------------------------------------------------
 
   Future<void> _onCancel(RelayInboundPayload inbound) async {
@@ -716,6 +775,18 @@ class RelayReceiveCoordinator {
 
   /// Called by the dialog once it closes, whichever way the batch ended.
   Future<void> _finish(_ReceiveSession session) async {
+    // The dialog closes once every file has ended, cancelled ones included,
+    // and the session goes with it. A cancelled file the sender has not
+    // reached yet would otherwise get its `file.begin` ignored and wait out
+    // the acknowledgement timeout.
+    if (_sessions.containsKey(session.sessionId)) {
+      for (final entry in session.pending.entries) {
+        if (entry.value.isCancelled &&
+            !session.reportedCancelled.contains(entry.key)) {
+          await _reportCancelled(session, entry.key);
+        }
+      }
+    }
     _forget(session);
     _batchReceiveManager.clearPendingForSender(session.senderKey);
 
@@ -813,6 +884,9 @@ class _ReceiveSession {
 
   /// Files with a download in progress, so a retry cannot start on top of one.
   final Set<String> receiving = {};
+
+  /// Files the sender has already been told were cancelled.
+  final Set<String> reportedCancelled = {};
 
   Timer? watchdog;
 

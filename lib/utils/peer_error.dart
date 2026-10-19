@@ -36,6 +36,7 @@ enum PeerError {
   ),
   diskFull('disk_full', 'The receiver is out of storage space.'),
   saveFailed('save_failed', 'The receiver could not save the file.'),
+  cancelled('cancelled', 'The transfer was cancelled.'),
   internalError('internal_error', 'The receiver hit an unexpected error.'),
   clipboardDeclined(
     'clipboard_declined',
@@ -84,6 +85,7 @@ enum PeerError {
       contentMismatch => text.peerErrorContentMismatch,
       diskFull => text.peerErrorDiskFull,
       saveFailed => text.peerErrorSaveFailed,
+      cancelled => text.transferCancelled,
       internalError => text.peerErrorInternal,
       clipboardDeclined => text.clipboardDeclined,
       clipboardEmpty => text.clipboardEmpty,

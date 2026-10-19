@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../l10n/current_localizations.dart';
 import '../models/incoming_batch.dart';
 import '../utils/log_util.dart';
 import '../utils/transfer_progress_throttle.dart';
@@ -126,6 +127,50 @@ class BatchReceiveManager {
     );
   }
 
+  final Map<String, Completer<void>> _stops = {};
+
+  bool isCancelled(String transferId) =>
+      _byTransferId[transferId]?.file.isCancelled ?? false;
+
+  /// Completes [stop] when the user cancels [transferId], or immediately if
+  /// they already have.
+  void bindStop(String transferId, Completer<void> stop) {
+    if (isCancelled(transferId)) {
+      if (!stop.isCompleted) stop.complete();
+      return;
+    }
+    _stops[transferId] = stop;
+  }
+
+  void unbindStop(String transferId) => _stops.remove(transferId);
+
+  /// Stops one file. A transfer that has not started yet is flagged on its
+  /// [PendingFileInfo], so the later `/transfer` is refused even after the
+  /// prompt has closed. A file that has already ended is left alone: it may
+  /// be on disk already, and calling it cancelled would be a lie.
+  void cancelTransfer(String transferId) {
+    final entry = _byTransferId[transferId];
+    if (entry != null &&
+        !entry.batch.cancel(entry.file, appText.transferCancelled)) {
+      return;
+    }
+    final stop = _stops.remove(transferId);
+    if (stop != null && !stop.isCompleted) stop.complete();
+  }
+
+  void cancelBatch(IncomingBatch batch) {
+    for (final file in batch.files) {
+      if (!file.isCompleted) cancelTransfer(file.transferId);
+    }
+  }
+
+  void markTransferReceived(String transferId) {
+    final entry = _byTransferId[transferId];
+    if (entry == null) return;
+    _progressThrottle.resetKey(transferId);
+    entry.batch.markReceived(entry.file);
+  }
+
   void markTransferFailed(String transferId, String errorMessage) {
     final entry = _byTransferId[transferId];
     if (entry == null) return;
@@ -143,6 +188,7 @@ class BatchReceiveManager {
       if (identical(_byTransferId[file.transferId]?.batch, batch)) {
         _byTransferId.remove(file.transferId);
       }
+      _stops.remove(file.transferId);
       _progressThrottle.resetKey(file.transferId);
     }
   }
