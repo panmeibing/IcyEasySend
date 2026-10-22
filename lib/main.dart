@@ -234,7 +234,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       listenable: _languageService,
       builder: (context, child) {
         return MaterialApp(
-          title: AppConstants.projectName,
+          // OHOS recent-tasks label follows MaterialApp.title; keep it identical
+          // to AppScope app_name / AppGallery listing (no spaces).
+          title: isOhosPlatform
+              ? AppConstants.projectNameTight
+              : AppConstants.projectName,
           theme: AppFormFactor.isTv ? buildTvTheme(_theme) : _theme,
           locale: _languageService.locale,
           localizationsDelegates: const [

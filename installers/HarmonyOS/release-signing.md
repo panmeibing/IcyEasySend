@@ -72,7 +72,10 @@ F:\harmony-signing\release\
 .\installers\HarmonyOS\generate-ohos-layered-icons.ps1
 ```
 
-商店图标必须是分层 1024×1024（`app_layered_image` / `layered_image` 的 foreground + background），不要用 `icon.jpg` 或 `start_icon`。
+商店 / 桌面图标（审核 1.20）用分层图；启动闪屏可单独一套：
+- 分层 1024×1024：`app_layered_image` / `layered_image`（`foreground` + `background`）
+- `startWindowIcon` 指向 `$media:start_icon`（圆形闪屏图 + 白底 `start_window_background`）
+- 不要用 `icon.jpg` 做分层图源
 
 ## 4. 构建 `.app`
 

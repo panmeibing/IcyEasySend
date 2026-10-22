@@ -77,12 +77,12 @@ if (Test-Path $MediaSrc) {
   Copy-Item (Join-Path $MediaSrc "foreground.png") $EntryMedia -Force
   Copy-Item (Join-Path $MediaSrc "layered_image.json") $EntryMedia -Force
   Copy-Item (Join-Path $MediaSrc "foreground.png") (Join-Path $EntryMedia "icon.png") -Force
-  # Splash only — transparent logo; must NOT replace layered foreground/background.
+  # Launch splash only — keep the circular start_icon (do not replace with foreground).
   $StartIcon = Join-Path $MediaSrc "start_icon.png"
   if (Test-Path $StartIcon) {
     Copy-Item $StartIcon $EntryMedia -Force
   }
-  Write-Host "Applied layered 1024 icons + start_icon (splash)"
+  Write-Host "Applied layered 1024 icons + start_icon splash"
 }
 
 $WriteStrings = Join-Path $NativeDir "_write_strings.py"

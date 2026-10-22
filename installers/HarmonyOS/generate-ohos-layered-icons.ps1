@@ -1,17 +1,17 @@
-# Regenerates HarmonyOS icons. Two different products — do not mix them:
+# Regenerates HarmonyOS layered icons for store / launcher (ability icon).
 #
-# 1) Store / desktop layered icons (cloud-test rules):
+# Layered icons (AppGallery + launcher + ability icon):
 #    - foreground.png + background.png, both 1024x1024
 #    - full-bleed square (no self-rounded corners, no inner padding)
 #    - referenced via layered_image / app_layered_image
 #    - source: lib/images/icon_1024x1024.png composited onto a full gradient square
 #
-# 2) Launch splash only (startWindowIcon):
-#    - start_icon.png — circular logo on transparent canvas (may look smaller)
-#    - NEVER use this for AppScope/entry layered icon fields
-#    - source: lib/images/icon_256x256.png (already has alpha outside the circle)
+# Also refreshes flat icon.png (ohosTest / fallback) from the same foreground.
 #
-# Do NOT use lib/images/icon.jpg for either (no alpha; pre-cut circle + white margin).
+# Does NOT touch start_icon.png — that is the launch splash art (circular on
+# white). Keep startWindowIcon = $media:start_icon in module.json5.
+#
+# Do NOT use lib/images/icon.jpg (no alpha; pre-cut circle + white margin).
 #
 # Run from repo root, then rebuild HAP / DevEco Run.
 
@@ -20,9 +20,7 @@ Add-Type -AssemblyName System.Drawing
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $SrcLayered = Join-Path $RepoRoot "lib\images\icon_1024x1024.png"
-$SrcSplash = Join-Path $RepoRoot "lib\images\icon_256x256.png"
 if (-not (Test-Path $SrcLayered)) { throw "Missing $SrcLayered" }
-if (-not (Test-Path $SrcSplash)) { throw "Missing $SrcSplash" }
 
 function New-GradientBitmap([int]$w, [int]$h) {
   $bmp = New-Object System.Drawing.Bitmap $w, $h
@@ -37,7 +35,6 @@ function New-GradientBitmap([int]$w, [int]$h) {
   return $bmp
 }
 
-# --- 1) Layered 1024 store icons (full-bleed) ---
 $src = [System.Drawing.Bitmap]::FromFile($SrcLayered)
 if ($src.Width -ne 1024 -or $src.Height -ne 1024) {
   $src.Dispose()
@@ -67,7 +64,7 @@ $foreground.Save(
   (Join-Path $RepoRoot "ohos\AppScope\resources\base\media\app_icon.png"),
   [System.Drawing.Imaging.ImageFormat]::Png
 )
-# Keep entry icon.png as full-bleed fallback (ohosTest etc.); NOT used for startWindowIcon.
+# Flat full-bleed used by ohosTest / fallback (not the launch splash).
 $foreground.Save(
   (Join-Path $RepoRoot "ohos\entry\src\main\resources\base\media\icon.png"),
   [System.Drawing.Imaging.ImageFormat]::Png
@@ -84,29 +81,5 @@ $background.Save(
 $background.Dispose()
 $foreground.Dispose()
 
-# --- 2) Splash start_icon (transparent, intentionally smaller) ---
-$splashSrc = [System.Drawing.Bitmap]::FromFile($SrcSplash)
-$outSize = 512
-$logoSize = 288
-$canvas = New-Object System.Drawing.Bitmap $outSize, $outSize
-$canvas.MakeTransparent()
-$gs = [System.Drawing.Graphics]::FromImage($canvas)
-$gs.Clear([System.Drawing.Color]::Transparent)
-$gs.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-$gs.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-$pad = [int](($outSize - $logoSize) / 2)
-$gs.DrawImage($splashSrc, $pad, $pad, $logoSize, $logoSize)
-$gs.Dispose()
-$splashSrc.Dispose()
-
-foreach ($d in @(
-    (Join-Path $RepoRoot "ohos\entry\src\main\resources\base\media"),
-    (Join-Path $PSScriptRoot "native\media")
-  )) {
-  New-Item -ItemType Directory -Force -Path $d | Out-Null
-  $canvas.Save((Join-Path $d "start_icon.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-}
-$canvas.Dispose()
-
-Write-Host "OK: layered 1024 foreground/background (store) + start_icon.png (splash only)."
+Write-Host "OK: layered 1024 foreground/background + icon.png. start_icon.png left unchanged."
 Write-Host "Confirm module.json5: icon=`$media:layered_image, startWindowIcon=`$media:start_icon"

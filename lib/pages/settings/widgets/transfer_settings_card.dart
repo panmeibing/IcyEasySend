@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/constants.dart';
 import '../../../utils/ohos_platform.dart';
-import '../../../utils/toast_helper.dart';
 import 'settings_section.dart';
 
 /// Transfer settings card widget
@@ -98,8 +97,11 @@ class TransferSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // HarmonyOS cannot change the receive directory (public Downloads only).
+    // Keep [_buildSavePathSection] for other platforms; showing a locked
+    // "select path" control that toasts "unavailable" failed AppGallery review.
     final sections = <Widget>[
-      _buildSavePathSection(context, l10n),
+      if (!isOhosPlatform) _buildSavePathSection(context, l10n),
       _buildConcurrentTransfersSection(l10n),
       _buildMaxHistorySection(l10n),
       _buildMaxClipboardSizeSection(l10n),
@@ -134,8 +136,9 @@ class TransferSettingsCard extends StatelessWidget {
     );
   }
 
+  /// Receive-directory picker. Not shown on HarmonyOS (`isOhosPlatform`);
+  /// restore by including it in [build] again when the OS allows a custom path.
   Widget _buildSavePathSection(BuildContext context, AppLocalizations l10n) {
-    final pathLocked = isOhosPlatform;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -210,24 +213,8 @@ class TransferSettingsCard extends StatelessWidget {
           runSpacing: 8,
           children: [
             OutlinedButton.icon(
-              onPressed: pathLocked
-                  ? () => ToastHelper.showInfo(
-                      context,
-                      l10n.ohosFeatureUnavailable,
-                      duration: const Duration(seconds: 3),
-                    )
-                  : onSelectSavePath,
-              style: pathLocked
-                  ? OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey,
-                      side: const BorderSide(color: Color(0xFFBDBDBD)),
-                    )
-                  : null,
-              icon: Icon(
-                Icons.folder_open,
-                size: 18,
-                color: pathLocked ? Colors.grey : null,
-              ),
+              onPressed: onSelectSavePath,
+              icon: const Icon(Icons.folder_open, size: 18),
               label: Text(l10n.selectSavePath),
             ),
             if (isCustomReceiveSavePath)
